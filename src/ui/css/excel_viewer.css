@@ -1,0 +1,281 @@
+/**
+ * ExcelViewer - Professional Styling
+ * Light theme based on DocuFlow with FormFlow colors
+ */
+
+/* ==================== CONTAINER ==================== */
+.excel-viewer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    background: #ffffff;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    color: #333;
+    overflow: hidden;
+}
+
+.ev-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+/* ==================== FORMULA BAR ==================== */
+.ev-formula-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.ev-cell-ref {
+    width: 80px;
+    padding: 0 12px;
+    font-weight: 500;
+    font-size: 12px;
+    color: #5f6368;
+    background: #ffffff;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #e0e0e0;
+}
+
+.ev-cell-content {
+    flex: 1;
+    padding: 0 12px;
+    font-size: 13px;
+    color: #000000;
+    background: #ffffff;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* ==================== GRID CONTAINER ==================== */
+.ev-grid-container {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+    background: #ffffff;
+}
+
+/* ==================== TABLE ==================== */
+.ev-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
+    min-width: 100%;
+}
+
+/* ==================== HEADERS ==================== */
+.ev-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Letter row (A, B, C...) - Distinct header styling */
+.ev-letter-row th {
+    background: #e8eaed;
+    border-right: 1px solid #c0c0c0;
+    border-bottom: 1px solid #c0c0c0;
+    padding: 2px 0;
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    height: 20px;
+    color: #9aa0a6;
+    user-select: none;
+}
+
+/* NAMES ROW (Column Names) - Google Sheets Green */
+.ev-names-row th {
+    background: #188038;
+    border-right: 1px solid #146c2e;
+    border-bottom: 2px solid #146c2e;
+    padding: 4px 8px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+/* Corner cell */
+.ev-corner {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #e8eaed !important;
+    border-right: 1px solid #c0c0c0 !important;
+    border-bottom: 1px solid #c0c0c0 !important;
+}
+
+/* Row number header (shows "1") - IDENTICAL to .ev-letter-row th */
+.ev-names-row th.ev-row-num-header {
+    background: #e8eaed !important;
+    border-right: 1px solid #c0c0c0 !important;
+    border-bottom: 1px solid #c0c0c0 !important;
+    padding: 2px 0 !important;
+    text-align: center !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    height: 20px !important;
+    color: #9aa0a6 !important;
+    user-select: none !important;
+}
+
+/* ==================== BODY ==================== */
+.ev-table tbody tr {
+    height: 24px;
+    background: #ffffff;
+}
+
+/* Alternating rows - white/light gray */
+.ev-table tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+/* Row hover - light green tint */
+.ev-table tbody tr:hover {
+    background: rgba(187, 247, 208, 0.3);
+}
+
+.ev-table tbody tr:hover .ev-row-num {
+    background: #dcfce7 !important;
+    /* Solid light green instead of rgba */
+    color: #166534 !important;
+}
+
+/* Active row (cell selected) - slightly stronger than hover */
+.ev-table tbody tr.ev-row-active {
+    background: rgba(187, 247, 208, 0.5);
+}
+
+.ev-table tbody tr.ev-row-active .ev-row-num {
+    background: #bbf7d0 !important;
+    /* Solid green */
+    color: #166534 !important;
+}
+
+/* Selected row (row number clicked) - BRIGHTEST GREEN */
+.ev-table tbody tr.ev-row-selected td {
+    background: #bbf7d0 !important;
+}
+
+.ev-table tbody tr.ev-row-selected .ev-row-num {
+    background: #86efac !important;
+    color: #166534 !important;
+    font-weight: bold;
+}
+
+/* Row numbers (2, 3, 4...) - IDENTICAL to .ev-letter-row th */
+.ev-row-num {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background: #e8eaed !important;
+    border-right: 1px solid #c0c0c0 !important;
+    border-bottom: 1px solid #c0c0c0 !important;
+    padding: 2px 0;
+    text-align: center;
+    font-weight: 600;
+    font-size: 11px;
+    height: 20px;
+    color: #9aa0a6 !important;
+    user-select: none;
+    cursor: pointer;
+}
+
+.ev-table td {
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 2px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align: middle;
+    color: #000000;
+    font-size: 13px;
+}
+
+/* ==================== SELECTION ==================== */
+.ev-cell.ev-selected {
+    outline: 2px solid #188038;
+    z-index: 20;
+    background: rgba(24, 128, 56, 0.05);
+}
+
+/* Header selection state */
+.ev-names-row th.ev-selected {
+    background: #146c2e !important;
+}
+
+/* ==================== TABS - DocuFlow style with green underline ==================== */
+.ev-tabs-bar {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding: 4px 8px 0 8px;
+    background: #f1f3f4;
+    border-top: 1px solid #e0e0e0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-shrink: 0;
+}
+
+.ev-tab {
+    padding: 6px 16px;
+    border: none;
+    background: #e8eaed;
+    color: #5f6368;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 4px 4px 0 0;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.ev-tab:hover {
+    background: #dadce0;
+    color: #202124;
+}
+
+/* Active tab - same size, green underline */
+.ev-tab-active {
+    background: #ffffff;
+    color: #188038;
+}
+
+/* Green underline indicator for active tab */
+.ev-tab-active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #188038;
+}
+
+/* Empty state */
+.ev-empty {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+    font-style: italic;
+}

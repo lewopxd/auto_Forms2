@@ -1,0 +1,18 @@
+# MS Forms Automation Dependencies
+
+# Web Server (FastAPI + WebSocket)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+
+# Excel processing (backend)
+openpyxl>=3.1.0
+
+# Anti-detection browser automation
+undetected-chromedriver>=3.5.5
+selenium>=4.15.0
+
+# Utilities
+colorama>=0.4.6
+setuptools>=69.0.0
+# openpyxl>=3.1.0

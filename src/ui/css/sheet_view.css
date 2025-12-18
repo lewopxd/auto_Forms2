@@ -1,0 +1,300 @@
+/* =====================================
+   SHEET_VIEW.CSS - Estilos del Visor Excel
+   ===================================== */
+
+/* --- Excel Grid Container --- */
+.excel-grid-container {
+    overflow: auto;
+    height: calc(100% - 40px);
+    background: #fff;
+    position: relative;
+}
+
+/* --- Excel Table --- */
+table.excel-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 100%;
+    font-size: 13px;
+    color: #333;
+    cursor: default;
+}
+
+table.excel-table td,
+table.excel-table th {
+    border-right: 1px solid #e0e0e0;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 4px 8px;
+    white-space: nowrap;
+    height: 24px;
+    box-sizing: border-box;
+}
+
+table.excel-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #5f6368;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #d1d5db;
+}
+
+/* Row number column */
+table.excel-table tr td.row-num-cell {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #5f6368;
+    text-align: center;
+    border-right: 2px solid #d1d5db;
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    width: 50px;
+    min-width: 50px;
+}
+
+table.excel-table th.row-num-header {
+    left: 0;
+    z-index: 20;
+    border-right: 2px solid #d1d5db;
+}
+
+/* --- Check Column (special) --- */
+table.excel-table th.check-col-header {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    font-weight: 600;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    position: sticky;
+    left: 50px;
+    /* After row number column */
+    z-index: 21;
+    border-right: 2px solid #7c3aed;
+    font-size: 11px;
+}
+
+table.excel-table td.check-col-cell {
+    background-color: #f5f3ff;
+    text-align: center;
+    width: 40px;
+    min-width: 40px;
+    max-width: 40px;
+    position: sticky;
+    left: 50px;
+    z-index: 12;
+    border-right: 2px solid #c4b5fd;
+    padding: 0;
+}
+
+table.excel-table td.check-col-cell:hover {
+    background-color: #ede9fe;
+}
+
+/* When check column enabled, shift row numbers */
+table.excel-table.has-check-col th.row-num-header,
+table.excel-table.has-check-col td.row-num-cell {
+    z-index: 22;
+}
+
+/* Check select dropdown */
+.check-select {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    text-align: center;
+    cursor: pointer;
+    padding: 2px;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+}
+
+.check-select:hover {
+    background-color: #ede9fe;
+}
+
+.check-select:focus {
+    background-color: #ddd6fe;
+}
+
+/* Row highlighting */
+table.excel-table tbody tr:hover td {
+    background-color: #f1f5f9;
+}
+
+table.excel-table tbody tr:hover td.check-col-cell {
+    background-color: #ede9fe;
+}
+
+table.excel-table tbody tr.selected-row td {
+    background-color: #bbf7d0 !important;
+}
+
+table.excel-table tbody tr.selected-row td.check-col-cell {
+    background-color: #c4b5fd !important;
+}
+
+/* --- Sheet Tabs --- */
+.sheet-tabs {
+    height: 40px;
+    background: #f1f5f9;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    overflow-x: auto;
+    gap: 2px;
+}
+
+.sheet-tab {
+    padding: 6px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px 4px 0 0;
+    color: #475569;
+    background: transparent;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+
+.sheet-tab:hover {
+    background: #e2e8f0;
+}
+
+.sheet-tab.active {
+    background: #fff;
+    color: #16a34a;
+    font-weight: bold;
+    border-bottom: 3px solid #16a34a;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* --- Config Button & Menu --- */
+.config-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+}
+
+.config-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.config-btn.active {
+    background: #8b5cf6;
+    color: white;
+    border-color: #7c3aed;
+}
+
+.config-menu-wrapper {
+    position: relative;
+}
+
+.config-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    min-width: 220px;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.config-menu.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.config-menu-header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.config-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.config-menu-item:hover {
+    background: #f8fafc;
+}
+
+.config-menu-item:last-child {
+    border-radius: 0 0 8px 8px;
+}
+
+.config-menu-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #334155;
+}
+
+.config-menu-label i {
+    color: #8b5cf6;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    background: #e2e8f0;
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.toggle-switch.active {
+    background: #8b5cf6;
+}
+
+.toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+}
+
+.toggle-switch.active::after {
+    transform: translateX(18px);
+}

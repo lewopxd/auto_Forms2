@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test - MS Forms Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #00d9ff;
+            font-weight: 300;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+        
+        .status-dot.connected {
+            background: #44ff44;
+            box-shadow: 0 0 8px #44ff44;
+        }
+        
+        .panel-body {
+            padding: 16px;
+            height: 250px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .log-entry.info { border-left: 3px solid #00d9ff; }
+        .log-entry.warning { border-left: 3px solid #ffaa00; }
+        .log-entry.error { border-left: 3px solid #ff4444; }
+        .log-entry.debug { border-left: 3px solid #888; }
+        .log-entry.sent { border-left: 3px solid #aa44ff; }
+        .log-entry.received { border-left: 3px solid #44ff88; }
+        
+        .actions {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .actions h3 {
+            font-size: 14px;
+            margin-bottom: 16px;
+            color: #00d9ff;
+        }
+        
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00d9ff 0%, #0099cc 100%);
+            color: #000;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #44ff88 0%, #22cc66 100%);
+            color: #000;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffaa00 0%, #cc8800 100%);
+            color: #000;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4444 0%, #cc2222 100%);
+            color: #fff;
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 16px 24px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #00d9ff;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .timestamp {
+            color: #666;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔌 WebSocket Communication Test</h1>
+        <p class="subtitle">MS Forms Automation - Phase 1 Verification</p>
+        
+        <div class="panels">
+            <!-- Data Channel Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="status-dot" id="data-status"></span>
+                        Data Channel (/ws/data)
+                    </div>
+                    <span id="data-pending">0 pending</span>
+                </div>
+                <div class="panel-body" id="data-log"></div>
+            </div>
+            
+            <!-- Log Channel Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <span class="status-dot" id="log-status"></span>
+                        Log Channel (/ws/logs)
+                    </div>
+                    <span id="log-count">0 logs</span>
+                </div>
+                <div class="panel-body" id="log-log"></div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="actions">
+            <h3>🧪 Test Actions</h3>
+            <div class="btn-grid">
+                <button class="btn-primary" onclick="connectData()">
+                    📡 Connect Data
+                </button>
+                <button class="btn-primary" onclick="connectLogs()">
+                    📋 Connect Logs
+                </button>
+                <button class="btn-success" onclick="sendPing()">
+                    🏓 Send Ping
+                </button>
+                <button class="btn-success" onclick="getForms()">
+                    📁 Get Forms
+                </button>
+                <button class="btn-warning" onclick="testRetry()">
+                    🔄 Test Retry
+                </button>
+                <button class="btn-danger" onclick="disconnectAll()">
+                    ❌ Disconnect All
+                </button>
+                <button class="btn-secondary" onclick="clearLogs()">
+                    🗑️ Clear Logs
+                </button>
+            </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="stat-sent">0</div>
+                <div class="stat-label">Messages Sent</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-received">0</div>
+                <div class="stat-label">Messages Received</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-acks">0</div>
+                <div class="stat-label">ACKs Received</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="stat-retries">0</div>
+                <div class="stat-label">Retries</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ========== State ==========
+        let dataWs = null;
+        let logWs = null;
+        let stats = { sent: 0, received: 0, acks: 0, retries: 0 };
+        let pending = new Map();
+        let logCount = 0;
+        
+        // ========== Protocol ==========
+        function generateId() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+                const r = Math.random() * 16 | 0;
+                return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
+        }
+        
+        function createMessage(type, data = null, replyTo = null) {
+            const msg = {
+                id: generateId(),
+                type: type,
+                timestamp: new Date().toISOString()
+            };
+            if (replyTo) msg.replyTo = replyTo;
+            if (data !== null) msg.data = data;
+            return msg;
+        }
+        
+        function createAck(originalId) {
+            return createMessage('ack', null, originalId);
+        }
+        
+        // ========== Logging ==========
+        function addLog(panel, type, message) {
+            const log = document.getElementById(panel);
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.innerHTML = `<span class="timestamp">${time}</span>${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function updateStats() {
+            document.getElementById('stat-sent').textContent = stats.sent;
+            document.getElementById('stat-received').textContent = stats.received;
+            document.getElementById('stat-acks').textContent = stats.acks;
+            document.getElementById('stat-retries').textContent = stats.retries;
+            document.getElementById('data-pending').textContent = `${pending.size} pending`;
+            document.getElementById('log-count').textContent = `${logCount} logs`;
+        }
+        
+        // ========== Data Channel ==========
+        function connectData() {
+            if (dataWs && dataWs.readyState === WebSocket.OPEN) {
+                addLog('data-log', 'warning', 'Already connected');
+                return;
+            }
+            
+            const url = `ws://${location.host}/ws/data`;
+            addLog('data-log', 'info', `Connecting to ${url}...`);
+            
+            dataWs = new WebSocket(url);
+            
+            dataWs.onopen = () => {
+                document.getElementById('data-status').classList.add('connected');
+                addLog('data-log', 'info', '✅ Connected!');
+            };
+            
+            dataWs.onclose = () => {
+                document.getElementById('data-status').classList.remove('connected');
+                addLog('data-log', 'warning', '❌ Disconnected');
+            };
+            
+            dataWs.onerror = (e) => {
+                addLog('data-log', 'error', `Error: ${e.message || 'Connection failed'}`);
+            };
+            
+            dataWs.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                stats.received++;
+                
+                // Handle ACK
+                if (msg.type === 'ack' && msg.replyTo) {
+                    stats.acks++;
+                    if (pending.has(msg.replyTo)) {
+                        pending.get(msg.replyTo).ackReceived = true;
+                        addLog('data-log', 'received', `✓ ACK for ${msg.replyTo.slice(0, 8)}`);
+                    }
+                    updateStats();
+                    return;
+                }
+                
+                // Handle response
+                if (msg.replyTo && pending.has(msg.replyTo)) {
+                    const p = pending.get(msg.replyTo);
+                    clearTimeout(p.timeout);
+                    pending.delete(msg.replyTo);
+                    addLog('data-log', 'received', `← ${msg.type}: ${JSON.stringify(msg.data || {}).slice(0, 50)}...`);
+                    updateStats();
+                    return;
+                }
+                
+                // General message
+                addLog('data-log', 'received', `← ${msg.type}: ${JSON.stringify(msg.data || {}).slice(0, 80)}`);
+                
+                // Send ACK if needed
+                if (!['ack', 'nack', 'pong', 'log', 'connected'].includes(msg.type)) {
+                    const ack = createAck(msg.id);
+                    dataWs.send(JSON.stringify(ack));
+                }
+                
+                updateStats();
+            };
+        }
+        
+        function sendDataMessage(type, data = null) {
+            if (!dataWs || dataWs.readyState !== WebSocket.OPEN) {
+                addLog('data-log', 'error', 'Not connected!');
+                return null;
+            }
+            
+            const msg = createMessage(type, data);
+            
+            // Track pending
+            pending.set(msg.id, {
+                message: msg,
+                ackReceived: false,
+                timeout: setTimeout(() => {
+                    if (pending.has(msg.id) && !pending.get(msg.id).ackReceived) {
+                        stats.retries++;
+                        addLog('data-log', 'warning', `⚠️ Timeout for ${msg.id.slice(0, 8)}, retrying...`);
+                        dataWs.send(JSON.stringify(msg));
+                        updateStats();
+                    }
+                }, 5000)
+            });
+            
+            dataWs.send(JSON.stringify(msg));
+            stats.sent++;
+            addLog('data-log', 'sent', `→ ${type} [${msg.id.slice(0, 8)}]`);
+            updateStats();
+            
+            return msg.id;
+        }
+        
+        // ========== Log Channel ==========
+        function connectLogs() {
+            if (logWs && logWs.readyState === WebSocket.OPEN) {
+                addLog('log-log', 'warning', 'Already connected');
+                return;
+            }
+            
+            const url = `ws://${location.host}/ws/logs`;
+            addLog('log-log', 'info', `Connecting to ${url}...`);
+            
+            logWs = new WebSocket(url);
+            
+            logWs.onopen = () => {
+                document.getElementById('log-status').classList.add('connected');
+                addLog('log-log', 'info', '✅ Connected and subscribed!');
+            };
+            
+            logWs.onclose = () => {
+                document.getElementById('log-status').classList.remove('connected');
+                addLog('log-log', 'warning', '❌ Disconnected');
+            };
+            
+            logWs.onmessage = (event) => {
+                const msg = JSON.parse(event.data);
+                
+                if (msg.type === 'log' && msg.data) {
+                    logCount++;
+                    const d = msg.data;
+                    const level = (d.level || 'INFO').toLowerCase();
+                    addLog('log-log', level, `[${d.module}] ${d.message}`);
+                    updateStats();
+                } else if (msg.type === 'connected') {
+                    addLog('log-log', 'info', msg.data?.message || 'Connected');
+                }
+            };
+        }
+        
+        // ========== Actions ==========
+        function sendPing() {
+            sendDataMessage('ping', { timestamp: Date.now() });
+        }
+        
+        function getForms() {
+            sendDataMessage('get_forms');
+        }
+        
+        function testRetry() {
+            addLog('data-log', 'info', 'Testing retry mechanism...');
+            // Send a message that will timeout (backend won't respond to unknown type)
+            sendDataMessage('test_unknown_type', { test: true });
+        }
+        
+        function disconnectAll() {
+            if (dataWs) {
+                dataWs.close();
+                dataWs = null;
+            }
+            if (logWs) {
+                logWs.close();
+                logWs = null;
+            }
+            pending.clear();
+            updateStats();
+        }
+        
+        function clearLogs() {
+            document.getElementById('data-log').innerHTML = '';
+            document.getElementById('log-log').innerHTML = '';
+            stats = { sent: 0, received: 0, acks: 0, retries: 0 };
+            logCount = 0;
+            updateStats();
+        }
+        
+        // ========== Auto-connect ==========
+        window.onload = () => {
+            updateStats();
+            // Auto-connect after 500ms
+            setTimeout(() => {
+                connectData();
+                connectLogs();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "id": "proj_e82622495c34",
+  "name": "Mi Proyecto",
+  "path": "D:\\progTests\\auto_Forms\\projects\\Mi Proyecto  NUEVO4.msfproj",
+  "created": "2025-12-17T03:09:30.086694Z",
+  "updated": "2025-12-17T03:15:50.426341Z",
+  "excel": null,
+  "forms": [],
+  "tabs": [
+    {
+      "id": "tab-1765940121580-5f7ne48eb",
+      "title": "Concepto 1",
+      "type": "concept",
+      "content": "Este es un simple test del concepto que queremos rellenar {NOMBRES}"
+    }
+  ],
+  "ui": {
+    "splitterPosition": 50,
+    "activeTab": "tab-1765940121580-5f7ne48eb",
+    "showCheckColumn": false
+  }
+}

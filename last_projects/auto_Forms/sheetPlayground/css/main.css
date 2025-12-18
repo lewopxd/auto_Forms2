@@ -1,0 +1,331 @@
+/* =====================================
+   MAIN.CSS - Estilos Globales
+   ===================================== */
+
+/* --- Core Layout --- */
+body,
+html {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- Toolbar (Barra de Tareas Lateral) --- */
+#task-bar {
+    width: 18px;
+    background-color: #1e293b;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    border-right: 1px solid #334155;
+    flex-shrink: 0;
+}
+
+#task-bar:hover {
+    width: 200px;
+}
+
+.task-btn {
+    display: flex;
+    align-items: center;
+    padding: 14px 0;
+    color: #94a3b8;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    justify-content: center;
+    gap: 0;
+}
+
+#task-bar:hover .task-btn {
+    padding: 12px 14px;
+    justify-content: flex-start;
+    background-color: transparent;
+    gap: 12px;
+}
+
+.task-btn:hover {
+    background-color: #334155 !important;
+    color: #f8fafc;
+}
+
+.task-icon-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    width: 18px;
+    transition: all 0.3s;
+}
+
+#task-bar:hover .task-icon-container {
+    width: 24px;
+}
+
+#task-bar svg {
+    width: 10px;
+    height: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    stroke-width: 3px;
+}
+
+#task-bar:hover svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2px;
+}
+
+.task-btn span {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transform: translateX(-10px);
+    transition: all 0.2s ease-out;
+    transition-delay: 0.1s;
+}
+
+#task-bar:hover .task-btn span {
+    opacity: 1;
+    width: auto;
+    transform: translateX(0);
+}
+
+/* --- Status Indicator --- */
+.status-indicator {
+    margin-top: auto;
+    padding: 15px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    gap: 5px;
+    border-top: 1px solid #334155;
+    transition: all 0.3s;
+}
+
+#task-bar:hover .status-indicator {
+    padding: 15px;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+}
+
+.status-text {
+    font-size: 11px;
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+#task-bar:hover .status-text {
+    opacity: 1;
+    width: auto;
+}
+
+.logo-container {
+    padding: 10px 0;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid #334155;
+}
+
+#task-bar:hover .logo-container {
+    padding: 14px;
+    justify-content: flex-start;
+}
+
+/* --- Splitter --- */
+.resizer {
+    width: 6px;
+    cursor: col-resize;
+    background-color: #e5e7eb;
+    transition: background-color 0.2s;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.resizer:hover,
+.resizer.resizing {
+    background-color: #3b82f6;
+}
+
+.resizer::after {
+    content: "";
+    width: 2px;
+    height: 20px;
+    background-color: #9ca3af;
+    border-radius: 1px;
+}
+
+.noselect {
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+}
+
+/* --- Scrollbars --- */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-box {
+    background: white;
+    border-radius: 8px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    transform: translateY(10px);
+    transition: transform 0.2s;
+}
+
+.modal-overlay.open .modal-box {
+    transform: translateY(0);
+}
+
+/* --- Status Footer (IDE-style) --- */
+#status-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 22px;
+    background: #1e1e1e;
+    border-top: 1px solid #333;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-size: 11px;
+    color: #ccc;
+    z-index: 1000;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#status-footer .footer-section {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 10px;
+    border-right: 1px solid #333;
+    height: 100%;
+}
+
+#status-footer .footer-section:last-child {
+    border-right: none;
+}
+
+#status-footer .footer-section.flex-grow {
+    flex-grow: 1;
+    border-right: none;
+}
+
+#status-footer .footer-section svg {
+    opacity: 0.7;
+}
+
+/* Connection Status Dot */
+#status-footer .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+#status-footer .status-dot.connected {
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+}
+
+#status-footer .status-dot.disconnected {
+    background: #f87171;
+}
+
+#status-footer .status-dot.reconnecting {
+    background: #facc15;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* Save Status */
+#status-footer .save-status {
+    font-weight: 500;
+}
+
+#status-footer .save-status.saving {
+    color: #60a5fa;
+}
+
+#status-footer .save-status.saved {
+    color: #4ade80;
+}
+
+#status-footer .save-status.modified {
+    color: #facc15;
+}
+
+#status-footer .save-status.error {
+    color: #f87171;
+}
+
+/* Adjust body to account for footer */
+body {
+    padding-bottom: 22px;
+}
+
+#app-container {
+    height: calc(100vh - 22px);
+}

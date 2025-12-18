@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Split View - Arquitectura Modular</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- CSS Modules -->
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/modules/sheet_view.css">
+    <link rel="stylesheet" href="css/modules/template_view.css">
+</head>
+
+<body class="bg-gray-100 flex flex-row overflow-hidden h-full">
+
+    <!-- TASK BAR -->
+    <div id="task-bar">
+        <div class="logo-container text-blue-400">
+            <i data-lucide="layers" class="w-6 h-6"></i>
+        </div>
+        <div class="task-btn" onclick="openNewProjectModal()">
+            <div class="task-icon-container"><i data-lucide="file-plus"></i></div>
+            <span class="text-sm font-medium">Nuevo Proyecto</span>
+        </div>
+        <div class="task-btn" onclick="openSaveModal()">
+            <div class="task-icon-container"><i data-lucide="save"></i></div>
+            <span class="text-sm font-medium">Guardar Proyecto</span>
+        </div>
+        <div class="task-btn" onclick="openLoadModal()">
+            <div class="task-icon-container"><i data-lucide="folder-open"></i></div>
+            <span class="text-sm font-medium">Cargar Proyecto</span>
+        </div>
+        <div id="status-bar" class="status-indicator">
+            <div id="status-icon" class="task-icon-container"><i data-lucide="check" class="text-blue-400"></i></div>
+            <span id="status-text" class="status-text">Listo</span>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container" class="flex flex-row flex-1 w-full h-full overflow-hidden relative">
+        <!-- PANEL IZQUIERDO: SHEET VIEW -->
+        <div id="left-panel" class="bg-slate-50 flex flex-col min-w-[300px] overflow-hidden" style="width: 50%;">
+            <nav class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shadow-sm z-20">
+                <div class="flex items-center gap-2">
+                    <div class="bg-green-600 p-1.5 rounded text-white"><i data-lucide="sheet" class="w-5 h-5"></i></div>
+                    <span class="font-bold text-gray-700 text-sm tracking-wide">VISOR EXCEL</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="file-name" class="text-xs text-gray-500 font-medium hidden md:block"></span>
+                    <label for="excel-upload"
+                        class="cursor-pointer group relative overflow-hidden bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded shadow transition-all flex items-center gap-2">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                        <span>Importar Excel</span>
+                        <input type="file" id="excel-upload" accept=".xlsx, .xls, .csv" class="hidden" />
+                    </label>
+                </div>
+            </nav>
+            <div class="flex-1 relative flex flex-col overflow-hidden">
+                <div id="empty-state"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-slate-50 z-10">
+                    <i data-lucide="file-spreadsheet" class="w-16 h-16 mb-4 text-green-200"></i>
+                    <p class="text-gray-500 font-medium">No hay archivo cargado</p>
+                    <p class="text-xs mt-1">Sube un archivo .xlsx para visualizar</p>
+                </div>
+                <div id="grid-wrapper" class="excel-grid-container hidden"></div>
+                <div id="sheet-tabs" class="sheet-tabs hidden"></div>
+            </div>
+        </div>
+
+        <!-- SPLITTER -->
+        <div id="resizer" class="resizer" title="Arrastrar para redimensionar"></div>
+
+        <!-- PANEL DERECHO: TEMPLATE VIEW -->
+        <div id="right-panel"
+            class="bg-white flex flex-col flex-1 min-w-[200px] border-l border-gray-200 overflow-hidden">
+            <div class="chrome-tab-bar select-none" id="chrome-tabs-container">
+                <div class="add-tab-btn" id="add-tab-btn" title="Nueva pestaña"><i data-lucide="plus"
+                        class="w-5 h-5"></i></div>
+            </div>
+            <div id="tabs-content-area" class="flex-1 bg-white relative overflow-hidden">
+                <div id="no-tabs-state"
+                    class="absolute inset-0 flex flex-col items-center justify-center text-gray-300">
+                    <i data-lucide="mouse-pointer-click" class="w-12 h-12 mb-2 opacity-50"></i>
+                    <p class="text-sm">Haz clic en (+) para crear una pestaña</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- NEW PROJECT MODAL -->
+    <div id="modal-new" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="file-plus" class="w-5 h-5 text-blue-500"></i> Nuevo Proyecto
+            </h3>
+            <div class="mb-4">
+                <label class="block text-sm text-gray-600 mb-2">Nombre del proyecto:</label>
+                <input type="text" id="new-project-name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Mi Proyecto" value="Mi Proyecto">
+            </div>
+            <p class="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
+                <i data-lucide="info" class="w-3 h-3 inline"></i>
+                Se te pedirá elegir dónde guardar el nuevo proyecto.
+            </p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModals()"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                <button onclick="createNewProject()"
+                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 shadow-sm">
+                    Crear Proyecto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAVE MODAL (Desktop Style) -->
+    <div id="modal-save" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="save" class="w-5 h-5 text-green-600"></i> Guardar Proyecto
+            </h3>
+
+            <!-- Current path info -->
+            <div id="current-path-info" class="mb-4 p-3 bg-gray-50 rounded-lg hidden">
+                <div class="text-xs text-gray-500 mb-1">Ubicación actual:</div>
+                <div id="current-path-text" class="text-sm text-gray-700 font-mono truncate"></div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <!-- Guardar (si ya tiene ruta) -->
+                <button onclick="saveProject()" id="btn-save-current"
+                    class="flex items-center gap-3 p-3 border-2 border-green-200 rounded-lg bg-green-50 hover:bg-green-100 transition-colors text-left group">
+                    <div class="bg-green-600 p-2 rounded text-white">
+                        <i data-lucide="save" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold text-gray-800">Guardar</div>
+                        <div class="text-xs text-gray-500">Guardar en la ubicación actual</div>
+                    </div>
+                    <span class="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">Ctrl+S</span>
+                </button>
+
+                <!-- Guardar Como (nueva ubicación) -->
+                <button onclick="saveProjectAs()"
+                    class="flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors text-left group">
+                    <div class="bg-blue-100 p-2 rounded text-blue-600 group-hover:bg-blue-200">
+                        <i data-lucide="folder-plus" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold text-gray-700">Guardar Como...</div>
+                        <div class="text-xs text-gray-500">Elegir nueva ubicación</div>
+                    </div>
+                    <span class="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">Ctrl+Shift+S</span>
+                </button>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModals()"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OPEN PROJECT MODAL (Desktop Style) -->
+    <div id="modal-load" class="modal-overlay">
+        <div class="modal-box" style="max-width: 450px;">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="folder-open" class="w-5 h-5 text-purple-600"></i> Abrir Proyecto
+            </h3>
+
+            <div class="flex flex-col gap-3">
+                <!-- Abrir (diálogo nativo) -->
+                <button onclick="openProjectDialog()"
+                    class="flex items-center gap-3 p-3 border-2 border-purple-200 rounded-lg bg-purple-50 hover:bg-purple-100 transition-colors text-left group">
+                    <div class="bg-purple-600 p-2 rounded text-white">
+                        <i data-lucide="folder-open" class="w-5 h-5"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold text-gray-800">Abrir Archivo...</div>
+                        <div class="text-xs text-gray-500">Seleccionar archivo .msfproj</div>
+                    </div>
+                    <span class="text-xs text-gray-400 bg-gray-200 px-2 py-1 rounded">Ctrl+O</span>
+                </button>
+            </div>
+
+            <!-- Recent Projects -->
+            <div class="mt-4">
+                <div class="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                    <i data-lucide="history" class="w-3 h-3"></i> Proyectos Recientes
+                </div>
+                <div id="recent-projects-list" class="max-h-48 overflow-y-auto space-y-1">
+                    <div class="text-xs text-gray-400 p-2">Cargando...</div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModals()"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB TYPE SELECTOR MODAL -->
+    <div id="modal-tab-type" class="modal-overlay">
+        <div class="modal-box" style="max-width: 400px;">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-5 h-5 text-blue-500"></i> Nueva Pestaña
+            </h3>
+            <p class="text-sm text-gray-600 mb-6">Selecciona el tipo de pestaña:</p>
+            <div class="flex flex-col gap-3">
+                <button onclick="TemplateViewModule.createTab('concept')"
+                    class="flex items-center gap-4 p-4 border-2 rounded-xl hover:bg-blue-50 hover:border-blue-300 transition-all text-left group">
+                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600 group-hover:bg-blue-200">
+                        <i data-lucide="file-text" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="text-base font-semibold text-gray-800">Concepto</div>
+                        <div class="text-xs text-gray-500">Template de texto con placeholders</div>
+                    </div>
+                </button>
+                <button onclick="TemplateViewModule.createTab('form')"
+                    class="flex items-center gap-4 p-4 border-2 rounded-xl hover:bg-purple-50 hover:border-purple-300 transition-all text-left group">
+                    <div class="bg-purple-100 p-3 rounded-lg text-purple-600 group-hover:bg-purple-200">
+                        <i data-lucide="list-checks" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <div class="text-base font-semibold text-gray-800">Formulario</div>
+                        <div class="text-xs text-gray-500">Preguntas para Google/MS Forms</div>
+                    </div>
+                </button>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button onclick="closeModals()"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DELETE CONFIRMATION MODAL -->
+    <div id="modal-confirm-delete" class="modal-overlay">
+        <div class="modal-box" style="max-width: 360px;">
+            <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="trash-2" class="w-5 h-5 text-red-500"></i> Eliminar Pregunta
+            </h3>
+            <p class="text-sm text-gray-600 mb-6">¿Estás seguro de que deseas eliminar esta pregunta? Esta acción no se
+                puede deshacer.</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeModals()"
+                    class="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                <button id="confirm-delete-btn"
+                    class="px-4 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 shadow-sm">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EXPORT CONFIGURATION MODAL -->
+    <div id="modal-export-config" class="modal-overlay">
+        <div class="modal-box export-modal-content">
+            <div class="export-modal-header">
+                <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
+                <h3>Exportar a Excel</h3>
+            </div>
+            <div class="export-modal-body">
+                <div class="export-section">
+                    <div class="export-section-title">
+                        <i data-lucide="grip-vertical"></i>
+                        <span>Arrastra para reordenar columnas</span>
+                    </div>
+                    <div class="export-columns-list" id="export-columns-list">
+                        <!-- Columns will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="export-modal-footer">
+                <div class="export-info">
+                    <i data-lucide="info"></i>
+                    <span id="export-rows-info">0 filas serán exportadas</span>
+                </div>
+                <div class="export-actions">
+                    <button class="export-cancel-btn" onclick="closeModals()">Cancelar</button>
+                    <button class="export-confirm-btn" id="export-confirm-btn">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Exportar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS FOOTER (IDE-style) -->
+    <div id="status-footer">
+        <div class="footer-section">
+            <span class="status-dot conn-status disconnected"></span>
+            <span class="conn-label">Conectando...</span>
+        </div>
+        <div class="footer-section">
+            <i data-lucide="folder" class="w-3 h-3"></i>
+            <span class="project-name">Cargando...</span>
+        </div>
+        <div class="footer-section">
+            <i data-lucide="table" class="w-3 h-3"></i>
+            <span class="excel-info">Sin Excel</span>
+        </div>
+        <div class="footer-section flex-grow"></div>
+        <div class="footer-section">
+            <span class="save-status">—</span>
+        </div>
+    </div>
+
+    <!-- Backend Service (MUST load first) -->
+    <script src="js/services/backend.js"></script>
+
+    <script src="js/modules/sheet_view.js"></script>
+    <script src="js/modules/template_view.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>

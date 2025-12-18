@@ -1,0 +1,1198 @@
+/* =====================================
+   TEMPLATE_VIEW.CSS - Estilos del Editor de Templates
+   ===================================== */
+
+/* --- Chrome Tab Bar --- */
+.chrome-tab-bar {
+    background-color: #dfe1e5;
+    padding: 8px 8px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    height: 44px;
+}
+
+.chrome-tab {
+    position: relative;
+    padding: 8px 34px 8px 16px;
+    background-color: transparent;
+    border-radius: 8px 8px 0 0;
+    font-size: 13px;
+    color: #5f6368;
+    cursor: pointer;
+    transition: background 0.2s;
+    max-width: 200px;
+    min-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    user-select: none;
+    height: 100%;
+}
+
+.chrome-tab:hover {
+    background-color: #eeeeee;
+}
+
+.chrome-tab.active {
+    background-color: #ffffff;
+    color: #202124;
+    font-weight: 500;
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.chrome-tab:not(.active):not(:hover)::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background-color: #9ca3af;
+}
+
+.chrome-tab-close {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+}
+
+.chrome-tab:hover .chrome-tab-close {
+    opacity: 1;
+}
+
+.chrome-tab-close:hover {
+    background-color: #e8eaed;
+    color: #000;
+}
+
+.add-tab-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #5f6368;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.add-tab-btn:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #202124;
+}
+
+/* --- Tab Input Edit --- */
+.tab-input-edit {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+    pointer-events: auto !important;
+}
+
+/* --- Tab Content --- */
+.tab-content {
+    display: none;
+    width: 100%;
+    height: 100%;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0.95;
+        transform: translateY(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Editor Container --- 
+   CRITICAL: backdrop and textarea MUST have identical typography
+*/
+.editor-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Shared typography for perfect overlay sync */
+.editor-backdrop,
+.editor-textarea {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: normal;
+    word-spacing: normal;
+    padding: 16px;
+    margin: 0;
+    border: none;
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.editor-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: auto;
+    color: #1f2937;
+    background: transparent;
+}
+
+.editor-textarea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    caret-color: #1f2937;
+    z-index: 10;
+}
+
+.editor-textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* --- Highlight Mark (Edit Mode) --- 
+   NO padding/margin to keep sync with textarea cursor */
+.highlight-mark {
+    background-color: #fef08a;
+    border-radius: 2px;
+    color: #1f2937;
+}
+
+/* --- View Container --- */
+.view-container {
+    background: white;
+}
+
+/* --- View Content (scrollable area) --- */
+.view-content {
+    line-height: 1.8;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* --- Smart Chips (View Mode) - With background but matching text size --- */
+.smart-chip {
+    display: inline-flex;
+    align-items: baseline;
+    margin: 0 2px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: inherit;
+    font-weight: 500;
+    vertical-align: baseline;
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* Error chip */
+.smart-chip-error {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+/* Warning chip */
+.smart-chip-warning {
+    background-color: #fffbeb;
+    border: 1px solid #fed7aa;
+    color: #92400e;
+}
+
+/* Value chip */
+.smart-chip-value {
+    background-color: #fef9c3;
+    border: 1px solid #fde047;
+    color: #1f2937;
+}
+
+/* Field chip */
+.smart-chip-field {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+}
+
+/* Icon as superscript - very small at end */
+.smart-chip-icon {
+    width: 8px;
+    height: 8px;
+    position: relative;
+    top: -4px;
+    margin-left: 1px;
+    opacity: 0.8;
+}
+
+/* Concept Reference Chip [[]] - Green */
+.smart-chip-concept {
+    background-color: #dcfce7;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+/* --- Tab Type Icons --- */
+.chrome-tab .tab-icon {
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.chrome-tab.tab-concept .tab-icon {
+    color: #3b82f6;
+}
+
+.chrome-tab.tab-form .tab-icon {
+    color: #8b5cf6;
+}
+
+.chrome-tab.tab-concept.active {
+    border-top: 2px solid #3b82f6;
+}
+
+.chrome-tab.tab-form.active {
+    border-top: 2px solid #8b5cf6;
+}
+
+/* --- Form Container --- */
+.form-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    background: #faf5ff;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Form Link Header - Compact */
+.form-link-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    border-bottom: 1px solid #ddd6fe;
+    flex-shrink: 0;
+}
+
+.form-link-input {
+    flex: 1;
+    padding: 6px 12px;
+    border: 1px solid #c4b5fd;
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-link-input:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.form-link-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: #8b5cf6;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.form-link-btn:hover {
+    background: #7c3aed;
+}
+
+/* Questions Container */
+.questions-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Add Question Button */
+.add-question-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    border: 2px dashed #c4b5fd;
+    border-radius: 12px;
+    background: #faf5ff;
+    color: #7c3aed;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.add-question-btn:hover {
+    background: #f3e8ff;
+    border-color: #a78bfa;
+}
+
+/* Question Card - Auto height para contenido */
+.question-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-bottom: 12px;
+}
+
+.question-card:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.question-card.collapsed {
+    background: #fafafa;
+}
+
+.question-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.question-card.collapsed .question-card-header {
+    border-bottom: none;
+}
+
+.question-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.question-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.question-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.question-collapse-btn:hover {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+
+.question-number-badge {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #8b5cf6;
+    color: white;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.question-type-select {
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #4b5563;
+    background: white;
+    cursor: pointer;
+}
+
+.question-delete-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.question-delete-btn:hover {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.question-card-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.q-question-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.q-question-input:focus {
+    border-color: #8b5cf6;
+}
+
+.question-answer-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.question-field-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.q-answer-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.q-answer-input:focus {
+    border-color: #8b5cf6;
+}
+
+/* Options for selection types */
+.question-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.option-marker {
+    font-size: 14px;
+    color: #9ca3af;
+    width: 18px;
+    text-align: center;
+}
+
+.option-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.option-input:focus {
+    border-color: #8b5cf6;
+}
+
+.option-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: #d1d5db;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+}
+
+.option-delete:hover {
+    background: #fef2f2;
+    color: #ef4444;
+}
+
+.add-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px dashed #c4b5fd;
+    border-radius: 4px;
+    background: transparent;
+    color: #8b5cf6;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+}
+
+.add-option-btn:hover {
+    background: #f5f3ff;
+    border-color: #a78bfa;
+}
+
+/* Form View Mode */
+.form-view-container {
+    padding: 24px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.form-view-link-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: 1px solid #ddd6fe;
+}
+
+.form-view-link-text {
+    flex: 1;
+    font-size: 12px;
+    color: #6b7280;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.form-view-link-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: #8b5cf6;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.form-view-link-btn:hover {
+    background: #7c3aed;
+}
+
+/* =========================================
+   COMPACT VIEW MODE - Form Questions
+   ========================================= */
+
+/* SHORT TEXT: Single line layout */
+.view-card-short {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    min-height: 36px;
+    position: relative;
+}
+
+/* LONG TEXT and SELECT also need relative */
+.view-card-long,
+.view-card-select {
+    position: relative;
+}
+
+/* Alert icon in bottom-right corner */
+.view-card-alert {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    opacity: 0.9;
+}
+
+.view-card-alert.error {
+    color: #dc2626;
+}
+
+.view-card-alert.warning {
+    color: #d97706;
+}
+
+.view-short-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8b5cf6;
+    flex-shrink: 0;
+}
+
+.view-short-question {
+    font-size: 13px;
+    color: #4b5563;
+    flex-shrink: 0;
+}
+
+.view-short-arrow {
+    color: #9ca3af;
+    font-size: 12px;
+    margin: 0 2px;
+}
+
+.view-short-answer {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: #1f2937;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* LONG TEXT: Two line layout */
+.view-card-long {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.view-long-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.view-long-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8b5cf6;
+    flex-shrink: 0;
+}
+
+.view-long-question {
+    flex: 1;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.view-long-body {
+    padding: 10px 12px;
+    background: white;
+    font-size: 14px;
+    color: #1f2937;
+    line-height: 1.5;
+}
+
+/* SELECTION: Header + selected option */
+.view-card-select {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.view-select-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+}
+
+.view-select-num {
+    font-size: 13px;
+    font-weight: 700;
+    color: #8b5cf6;
+    flex-shrink: 0;
+}
+
+.view-select-question {
+    flex: 1;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+.view-select-answer {
+    padding: 6px 12px 10px 28px;
+    font-size: 13px;
+    color: #1f2937;
+}
+
+.view-selected-opt {
+    color: #166534;
+    font-weight: 500;
+}
+
+/* COPY ICON: Subtle, no background */
+.view-copy-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #c4b5fd;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.view-copy-icon:hover {
+    color: #8b5cf6;
+}
+
+/* COLLAPSE BUTTON */
+.view-collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.view-collapse-btn:hover {
+    background: #e5e7eb;
+    color: #6b7280;
+}
+
+.view-collapse-btn i {
+    transition: transform 0.2s ease;
+}
+
+.view-collapse-btn i.rotate-collapsed {
+    transform: rotate(-90deg);
+}
+
+/* Collapsed card state */
+.view-card-long.collapsed .view-long-header,
+.view-card-select.collapsed .view-select-header {
+    border-bottom: none;
+}
+
+/* Smart-chips inside Form View Mode */
+.view-card-short .smart-chip,
+.view-card-long .smart-chip,
+.view-card-select .smart-chip {
+    display: inline-flex;
+    align-items: center;
+    margin: 1px 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    vertical-align: baseline;
+}
+
+.view-card-short .smart-chip-value,
+.view-card-long .smart-chip-value,
+.view-card-select .smart-chip-value {
+    background-color: #fef9c3;
+    border: 1px solid #fde047;
+    color: #92400e;
+}
+
+.view-card-short .smart-chip-field,
+.view-card-long .smart-chip-field,
+.view-card-select .smart-chip-field {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+}
+
+.view-card-short .smart-chip-concept,
+.view-card-long .smart-chip-concept,
+.view-card-select .smart-chip-concept {
+    background-color: #dcfce7;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.view-card-short .smart-chip-error,
+.view-card-long .smart-chip-error,
+.view-card-select .smart-chip-error {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.view-card-short .smart-chip-warning,
+.view-card-long .smart-chip-warning,
+.view-card-select .smart-chip-warning {
+    background-color: #fffbeb;
+    border: 1px solid #fed7aa;
+    color: #92400e;
+}
+
+.view-card-short .smart-chip-icon,
+.view-card-long .smart-chip-icon,
+.view-card-select .smart-chip-icon {
+    width: 12px;
+    height: 12px;
+    margin-left: 3px;
+    opacity: 0.7;
+}
+
+/* Highlight for [[concept]] placeholder - NO padding to keep cursor sync */
+.highlight-concept {
+    background-color: #dcfce7;
+    border-radius: 2px;
+    color: #166534;
+}
+
+/* =========================================
+   EXPORT BUTTON & MODAL
+   ========================================= */
+
+/* Export Button in Form Header */
+.export-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.export-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    transform: translateY(-1px);
+}
+
+.export-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Export Config Modal */
+.export-modal-content {
+    max-width: 520px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.export-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 16px;
+}
+
+.export-modal-header i {
+    color: #10b981;
+}
+
+.export-modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+}
+
+.export-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.export-section {
+    margin-bottom: 20px;
+}
+
+.export-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.export-section-title i {
+    width: 14px;
+    height: 14px;
+}
+
+/* Column Cards - Draggable */
+.export-columns-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 100px;
+    padding: 8px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 2px dashed #e5e7eb;
+}
+
+.export-column-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: grab;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+.export-column-card:hover {
+    border-color: #10b981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15);
+}
+
+.export-column-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    border-color: #10b981;
+    background: #ecfdf5;
+}
+
+.export-column-card.drag-over {
+    border-color: #10b981;
+    border-style: dashed;
+    background: #f0fdf4;
+}
+
+.export-column-card.is-form {
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    border-color: #c4b5fd;
+}
+
+.export-column-card.is-form:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 2px 6px rgba(139, 92, 246, 0.2);
+}
+
+.export-column-drag-handle {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: #9ca3af;
+}
+
+.export-column-drag-handle i {
+    width: 16px;
+    height: 16px;
+}
+
+.export-column-checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: #10b981;
+    cursor: pointer;
+}
+
+.export-column-name {
+    flex: 1;
+    font-size: 13px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.export-column-card.is-form .export-column-name {
+    color: #7c3aed;
+}
+
+.export-column-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.export-column-badge.badge-excel {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.export-column-badge.badge-form {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+/* Export Footer */
+.export-modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    margin-top: 16px;
+}
+
+.export-info {
+    font-size: 12px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.export-info i {
+    width: 14px;
+    height: 14px;
+    color: #10b981;
+}
+
+.export-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.export-cancel-btn {
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.export-cancel-btn:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.export-confirm-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.export-confirm-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-1px);
+}
+
+.export-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}

@@ -1,0 +1,883 @@
+/* =====================================
+   AUTOFORM_VIEW.CSS - Phase 22 Fixes
+   User-Specified Colors & Chips
+   ===================================== */
+
+/* --- Tab Bar Integration (Overrides) --- */
+.chrome-tab.tab-autoform .tab-icon {
+    color: #f97316;
+}
+
+.chrome-tab.tab-autoform.active {
+    box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.1);
+    border-top: 2px solid #f97316;
+    padding-top: 6px;
+}
+
+/* --- Container Centering & Main BG --- */
+.af-content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    background: #f9fafb;
+}
+
+/* --- Info Bar (IDE-style, Edit Mode) --- */
+.af-info-bar {
+    display: flex;
+    align-items: center;
+    height: 36px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+/* Sección izquierda: URL */
+.af-info-url {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 100%;
+    min-width: 0;
+}
+
+.af-info-url svg {
+    width: 14px;
+    height: 14px;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.af-info-url .af-url-input {
+    flex: 1;
+    min-width: 0;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+    color: #374151;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    outline: none;
+    cursor: text;
+}
+
+.af-info-url .af-url-input:focus {
+    background: white;
+    border-color: #d1d5db;
+}
+
+.af-info-url .af-url-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.af-info-url .af-url-open:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+/* Separador vertical */
+.af-info-divider {
+    width: 1px;
+    height: 20px;
+    background: #d1d5db;
+    flex-shrink: 0;
+}
+
+/* Sección derecha: Grabación */
+.af-info-record {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    height: 100%;
+}
+
+.af-info-record svg {
+    width: 14px;
+    height: 14px;
+    color: #6b7280;
+    flex-shrink: 0;
+}
+
+.af-info-record .af-rec-name {
+    font-size: 11px;
+    color: #374151;
+    font-weight: 500;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.af-info-record .af-rec-name.empty {
+    color: #9ca3af;
+    font-weight: 400;
+}
+
+.af-info-record .af-rec-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    background: white;
+    font-size: 11px;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+}
+
+.af-info-record .af-rec-btn:hover {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+.af-info-record .af-rec-btn svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* --- Toggle Group (Height 38px) --- */
+.af-toggle-group {
+    display: flex;
+    background: #f3f4f6;
+    padding: 3px;
+    border-radius: 8px;
+    gap: 2px;
+    border: 1px solid #e5e7eb;
+    height: 38px;
+    box-sizing: border-box;
+}
+
+.af-toggle-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+    height: 100%;
+}
+
+.af-toggle-item:hover {
+    color: #4b5563;
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.af-toggle-item svg,
+.af-toggle-item i {
+    width: 14px;
+    height: 14px;
+    stroke-width: 1.5px;
+    display: block;
+}
+
+/* Toggle Colors */
+.af-toggle-item.active-edit {
+    background: white;
+    color: #f97316;
+    border-color: #d1d5db;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.af-toggle-item.active-edit svg {
+    color: #f97316;
+}
+
+.af-toggle-item.active-view {
+    background: #f97316;
+    color: white;
+    border-color: #ea580c;
+    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+}
+
+.af-toggle-item.active-view svg {
+    color: white;
+}
+
+
+/* --- Section Card (Page) - CUSTOM COLORS PHASE 22 --- */
+.af-section-card {
+    background: #f3f3f3;
+    /* Requested: #f3f3f3 */
+    width: 100%;
+    max-width: 800px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.af-section-header {
+    background: #fdfdfd;
+    /* Requested: #fdfdfd (Almost white header) */
+    border-bottom: 1px solid #e5e7eb;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.af-section-header i,
+.af-section-header svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+}
+
+.af-section-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 10px;
+    color: #6b7280;
+    font-weight: 600;
+    margin-left: auto;
+    /* Push to right or keep close depending on preference, user said 'seguido' but chip usually looks good separate. User said 'seguido', so distinct logic might apply in HTML structure, but here margin-left: 10px is safer if they are flexed together. */
+    margin-left: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.questions-container {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* --- Action Card --- */
+.af-action-card {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.2s;
+    border-left-width: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.af-action-card:hover {
+    border-color: #9ca3af;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Left Accent Colors */
+.af-action-card.fill {
+    border-left-color: #3b82f6;
+}
+
+/* Blue */
+.af-action-card.select {
+    border-left-color: #8b5cf6;
+}
+
+/* Purple */
+.af-action-card.click {
+    border-left-color: #10b981;
+}
+
+/* Green */
+
+/* Action Header */
+.af-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #efefef;
+    /* Requested: #efefef */
+    border-bottom: 1px solid #e5e7eb;
+    min-height: 32px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    position: relative;
+    z-index: 10;
+}
+
+/* Numbering & Icons */
+.af-card-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 12px;
+}
+
+.af-card-header button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.af-card-header button:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.af-card-header svg,
+.af-card-header i {
+    display: block;
+}
+
+/* Type Chips - CUSTOM COLORS PHASE 22 */
+.af-type-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* FILL: Requested #d2e6ff */
+.af-type-chip.fill {
+    background: #d2e6ff;
+    color: #1e40af;
+    /* Blue 800 - Good contrast */
+}
+
+/* SELECT: Matching Pastel Purple */
+.af-type-chip.select {
+    background: #e5d0ff;
+    color: #6b21a8;
+    /* Purple 800 */
+}
+
+/* CLICK: Matching Pastel Green */
+.af-type-chip.click {
+    background: #c3fce1;
+    color: #065f46;
+    /* Green 800 - Used mouse icon */
+}
+
+/* Body */
+.af-card-body {
+    padding: 12px 14px;
+    z-index: 5;
+    background: white;
+}
+
+.af-question-title {
+    font-size: 13px;
+    color: #1f2937;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+/* Inputs */
+.af-input {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    transition: border 0.1s;
+    background: #fff;
+}
+
+.af-input:focus {
+    border-color: #d1d5db;
+    /* Default fallback */
+}
+
+/* Focus color based on Card Type */
+.af-action-card.fill .af-input:focus {
+    border-color: #3b82f6;
+    /* Blue for Fill */
+}
+
+.af-action-card.select .af-input:focus {
+    border-color: #8b5cf6;
+    /* Purple for Select */
+}
+
+.af-action-card.click .af-input:focus {
+    border-color: #10b981;
+    /* Green for Click (if any input exists) */
+}
+
+/* Remove Spinners from Number Inputs */
+.af-input::-webkit-outer-spin-button,
+.af-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.af-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.af-input:read-only {
+    background: #f9fafb;
+    color: #4b5563;
+    border-color: #e5e7eb;
+}
+
+.af-input.has-val:read-only {
+    background: #f0fdf4;
+    border-color: #86efac;
+    color: #15803d;
+}
+
+/* Options */
+.af-opts {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.af-opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #374151;
+}
+
+.af-opt:hover {
+    background: #f3f4f6;
+}
+
+/* Default Selection (fallback) */
+.af-opt.selected {
+    background: #fff7ed;
+    border-color: #f97316;
+}
+
+/* Selection Color based on Card Type (Select = Purple) */
+.af-action-card.select .af-opt.selected {
+    background: #fdf4ff;
+    /* Light purple bg */
+    border-color: #8b5cf6;
+    /* Purple border */
+}
+
+.af-radio {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #d1d5db;
+    border-radius: 50%;
+    position: relative;
+}
+
+.af-opt.selected .af-radio {
+    border-color: #f97316;
+}
+
+/* Radio Color based on Card Type */
+.af-action-card.select .af-opt.selected .af-radio {
+    border-color: #8b5cf6;
+}
+
+.af-opt.selected .af-radio::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: #f97316;
+    border-radius: 50%;
+}
+
+/* Radio Dot Color based on Card Type */
+.af-action-card.select .af-opt.selected .af-radio::after {
+    background: #8b5cf6;
+}
+
+/* Footer */
+.af-card-footer {
+    padding: 6px 14px;
+    border-top: 1px solid #f9fafb;
+    font-size: 11px;
+    color: #9ca3af;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    min-height: 29px;
+}
+
+.af-req {
+    color: #ef4444;
+    font-weight: 600;
+    margin-left: auto;
+    /* Push to right if alone */
+}
+
+/* Error Styles */
+.af-input.error {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2;
+    color: #b91c1c;
+}
+
+.af-input.error:focus {
+    box-shadow: 0 0 0 1px #ef4444;
+}
+
+.af-error-msg {
+    display: none;
+    /* Hidden by default */
+    align-items: center;
+    gap: 4px;
+    color: #ef4444;
+    font-weight: 500;
+}
+
+.af-error-msg.visible {
+    display: flex;
+}
+
+/* Click Action Details */
+.af-click-display {
+    padding: 8px 10px;
+    background: #f0fdf4;
+    border: 1px dashed #86efac;
+    border-radius: 4px;
+    color: #15803d;
+    font-size: 12px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ============================================================
+   ACTION CONFIGURATION MODAL (Phase 23)
+   ============================================================ */
+.af-config-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+.af-config-overlay.open {
+    display: flex;
+}
+
+.af-config-modal {
+    background: #ffffff;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modalSlideUp 0.2s ease-out;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.af-config-header {
+    padding: 16px 20px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.af-config-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.af-config-close {
+    padding: 4px;
+    border-radius: 4px;
+    color: #9ca3af;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+}
+
+.af-config-close:hover {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+.af-config-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Config Sections */
+.af-config-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.af-config-sec-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
+}
+
+/* Form Controls */
+.af-config-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.af-config-label {
+    font-size: 14px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.af-config-input {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 140px;
+    /* Default width */
+}
+
+.af-config-input:focus {
+    border-color: #f97316;
+}
+
+.af-config-select {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    outline: none;
+    min-width: 180px;
+}
+
+.af-config-select:focus {
+    border-color: #f97316;
+}
+
+/* Switch */
+.af-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.af-switch input {
+    display: none;
+}
+
+.af-switch-track {
+    width: 36px;
+    height: 20px;
+    background: #e5e7eb;
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+}
+
+.af-switch input:checked+.af-switch-track {
+    background: #f97316;
+}
+
+.af-switch-thumb {
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.af-switch input:checked+.af-switch-track .af-switch-thumb {
+    transform: translateX(16px);
+}
+
+/* Mapping Grid */
+.af-map-container {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.af-map-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.af-map-col {
+    padding: 8px 12px;
+    border-right: 1px solid #e5e7eb;
+}
+
+.af-map-col:last-child {
+    border-right: none;
+}
+
+.af-map-body {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.af-map-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.af-map-row:last-child {
+    border-bottom: none;
+}
+
+.af-map-cell {
+    padding: 8px 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+
+.af-map-cell.left {
+    background: #ffffff;
+    color: #374151;
+    border-right: 1px solid #f3f4f6;
+}
+
+.af-map-cell.right {
+    background: #fafaf9;
+}
+
+.af-map-cell select {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Footer */
+.af-config-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.af-btn-ghost {
+    padding: 8px 16px;
+    color: #4b5563;
+    font-weight: 500;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.af-btn-ghost:hover {
+    background: #e5e7eb;
+}
+
+.af-btn-primary {
+    padding: 8px 16px;
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+    background: #f97316;
+    border: 1px solid #ea580c;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.2);
+}
+
+.af-btn-primary:hover {
+    background: #ea580c;
+}
