@@ -312,59 +312,77 @@ const AutoFormViewModule = (function () {
         // Load recordings list
         await refreshRecordingsList();
 
-        // Show modal
-        modal.classList.add('open');
+        // Delegate to robust ModalManager
+        if (window.ModalManager) {
+            window.ModalManager.openModal(modal);
+        } else {
+            // Fallback
+            modal.classList.add('open');
+        }
+
         if (window.lucide) lucide.createIcons();
     }
 
     function createRecordingManagerModal() {
-        const modal = document.createElement('div');
-        modal.id = 'modal-recording-manager';
-        modal.className = 'modal-overlay';
+        // Remove existing if any
+        let existing = document.getElementById('modal-recording-manager');
+        if (existing) existing.remove();
 
-        modal.innerHTML = `
-            <div class="modal-box" style="max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'modal-recording-manager';
+        modalOverlay.className = 'af-modal-overlay'; // Unified
+
+        modalOverlay.innerHTML = `
+            <div class="af-modal-window accent-orange" style="width: 600px; max-height: 80vh;">
+                <div class="af-window-header">
+                    <div class="af-window-title">
                         <i data-lucide="clapperboard" class="w-5 h-5 text-orange-500"></i>
-                        Gestor de Grabaciones
-                    </h3>
-                    <button onclick="AutoFormViewModule.closeRecordingManager()" 
-                            class="p-1 hover:bg-gray-100 rounded">
-                        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
-                    </button>
+                        <span>Gestor de Grabaciones</span>
+                    </div>
+                    <div class="af-window-close" onclick="AutoFormViewModule.closeRecordingManager()">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </div>
                 </div>
                 
-                <div class="flex-1 overflow-y-auto" style="min-height: 200px;">
-                    <div id="recordings-list" class="flex flex-col gap-2">
-                        <div class="text-center text-gray-400 py-8">
-                            <i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 animate-spin"></i>
-                            <p>Cargando grabaciones...</p>
+                <div class="af-window-body" style="padding: 0; display:flex; flex-direction:column;">
+                    <div class="flex-1 overflow-y-auto p-4" style="min-height: 200px;">
+                        <div id="recordings-list" class="flex flex-col gap-2">
+                             <!-- Loading State -->
+                             <div class="text-center text-gray-400 py-8">
+                                <i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 animate-spin"></i>
+                                <p>Cargando grabaciones...</p>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="mt-4 pt-4 border-t flex justify-between items-center">
+                <div class="af-window-footer" style="justify-content: space-between;">
                     <button onclick="AutoFormViewModule.importExternalRecording()"
-                            class="import-external-btn flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded border">
+                            class="af-btn-ghost border border-gray-200 flex items-center gap-2">
                         <i data-lucide="folder-plus" class="w-4 h-4"></i>
                         Importar Externo
                     </button>
-                    <button class="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 text-sm font-medium"
-                            title="Próximamente" disabled style="opacity:0.5; cursor:not-allowed;">
-                        <i data-lucide="circle-dot" class="w-4 h-4"></i>
-                        Nueva Grabación
-                    </button>
+                    <!-- Future: New Rec -->
                 </div>
             </div>
         `;
 
+        document.body.appendChild(modalOverlay);
+
+        // Make Draggable
+        const win = modalOverlay.querySelector('.af-modal-window');
+        const header = modalOverlay.querySelector('.af-window-header');
+
+        if (window.ModalManager) {
+            window.ModalManager.makeDraggable(win, header);
+        }
+
         // Close on backdrop click
-        modal.onclick = (e) => {
-            if (e.target === modal) closeRecordingManager();
+        modalOverlay.onmousedown = (e) => {
+            if (e.target === modalOverlay) closeRecordingManager();
         };
 
-        return modal;
+        return modalOverlay;
     }
 
     async function refreshRecordingsList() {
@@ -456,7 +474,11 @@ const AutoFormViewModule = (function () {
 
     function closeRecordingManager() {
         const modal = document.getElementById('modal-recording-manager');
-        if (modal) modal.classList.remove('open');
+        if (window.ModalManager) {
+            window.ModalManager.closeModal(modal);
+        } else {
+            if (modal) modal.classList.remove('open');
+        }
     }
 
     /**

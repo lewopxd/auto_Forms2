@@ -8,18 +8,10 @@ const ActionConfigModal = (function () {
     let currentCardData = null;
     let onSaveCallback = null;
 
-    /**
-     * Open the configuration modal
-     * @param {Object} cardData - The card object (must reference the source valid structure)
-     * @param {string} actionType - 'fill' | 'select' | 'click'
-     * @param {Object} contextData - Additional context (e.g. available Excel columns, unique values)
-     * @param {Function} onSave - Callback(newConfig)
-     */
     function open(cardData, actionType, contextData, onSave) {
         currentCardData = cardData;
         onSaveCallback = onSave;
 
-        // Ensure config object exists
         const config = cardData.config || {
             timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
             validation: { verifyContent: false },
@@ -30,13 +22,28 @@ const ActionConfigModal = (function () {
         const modalOverlay = getOrCreateModal();
         renderModalContent(modalOverlay, actionType, config, contextData);
 
-        modalOverlay.classList.add('open');
+        // Delegate to robust ModalManager
+        if (window.ModalManager) {
+            window.ModalManager.openModal(modalOverlay);
+        } else {
+            // Fallback (should not happen if loaded correctly)
+            modalOverlay.style.display = 'flex';
+            requestAnimationFrame(() => modalOverlay.classList.add('open'));
+        }
+
         if (window.lucide) lucide.createIcons();
     }
 
     function close() {
         const modal = document.getElementById('af-config-overlay');
-        if (modal) modal.classList.remove('open');
+        if (window.ModalManager) {
+            window.ModalManager.closeModal(modal);
+        } else {
+            if (modal) {
+                modal.classList.remove('open');
+                setTimeout(() => { if (!modal.classList.contains('open')) modal.style.display = 'none'; }, 250);
+            }
+        }
         currentCardData = null;
         onSaveCallback = null;
     }
@@ -46,293 +53,365 @@ const ActionConfigModal = (function () {
         if (!el) {
             el = document.createElement('div');
             el.id = 'af-config-overlay';
-            el.className = 'af-config-overlay';
+            el.className = 'af-modal-overlay'; // Unified Class
             el.innerHTML = `
-                <div class="af-config-modal">
-                    <div class="af-config-header">
-                        <div class="af-config-title" id="af-cfg-title">
-                            <i data-lucide="settings-2" class="w-5 h-5 text-gray-500"></i>
-                            <span>Configuración</span>
+                <div class="af-modal-window" id="af-config-window">
+                    <div class="af-window-header">
+                        <div class="af-window-title" id="af-cfg-title">
+                            <!-- Icon + Title injected here -->
                         </div>
-                        <button class="af-config-close" onclick="ActionConfigModal.close()">
+                        <div class="af-window-close" onclick="ActionConfigModal.close()">
                             <i data-lucide="x" class="w-5 h-5"></i>
-                        </button>
+                        </div>
                     </div>
-                    <div class="af-config-body" id="af-cfg-body">
+                    
+                    <div class="af-window-body" id="af-cfg-body">
                         <!-- Dynamic Content -->
                     </div>
-                    <div class="af-config-footer">
+                    
+                    <div class="af-window-footer">
                         <button class="af-btn-ghost" onclick="ActionConfigModal.close()">Cancelar</button>
-                        <button class="af-btn-primary" id="af-cfg-save-btn">Guardar Configuración</button>
+                        <button class="af-btn-primary" id="af-cfg-save-btn">Guardar</button>
                     </div>
                 </div>
             `;
             document.body.appendChild(el);
 
-            // Close on overlay click
-            el.onclick = (e) => {
+            // Make Draggable using ModalManager
+            const win = el.querySelector('.af-modal-window');
+            const header = el.querySelector('.af-window-header');
+            if (window.ModalManager) {
+                window.ModalManager.makeDraggable(win, header);
+            }
+
+            // Close on overlay click (if backdrop is clicked)
+            el.onmousedown = (e) => {
                 if (e.target === el) close();
             };
 
-            // Save Handler
             el.querySelector('#af-cfg-save-btn').onclick = handleSave;
         }
         return el;
     }
 
     function renderModalContent(overlay, type, config, ctx) {
-        const titleEl = overlay.querySelector('#af-cfg-title span');
-        const iconEl = overlay.querySelector('#af-cfg-title i');
+        const titleContainer = overlay.querySelector('#af-cfg-title');
         const body = overlay.querySelector('#af-cfg-body');
+        const win = overlay.querySelector('.af-modal-window');
 
-        // Update Header
+        // Reset Accents
+        win.classList.remove('accent-orange', 'accent-blue', 'accent-purple', 'accent-green', 'accent-red');
+
+        // Determine Type & Accent
         let typeLabel = 'Acción';
-        if (type === 'fill') { typeLabel = 'Rellenado'; iconEl.setAttribute('data-lucide', 'type'); }
-        if (type === 'select') { typeLabel = 'Selección'; iconEl.setAttribute('data-lucide', 'list'); }
-        if (type === 'click') { typeLabel = 'Navegación / Clic'; iconEl.setAttribute('data-lucide', 'mouse-pointer-click'); }
-        titleEl.textContent = `Configurar ${typeLabel}`;
+        let iconName = 'settings-2';
+        let accentClass = 'accent-orange'; // Default
 
-        // Build Sections
+        if (type === 'fill' || type === 'text' || type === 'number') {
+            typeLabel = 'Rellenado';
+            iconName = 'type';
+            accentClass = 'accent-blue';
+        }
+        else if (type === 'select') {
+            typeLabel = 'Selección';
+            iconName = 'list';
+            accentClass = 'accent-purple';
+        }
+        else if (type === 'click') {
+            typeLabel = 'Clic / Nav';
+            iconName = 'mouse-pointer-click';
+            accentClass = 'accent-green';
+        }
+
+        // Apply Accent
+        win.classList.add(accentClass);
+
+        if (titleContainer) {
+            titleContainer.innerHTML = `
+                <i data-lucide="${iconName}" class="w-5 h-5"></i>
+                <span>Configurar ${typeLabel}</span>
+            `;
+        }
+
         let html = '';
 
-        // 1. TIMING SECTION (All types)
+        // 1. TIMING & DELAY
+        // Logic: Single Subsection. "Random" Toggle -> If True: Min/Max inputs. If False: Fixed input.
+        const isRandom = config.timing?.randomize || false;
         html += `
             <div class="af-config-section">
-                <div class="af-config-sec-title">Tiempos y Retardo</div>
-                <div class="af-config-row">
-                    <div class="af-config-label">Retardo Previo (ms)</div>
-                    <input type="number" id="cfg-preDelay" class="af-config-input" value="${config.timing?.preDelay || 0}">
-                </div>
-                <div class="af-config-row">
-                    <div class="af-config-label">Tiempo Aleatorio</div>
-                    <label class="af-switch">
-                        <input type="checkbox" id="cfg-rndDelay" ${config.timing?.randomize ? 'checked' : ''} 
-                               onchange="document.getElementById('cfg-rnd-opts').style.display = this.checked ? 'flex' : 'none'">
-                        <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
-                    </label>
-                </div>
-                <div class="af-config-row" id="cfg-rnd-opts" style="display: ${config.timing?.randomize ? 'flex' : 'none'}; gap: 10px;">
+                <div class="af-config-sec-title">Retardo Previo</div>
+                <div class="af-config-row" style="flex-wrap: wrap; gap: 20px;">
+                    <!-- Mode Toggle -->
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500">Mín (ms)</span>
-                        <input type="number" id="cfg-minDelay" class="af-config-input" style="width:80px" value="${config.timing?.minDelay || 0}">
+                        <div class="af-config-label" style="min-width:auto; margin-right:8px;">Modo Aleatorio</div>
+                        <label class="af-switch">
+                            <input type="checkbox" id="cfg-rndDelay" ${isRandom ? 'checked' : ''} 
+                                   onchange="ActionConfigModal.toggleTimingMode(this.checked)">
+                            <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
+                        </label>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs text-gray-500">Máx (ms)</span>
-                        <input type="number" id="cfg-maxDelay" class="af-config-input" style="width:80px" value="${config.timing?.maxDelay || 100}">
+
+                    <!-- FIXED Mode -->
+                    <div id="cfg-fixed-opts" class="flex items-center gap-2" style="display: ${isRandom ? 'none' : 'flex'}">
+                        <div class="af-config-label" style="min-width:auto;">Fijo (ms):</div>
+                        <input type="number" id="cfg-preDelay" class="af-config-input" style="width:80px" value="${config.timing?.preDelay || 0}">
+                    </div>
+
+                    <!-- RANDOM Mode -->
+                    <div id="cfg-rnd-opts" class="flex items-center gap-4" style="display: ${isRandom ? 'flex' : 'none'}">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Mín (ms)</span>
+                            <input type="number" id="cfg-minDelay" class="af-config-input" style="width:80px" value="${config.timing?.minDelay || 0}">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">Máx (ms)</span>
+                            <input type="number" id="cfg-maxDelay" class="af-config-input" style="width:80px" value="${config.timing?.maxDelay || 100}">
+                        </div>
                     </div>
                 </div>
             </div>
         `;
 
-        // 2. STRATEGY SECTION
-        html += `<div class="af-config-section"><div class="af-config-sec-title">Estrategia de Ejecución</div>`;
-
+        // 2. STRATEGY
         if (type === 'fill' || type === 'text' || type === 'number') {
             const strat = config.strategy?.type || 'native';
             html += `
-                <div class="af-config-row">
-                    <div class="af-config-label">Método de Llenado</div>
-                    <select id="cfg-strat-type" class="af-config-select" onchange="ActionConfigModal.toggleFillOpts(this.value)">
-                        <option value="native" ${strat === 'native' ? 'selected' : ''}>Simulación de Teclado (Recomendado)</option>
-                        <option value="paste" ${strat === 'paste' ? 'selected' : ''}>Pegar Texto (Ctrl+V)</option>
-                        <option value="js" ${strat === 'js' ? 'selected' : ''}>Inyección JavaScript (Rápido)</option>
-                    </select>
-                </div>
-                <div id="cfg-fill-opts" style="display:${strat === 'native' ? 'block' : 'none'}">
-                    <div class="af-config-row" style="margin-top:10px">
-                        <div class="af-config-label">Velocidad de Escritura (ms)</div>
-                        <input type="number" id="cfg-typeSpeed" class="af-config-input" value="${config.strategy?.typingSpeed || 50}">
+                <div class="af-config-section">
+                    <div class="af-config-sec-title">Estrategia</div>
+                    <div class="af-config-row" style="gap: 24px;">
+                        <div class="flex items-center gap-2">
+                            <div class="af-config-label" style="min-width:auto;">Método:</div>
+                            <select id="cfg-strat-type" class="af-config-select" onchange="ActionConfigModal.toggleFillOpts(this.value)">
+                                <option value="native" ${strat === 'native' ? 'selected' : ''}>Teclado (Nativo)</option>
+                                <option value="paste" ${strat === 'paste' ? 'selected' : ''}>Pegar (Ctrl+V)</option>
+                                <option value="js" ${strat === 'js' ? 'selected' : ''}>JavaScript (Inyección)</option>
+                            </select>
+                        </div>
+                        
+                        <div id="cfg-fill-opts" class="flex items-center gap-2" style="display:${strat === 'native' ? 'flex' : 'none'}">
+                            <div class="af-config-label" style="min-width:auto;">Velocidad (ms):</div>
+                            <input type="number" id="cfg-typeSpeed" class="af-config-input" style="width: 80px;" value="${config.strategy?.typingSpeed || 50}">
+                        </div>
                     </div>
-                </div>
-            `;
-        } else if (type === 'click') {
-            const strat = config.strategy?.type || 'native';
-            html += `
-                <div class="af-config-row">
-                    <div class="af-config-label">Método de Clic</div>
-                    <select id="cfg-strat-type" class="af-config-select">
-                        <option value="native" ${strat === 'native' ? 'selected' : ''}>Simulación Mouse (Real)</option>
-                        <option value="js" ${strat === 'js' ? 'selected' : ''}>Clic JavaScript (Forzado)</option>
-                    </select>
                 </div>
             `;
         } else if (type === 'select') {
             const strat = config.strategy?.type || 'native';
             html += `
-                <div class="af-config-row">
-                    <div class="af-config-label">Método de Selección</div>
-                    <select id="cfg-strat-type" class="af-config-select">
-                        <option value="native" ${strat === 'native' ? 'selected' : ''}>Nativo (Clic en Opciones)</option>
-                        <option value="js" ${strat === 'js' ? 'selected' : ''}>JavaScript (Value)</option>
-                    </select>
+                <div class="af-config-section">
+                    <div class="af-config-sec-title">Estrategia</div>
+                    <div class="af-config-row">
+                        <div class="flex items-center gap-2">
+                             <div class="af-config-label" style="min-width:auto;">Método:</div>
+                             <select id="cfg-strat-type" class="af-config-select">
+                                <option value="native" ${strat === 'native' ? 'selected' : ''}>Nativo (Selección UI)</option>
+                                <option value="js" ${strat === 'js' ? 'selected' : ''}>JavaScript (Inyección)</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             `;
+        } else if (type !== 'click') {
+            // Generic fallback
         }
-        html += `</div>`;
 
-        // 3. VALIDATION SECTION (Only for Fill/Select)
+        // 3. MAPPING (For SELECT mainly)
+        if (type === 'select') {
+            const mapEnabled = config.mapping?.enabled || false;
+            html += `
+                <div class="af-config-section">
+                    <div class="af-config-sec-title">Excel Mapping</div>
+                    <div class="af-config-row" style="align-items: flex-start; gap: 24px;">
+                        <!-- Enable Toggle -->
+                        <div class="flex items-center gap-2">
+                             <div class="af-config-label" style="min-width:auto;">Habilitar Mapping</div>
+                             <label class="af-switch">
+                                <input type="checkbox" id="cfg-map-enable" ${mapEnabled ? 'checked' : ''}
+                                       onchange="document.getElementById('cfg-map-area').style.display = this.checked ? 'block' : 'none'">
+                                <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
+                            </label>
+                        </div>
+                    </div>
+
+                     <div id="cfg-map-area" style="display:${mapEnabled ? 'block' : 'none'}; margin-top: 12px;">
+                        <div class="mb-2" style="margin-bottom:8px; display: flex; gap: 8px; align-items: center;">
+                            <span class="af-config-label" style="min-width:auto;">Columna Excel:</span>
+                            <div class="ac-smart-container" style="flex:1; max-width:300px;">
+                                <div id="cfg-map-backdrop" class="ac-smart-backdrop"></div>
+                                <input type="text" id="cfg-map-col" class="ac-smart-input" 
+                                       value="${escHtml(config.mapping?.placeholder || '')}" placeholder="{Columna}">
+                            </div>
+                            <button class="af-btn-ghost" style="border:1px solid #d1d5db;padding:4px" onclick="ActionConfigModal.loadExcelValues()" title="Cargar valores">
+                                <i data-lucide="refresh-cw" style="width:14px;height:14px"></i>
+                            </button>
+                        </div>
+                        <div class="af-map-container">
+                            <div class="af-map-header">
+                                <div class="af-map-col">Opción</div>
+                                <div class="af-map-col">Excel</div>
+                            </div>
+                            <div class="af-map-body" id="af-map-rows"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            setTimeout(() => renderMappingRows(config.mapping?.map || {}, ctx?.options || []), 0);
+        }
+
+        // 4. VERIFICATION (ALWAYS LAST)
         if (type !== 'click') {
             html += `
                 <div class="af-config-section">
                     <div class="af-config-sec-title">Verificación</div>
                     <div class="af-config-row">
-                        <div class="af-config-label">Validar contenido post-ejecución</div>
-                        <label class="af-switch">
-                            <input type="checkbox" id="cfg-verify" ${config.validation?.verifyContent ? 'checked' : ''}>
-                            <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
-                        </label>
-                    </div>
-                </div>
-            `;
-        }
-
-        // 4. MAPPING SECTION (Only for Select)
-        /*
-           Context needs:
-           - formOptions: Array of {text, value} from the current question
-           - excelValues: Array of strings (unique values from a column) - user triggers fetch?
-        */
-        if (type === 'select') {
-            const mapEnabled = config.mapping?.enabled || false;
-            html += `
-                <div class="af-config-section">
-                    <div class="af-config-sec-title">Mapeo Avanzado Excel</div>
-                    <div class="af-config-row">
-                        <div class="af-config-label">Habilitar Mapeo de Valores</div>
-                        <label class="af-switch">
-                            <input type="checkbox" id="cfg-map-enable" ${mapEnabled ? 'checked' : ''}
-                                   onchange="document.getElementById('cfg-map-area').style.display = this.checked ? 'block' : 'none'">
-                            <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
-                        </label>
-                    </div>
-                    
-                    <div id="cfg-map-area" style="display:${mapEnabled ? 'block' : 'none'}">
-                        <div class="mb-2">
-                             <label class="block text-xs font-semibold text-gray-500 mb-1">Nombre de Columna (Placeholder)</label>
-                             <div class="flex gap-2">
-                                <input type="text" id="cfg-map-col" class="af-config-input flex-1" style="width:auto" 
-                                       value="${escHtml(config.mapping?.placeholder || '')}" placeholder="{Columna}">
-                                <button class="af-btn-ghost" style="border:1px solid #d1d5db" onclick="ActionConfigModal.loadExcelValues()">
-                                    <i data-lucide="refresh-cw" style="width:14px;height:14px"></i>
-                                </button>
-                             </div>
-                        </div>
-
-                        <div class="af-map-container">
-                            <div class="af-map-header">
-                                <div class="af-map-col">Opción del Formulario</div>
-                                <div class="af-map-col">Valor en Excel</div>
-                            </div>
-                            <div class="af-map-body" id="af-map-rows">
-                                <!-- Populated dynamically -->
-                            </div>
+                        <div class="flex items-center gap-2">
+                            <div class="af-config-label" style="min-width:auto;">Validar contenido</div>
+                            <label class="af-switch">
+                                <input type="checkbox" id="cfg-verify" ${config.validation?.verifyContent ? 'checked' : ''}>
+                                <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
+                            </label>
                         </div>
                     </div>
                 </div>
             `;
-            // Store context for mapping row generation
-            setTimeout(() => renderMappingRows(config.mapping?.map || {}, ctx?.options || []), 0);
         }
 
         body.innerHTML = html;
+        if (window.lucide) lucide.createIcons();
+
+        // Initialize Smart Input
+        if (type === 'select') {
+            setupSmartInput('cfg-map-col', 'cfg-map-backdrop');
+        }
+    }
+
+    function setupSmartInput(inputId, backdropId) {
+        const input = document.getElementById(inputId);
+        const backdrop = document.getElementById(backdropId);
+        if (!input || !backdrop) return;
+
+        const update = () => {
+            const text = input.value;
+            let html = '';
+            let lastIndex = 0;
+            const regex = /\{([^{}]+)\}/g;
+            let match;
+
+            // Validation Data
+            const headers = window.globalHeaders || [];
+
+            while ((match = regex.exec(text)) !== null) {
+                html += escHtml(text.substring(lastIndex, match.index));
+
+                const val = match[1];
+                const cleanVal = val.trim();
+                const isValid = headers.includes(cleanVal);
+
+                // Determine Class & Icon
+                const chipClass = isValid ? 'valid' : 'invalid';
+                // Valid: No Icon. Invalid: Alert Icon
+                const iconHtml = isValid
+                    ? ''
+                    : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+
+                html += `<span class="ac-smart-chip ${chipClass}">{${escHtml(val)}}${iconHtml}</span>`;
+
+                lastIndex = regex.lastIndex;
+            }
+            html += escHtml(text.substring(lastIndex));
+
+            backdrop.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        };
+
+        input.oninput = update;
+        input.onscroll = () => { backdrop.scrollLeft = input.scrollLeft; };
+
+        // Initial call
+        update();
     }
 
     function toggleFillOpts(val) {
         const d = document.getElementById('cfg-fill-opts');
-        if (d) d.style.display = val === 'native' ? 'block' : 'none';
+        if (d) d.style.display = val === 'native' ? 'flex' : 'none'; // Updated to flex
+    }
+
+    // New Helper for Mutual Exclusive Timing
+    function toggleTimingMode(isRandom) {
+        const fixedOpts = document.getElementById('cfg-fixed-opts');
+        const rndOpts = document.getElementById('cfg-rnd-opts');
+        if (fixedOpts) fixedOpts.style.display = isRandom ? 'none' : 'flex';
+        if (rndOpts) rndOpts.style.display = isRandom ? 'flex' : 'none';
     }
 
     function renderMappingRows(currentMap, options) {
         const container = document.getElementById('af-map-rows');
         if (!container) return;
-
         if (!options || options.length === 0) {
-            container.innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af">No hay opciones disponibles</div>';
+            container.innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af;font-size:11px">No hay opciones</div>';
             return;
         }
-
         container.innerHTML = options.map(opt => {
-            const key = opt.value || opt.text; // Unique key for the option
+            const key = opt.value || opt.text;
             const mappedVal = currentMap[key] || '';
-
             return `
                 <div class="af-map-row">
                     <div class="af-map-cell left" title="${escHtml(opt.text)}">
-                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">
-                            ${escHtml(opt.text)}
-                        </div>
+                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">${escHtml(opt.text)}</div>
                     </div>
                     <div class="af-map-cell right">
                         <input type="text" class="af-map-input" data-option-key="${escHtml(key)}" 
-                               value="${escHtml(mappedVal)}" placeholder="Valor exacto..."
-                               style="width:100%;border:1px solid #d1d5db;border-radius:4px;padding:4px;font-size:12px;">
+                               value="${escHtml(mappedVal)}" placeholder="Valor..."
+                               style="width:100%;border:1px solid #d1d5db;border-radius:3px;padding:2px 4px;font-size:11px;outline:none;">
                     </div>
                 </div>
             `;
         }).join('');
     }
 
-    // Mock function -> Should be replaced by Bridge Call
     async function loadExcelValues() {
-        // TODO: Implement bridge call to get unique values from column defined in #cfg-map-col
         const colName = document.getElementById('cfg-map-col').value;
-        if (!colName) {
-            alert('Por favor ingrese el nombre de la columna (ej. {Ciudad})');
-            return;
-        }
-        // For now, we just indicate this feature is ready for backend integration
-        console.log('Solicitando valores para columna:', colName);
-        // Visual feedback
-        const btn = event.currentTarget;
-        const icon = btn.querySelector('i');
-        icon.classList.add('animate-spin');
-        setTimeout(() => icon.classList.remove('animate-spin'), 1000);
+        if (!colName) { alert('Ingrese columna'); return; }
+        console.log('Load values:', colName);
     }
 
     function handleSave() {
         if (!currentCardData) return;
-
-        // Construct Config Object
-        const newConfig = {
-            timing: {
-                preDelay: parseInt(document.getElementById('cfg-preDelay')?.value || 0),
-                randomize: document.getElementById('cfg-rndDelay')?.checked || false,
-                minDelay: parseInt(document.getElementById('cfg-minDelay')?.value || 0),
-                maxDelay: parseInt(document.getElementById('cfg-maxDelay')?.value || 100)
-            },
-            strategy: {
-                type: document.getElementById('cfg-strat-type')?.value || 'native',
-            },
-            validation: {
-                verifyContent: document.getElementById('cfg-verify')?.checked || false
-            }
-        };
-
-        // Add specific strategy fields
-        const typeSpeed = document.getElementById('cfg-typeSpeed');
-        if (typeSpeed) newConfig.strategy.typingSpeed = parseInt(typeSpeed.value);
-
-        // Add Mapping (if Select)
-        const mapCheck = document.getElementById('cfg-map-enable');
-        if (mapCheck) {
-            newConfig.mapping = {
-                enabled: mapCheck.checked,
-                placeholder: document.getElementById('cfg-map-col')?.value || '',
-                map: {}
+        try {
+            const getVal = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
+            const getCheck = (id, def) => { const el = document.getElementById(id); return el ? el.checked : def; };
+            const newConfig = {
+                timing: {
+                    preDelay: parseInt(getVal('cfg-preDelay', '0')),
+                    randomize: getCheck('cfg-rndDelay', false),
+                    minDelay: parseInt(getVal('cfg-minDelay', '0')),
+                    maxDelay: parseInt(getVal('cfg-maxDelay', '100'))
+                },
+                strategy: { type: getVal('cfg-strat-type', 'native') },
+                validation: { verifyContent: getCheck('cfg-verify', false) }
             };
+            const typeSpeed = document.getElementById('cfg-typeSpeed');
+            if (typeSpeed) newConfig.strategy.typingSpeed = parseInt(typeSpeed.value);
 
-            if (mapCheck.checked) {
-                const inputs = document.querySelectorAll('.af-map-input');
-                inputs.forEach(inp => {
-                    const key = inp.dataset.optionKey;
-                    const val = inp.value.trim();
-                    if (val) newConfig.mapping.map[key] = val;
-                });
+            const mapCheck = document.getElementById('cfg-map-enable');
+            if (mapCheck) {
+                newConfig.mapping = {
+                    enabled: mapCheck.checked,
+                    placeholder: getVal('cfg-map-col', ''),
+                    map: {}
+                };
+                if (mapCheck.checked) {
+                    document.querySelectorAll('.af-map-input').forEach(inp => {
+                        const key = inp.dataset.optionKey;
+                        const val = inp.value.trim();
+                        if (val) newConfig.mapping.map[key] = val;
+                    });
+                }
             }
-        }
-
-        if (onSaveCallback) onSaveCallback(newConfig);
-        close();
+            if (onSaveCallback) onSaveCallback(newConfig);
+            close();
+        } catch (e) { console.error(e); close(); }
     }
 
     function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -341,8 +420,8 @@ const ActionConfigModal = (function () {
         open,
         close,
         toggleFillOpts,
+        toggleTimingMode,
         loadExcelValues
     };
 })();
-
 window.ActionConfigModal = ActionConfigModal;

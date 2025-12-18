@@ -311,9 +311,22 @@
     border-left-color: #8b5cf6;
 }
 
-/* Purple */
+/* Click / Navigation */
 .af-action-card.click {
     border-left-color: #10b981;
+}
+
+.af-action-card.click .af-question-title {
+    color: #15803d;
+    /* Dark green text */
+    font-weight: 700;
+}
+
+/* Inner Dotted Box for Selector */
+.af-action-card.click .af-card-body>div:last-child {
+    border: 1px dashed #10b981 !important;
+    background: #f0fdf4 !important;
+    color: #15803d;
 }
 
 /* Green */
@@ -590,40 +603,369 @@
 }
 
 /* ============================================================
-   ACTION CONFIGURATION MODAL (Phase 23)
+   ACTION CONFIGURATION MODAL (Phase 23 - Compact Pro Design)
    ============================================================ */
-.af-config-overlay {
+/* === UNIFIED MODELESS WINDOW SYSTEM === */
+
+/* The container that holds the modal. 
+   It covers the screen for positioning but allows clicks to pass through (pointer-events: none) 
+   unless clicking the modal itself. */
+.af-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 2000;
     display: none;
+    /* JS toggles this */
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(2px);
+    /* Default center, but allows absolute positioning */
+    pointer-events: none;
+    /* ALLOW CLICKS THROUGH TO BACKGROUND */
+    /* NO BACKGROUND COLOR, NO BLUR - as requested */
 }
 
-.af-config-overlay.open {
-    display: flex;
+.af-modal-overlay.open {
+    /* JS handles display, this manages opacity if we want fade-in of the WINDOW, not the background */
 }
 
-.af-config-modal {
+/* The Unified Window Component */
+/* The Unified Window Component */
+.af-modal-window {
     background: #ffffff;
-    width: 600px;
-    max-width: 95vw;
-    max-height: 90vh;
     border-radius: 12px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    /* Premium smooth corners */
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.05),
+        0 20px 40px -4px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0, 0, 0, 0.05);
+    /* Subtle border ring */
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: modalSlideUp 0.2s ease-out;
+    pointer-events: auto;
+    /* Re-enable clicks on the window itself */
+
+    /* Default sizing, can be overridden */
+    min-width: 500px;
+    /* Increased from 380px for desktop optimization */
+    max-width: 90vw;
+    max-height: 85vh;
+    resize: both;
+    /* Allow Manual Resizing */
+
+    /* Animation */
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+    transition: opacity 0.2s ease-out, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), width 0s, height 0s;
+    /* exclude resize from transition */
+}
+
+.af-modal-overlay.open .af-modal-window {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Header */
+.af-window-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #f3f4f6;
+    user-select: none;
+    cursor: grab;
+    /* Drag handle */
+}
+
+.af-window-header:active {
+    cursor: grabbing;
+}
+
+.af-window-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.af-window-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.af-window-close:hover {
+    background: #f3f4f6;
+    color: #ef4444;
+    /* Red on hover for close */
+}
+
+/* Body */
+.af-window-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* Footer */
+.af-window-footer {
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-top: 1px solid #f3f4f6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* === ACCENT SYSTEM === */
+/* The window gets a colored top border or indicator based on type */
+
+/* Mixin logic simulated via repetitive blocks for robustness */
+
+/* Mixin logic simulated via repetitive blocks for robustness */
+
+/* ORANGE (Default / AutoForm) */
+.af-modal-window.accent-orange {
+    border-top: 4px solid #f97316;
+}
+
+.af-modal-window.accent-orange .af-window-title i,
+.af-modal-window.accent-orange .af-window-title svg {
+    color: #f97316;
+}
+
+.af-modal-window.accent-orange .af-config-sec-title {
+    color: #f97316;
+}
+
+.af-modal-window.accent-orange .af-switch input:checked+.af-switch-track {
+    background: #f97316;
+    border-color: #ea580c;
+}
+
+.af-modal-window.accent-orange .af-btn-primary {
+    background: #f97316;
+    color: white;
+}
+
+.af-modal-window.accent-orange .af-btn-primary:hover {
+    background: #ea580c;
+}
+
+.af-modal-window.accent-orange input:focus,
+.af-modal-window.accent-orange select:focus,
+.af-modal-window.accent-orange textarea:focus {
+    border-color: #f97316;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+}
+
+.af-modal-window.accent-orange .text-accent {
+    color: #f97316;
+}
+
+/* BLUE (Select / Info) */
+.af-modal-window.accent-blue {
+    border-top: 4px solid #3b82f6;
+}
+
+.af-modal-window.accent-blue .af-window-title i,
+.af-modal-window.accent-blue .af-window-title svg {
+    color: #3b82f6;
+}
+
+.af-modal-window.accent-blue .af-config-sec-title {
+    color: #3b82f6;
+}
+
+.af-modal-window.accent-blue .af-switch input:checked+.af-switch-track {
+    background: #3b82f6;
+    border-color: #2563eb;
+}
+
+.af-modal-window.accent-blue .af-btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.af-modal-window.accent-blue .af-btn-primary:hover {
+    background: #2563eb;
+}
+
+.af-modal-window.accent-blue input:focus,
+.af-modal-window.accent-blue select:focus,
+.af-modal-window.accent-blue textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.af-modal-window.accent-blue .text-accent {
+    color: #3b82f6;
+}
+
+/* PURPLE (Fill / Input) */
+.af-modal-window.accent-purple {
+    border-top: 4px solid #a855f7;
+}
+
+.af-modal-window.accent-purple .af-window-title i,
+.af-modal-window.accent-purple .af-window-title svg {
+    color: #a855f7;
+}
+
+.af-modal-window.accent-purple .af-config-sec-title {
+    color: #a855f7;
+}
+
+.af-modal-window.accent-purple .af-switch input:checked+.af-switch-track {
+    background: #a855f7;
+    border-color: #9333ea;
+}
+
+.af-modal-window.accent-purple .af-btn-primary {
+    background: #a855f7;
+    color: white;
+}
+
+.af-modal-window.accent-purple .af-btn-primary:hover {
+    background: #9333ea;
+}
+
+.af-modal-window.accent-purple input:focus,
+.af-modal-window.accent-purple select:focus,
+.af-modal-window.accent-purple textarea:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.1);
+}
+
+.af-modal-window.accent-purple .text-accent {
+    color: #a855f7;
+}
+
+/* GREEN (Success / Click) */
+.af-modal-window.accent-green {
+    border-top: 4px solid #22c55e;
+}
+
+.af-modal-window.accent-green .af-window-title i,
+.af-modal-window.accent-green .af-window-title svg {
+    color: #22c55e;
+}
+
+.af-modal-window.accent-green .af-config-sec-title {
+    color: #22c55e;
+}
+
+.af-modal-window.accent-green .af-switch input:checked+.af-switch-track {
+    background: #22c55e;
+    border-color: #16a34a;
+}
+
+.af-modal-window.accent-green .af-btn-primary {
+    background: #22c55e;
+    color: white;
+}
+
+.af-modal-window.accent-green .af-btn-primary:hover {
+    background: #16a34a;
+}
+
+.af-modal-window.accent-green input:focus,
+.af-modal-window.accent-green select:focus,
+.af-modal-window.accent-green textarea:focus {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.1);
+}
+
+.af-modal-window.accent-green .text-accent {
+    color: #22c55e;
+}
+
+/* RED (Danger / Delete) */
+.af-modal-window.accent-red {
+    border-top: 4px solid #ef4444;
+}
+
+.af-modal-window.accent-red .af-window-title i,
+.af-modal-window.accent-red .af-window-title svg {
+    color: #ef4444;
+}
+
+.af-modal-window.accent-red .af-config-sec-title {
+    color: #ef4444;
+}
+
+.af-modal-window.accent-red .af-switch input:checked+.af-switch-track {
+    background: #ef4444;
+    border-color: #dc2626;
+}
+
+.af-modal-window.accent-red .af-btn-primary {
+    background: #ef4444;
+    color: white;
+}
+
+.af-modal-window.accent-red .af-btn-primary:hover {
+    background: #dc2626;
+}
+
+.af-modal-window.accent-red input:focus,
+.af-modal-window.accent-red select:focus,
+.af-modal-window.accent-red textarea:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+.af-modal-window.accent-red .text-accent {
+    color: #ef4444;
+}
+
+/* Neutral Buttons */
+.af-btn-ghost {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4b5563;
+    background: transparent;
+    transition: background 0.15s;
+}
+
+.af-btn-ghost:hover {
+    background: #e5e7eb;
+    color: #1f2937;
+}
+
+.af-btn-primary {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.15s, transform 0.05s;
+}
+
+.af-btn-primary:active {
+    transform: translateY(1px);
+}
+
+/* Remove old overlay */
+.af-config-overlay,
+.af-config-modal {
+    display: none !important;
 }
 
 @keyframes modalSlideUp {
     from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateY(-10px);
     }
 
     to {
@@ -633,103 +975,124 @@
 }
 
 .af-config-header {
-    padding: 16px 20px;
-    background: #f9fafb;
+    height: 40px;
+    padding: 0 12px;
+    background: #fdfdfd;
     border-bottom: 1px solid #e5e7eb;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
 }
 
 .af-config-title {
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 700;
-    color: #1f2937;
+    color: #374151;
     display: flex;
     align-items: center;
     gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .af-config-close {
-    padding: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 4px;
     color: #9ca3af;
     cursor: pointer;
     background: transparent;
     border: none;
+    transition: all 0.1s;
 }
 
 .af-config-close:hover {
-    background: #e5e7eb;
-    color: #4b5563;
+    background: #f3f4f6;
+    color: #ef4444;
 }
 
 .af-config-body {
     flex: 1;
+    max-height: 65vh;
     overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+    padding: 0;
+    background: #fff;
+    font-size: 12px;
 }
 
 /* Config Sections */
 .af-config-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f3f4f6;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+}
+
+.af-config-section:last-child {
+    border-bottom: none;
 }
 
 .af-config-sec-title {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 700;
-    color: #374151;
+    color: #f97316;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 1px solid #e5e7eb;
-    padding-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 /* Form Controls */
 .af-config-row {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     justify-content: space-between;
 }
 
 .af-config-label {
-    font-size: 14px;
+    font-size: 12px;
     color: #4b5563;
     font-weight: 500;
 }
 
 .af-config-input {
-    padding: 8px 12px;
+    padding: 4px 8px;
+    height: 28px;
     border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: 4px;
+    font-size: 12px;
     outline: none;
-    transition: border-color 0.2s;
-    width: 140px;
-    /* Default width */
+    transition: border-color 0.1s;
+    width: 120px;
+    color: #1f2937;
+    background: #f9fafb;
 }
 
 .af-config-input:focus {
+    background: #fff;
     border-color: #f97316;
 }
 
 .af-config-select {
-    padding: 8px 12px;
+    padding: 4px 8px;
+    height: 28px;
     border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    background: white;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #f9fafb;
     outline: none;
-    min-width: 180px;
+    min-width: 160px;
+    color: #1f2937;
+    cursor: pointer;
 }
 
 .af-config-select:focus {
+    background: #fff;
     border-color: #f97316;
 }
 
@@ -746,54 +1109,57 @@
 }
 
 .af-switch-track {
-    width: 36px;
-    height: 20px;
+    width: 32px;
+    height: 18px;
     background: #e5e7eb;
-    border-radius: 10px;
+    border-radius: 9px;
     position: relative;
-    transition: background 0.2s;
+    transition: background 0.15s;
+    border: 1px solid #d1d5db;
 }
 
 .af-switch input:checked+.af-switch-track {
     background: #f97316;
+    border-color: #ea580c;
 }
 
 .af-switch-thumb {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     background: white;
     border-radius: 50%;
     position: absolute;
-    top: 2px;
-    left: 2px;
-    transition: transform 0.2s;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    top: 1px;
+    left: 1px;
+    transition: transform 0.15s;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .af-switch input:checked+.af-switch-track .af-switch-thumb {
-    transform: translateX(16px);
+    transform: translateX(14px);
 }
 
-/* Mapping Grid */
+/* Mapping Grid (Compact) */
 .af-map-container {
     border: 1px solid #e5e7eb;
-    border-radius: 8px;
+    border-radius: 4px;
     overflow: hidden;
     margin-top: 8px;
+    background: white;
 }
 
 .af-map-header {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    background: #f9fafb;
+    background: #f3f4f6;
     border-bottom: 1px solid #e5e7eb;
-    font-size: 12px;
-    font-weight: 600;
-    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4b5563;
 }
 
 .af-map-col {
-    padding: 8px 12px;
+    padding: 6px 10px;
     border-right: 1px solid #e5e7eb;
 }
 
@@ -802,7 +1168,7 @@
 }
 
 .af-map-body {
-    max-height: 250px;
+    max-height: 200px;
     overflow-y: auto;
 }
 
@@ -862,22 +1228,175 @@
     cursor: pointer;
 }
 
+.af-map-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 11px;
+}
+
+.af-map-row:last-child {
+    border-bottom: none;
+}
+
+.af-map-cell {
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    border-right: 1px solid #f3f4f6;
+}
+
+.af-map-cell.left {
+    color: #374151;
+    background: #ffffff;
+}
+
+.af-map-cell.right {
+    background: #fcfcfc;
+}
+
+.af-map-cell:last-child {
+    border-right: none;
+}
+
+/* Footer & Buttons */
+.af-config-footer {
+    padding: 10px 16px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.af-btn-ghost {
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
 .af-btn-ghost:hover {
     background: #e5e7eb;
+    color: #374151;
 }
 
 .af-btn-primary {
-    padding: 8px 16px;
-    color: white;
-    font-weight: 500;
-    font-size: 14px;
+    padding: 6px 16px;
     background: #f97316;
-    border: 1px solid #ea580c;
-    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
-    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.2);
+    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+    transition: all 0.1s;
 }
 
 .af-btn-primary:hover {
     background: #ea580c;
+    box-shadow: 0 2px 4px rgba(249, 115, 22, 0.4);
+}
+
+/* =========================================
+   SMART INPUT (Action Config Mapping)
+   ========================================= */
+.ac-smart-container {
+    position: relative;
+    height: 34px;
+    /* Matches standard input height */
+    width: 200px;
+    /* Default logic, overridden by flex-1 */
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.ac-smart-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: 0 12px;
+    font-size: 13px;
+    font-family: inherit;
+    white-space: pre;
+    color: #1f2937;
+    /* Visible text for non-token parts */
+    overflow: hidden;
+    /* Scroll synced via JS */
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.ac-smart-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 12px;
+    font-size: 13px;
+    font-family: inherit;
+    background: transparent;
+    color: transparent;
+    caret-color: #374151;
+    border: none;
+    outline: none;
+}
+
+/* Base Chip Style */
+.ac-smart-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 4px;
+    padding: 0 4px;
+    margin: 0 1px;
+    font-size: 12px;
+    height: 20px;
+    vertical-align: middle;
+    box-sizing: border-box;
+    line-height: normal;
+    font-weight: 500;
+}
+
+.ac-smart-chip svg,
+.ac-chip-icon {
+    width: 10px !important;
+    height: 10px !important;
+    min-width: 10px !important;
+    max-width: 10px !important;
+    margin-left: 8px !important;
+    stroke-width: 2px !important;
+    opacity: 0.8;
+    vertical-align: text-bottom;
+}
+
+/* Valid (Exists): Purple, clean look */
+.ac-smart-chip.valid {
+    background-color: #f3e8ff;
+    /* Purple-100 */
+    border: 1px solid #d8b4fe;
+    /* Purple-300 */
+    color: #7e22ce;
+    /* Purple-700 */
+}
+
+/* Invalid (Missing): Pale Orange, warning look */
+.ac-smart-chip.invalid {
+    background-color: #ffedd5;
+    /* Orange-100 */
+    border: 1px solid #fed7aa;
+    /* Orange-200 */
+    color: #c2410c;
+    /* Orange-700 */
 }

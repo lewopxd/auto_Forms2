@@ -58,31 +58,49 @@
 
         // Remove existing modal if any
         const existing = document.getElementById('modal-alert-reusable');
-        if (existing) existing.remove();
+        if (existing) {
+            if (window.ModalManager) window.ModalManager.closeModal(existing);
+            else existing.remove();
+        }
 
-        // Create modal
+        // Create modal using UNIFIED WINDOW system
         const modal = document.createElement('div');
         modal.id = 'modal-alert-reusable';
-        modal.className = 'modal-overlay open';
+        modal.className = 'af-modal-overlay';
+
+        // Determine Accent
+        // 'alert-triangle' -> orange/yellow
+        // 'trash-2' -> red
+        // 'check-circle' -> green
+        // 'blue' -> blue
+        let accent = 'accent-blue';
+        if (icon === 'trash-2' || iconColor.includes('red')) accent = 'accent-red';
+        else if (icon === 'alert-triangle' || iconColor.includes('orange') || iconColor.includes('yellow')) accent = 'accent-orange';
+        else if (icon === 'check-circle' || iconColor.includes('green')) accent = 'accent-green';
 
         modal.innerHTML = `
-            <div class="modal-box" style="max-width: 400px;">
-                <div class="flex items-start gap-4 mb-4">
-                    <div class="flex-shrink-0 p-2 rounded-full bg-gray-100">
-                        <i data-lucide="${icon}" class="w-6 h-6 ${iconColor}"></i>
+            <div class="af-modal-window ${accent}" style="width: 400px;">
+                <div class="af-window-header">
+                    <div class="af-window-title">
+                        <i data-lucide="${icon}" class="w-5 h-5 ${iconColor}"></i>
+                        <span>${title}</span>
                     </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-bold text-gray-800 mb-2">${title}</h3>
-                        <p class="text-sm text-gray-600">${message}</p>
+                    <div class="af-window-close" id="alert-close-x">
+                        <i data-lucide="x" class="w-5 h-5"></i>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3">
+                
+                <div class="af-window-body">
+                    <p class="text-sm text-gray-600">${message}</p>
+                </div>
+                
+                <div class="af-window-footer">
                     ${cancelText ? `
-                        <button id="alert-cancel-btn" class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded">
+                        <button id="alert-cancel-btn" class="af-btn-ghost">
                             ${cancelText}
                         </button>
                     ` : ''}
-                    <button id="alert-confirm-btn" class="px-4 py-2 text-sm text-white rounded shadow-sm ${confirmColor}">
+                    <button id="alert-confirm-btn" class="af-btn-primary ${confirmColor}">
                         ${confirmText}
                     </button>
                 </div>
@@ -91,13 +109,18 @@
 
         // Event handlers
         const closeModal = () => {
-            modal.classList.remove('open');
-            setTimeout(() => modal.remove(), 200);
+            if (window.ModalManager) window.ModalManager.closeModal(modal);
+            else modal.remove();
         };
 
         modal.querySelector('#alert-confirm-btn').onclick = () => {
             closeModal();
             if (onConfirm) onConfirm();
+        };
+
+        modal.querySelector('#alert-close-x').onclick = () => {
+            closeModal();
+            if (onCancel) onCancel();
         };
 
         const cancelBtn = modal.querySelector('#alert-cancel-btn');
@@ -108,15 +131,34 @@
             };
         }
 
-        // Close on backdrop click
-        modal.onclick = (e) => {
+        // Close on backdrop click (if enabled) in Modeless we might allow clicking outside to ignore?
+        // User said: "el diseño del alert esta horrible ... que sea mas parecido al modal que queremos"
+        // Alerts usually block. But if we want "Unified", maybe it behaves like the others.
+        // However, alerts are usually modal (blocking).
+        // Let's keep it modeless visual but maybe logically blocking if needed?
+        // Actually, let's treat it as a window.
+        modal.onmousedown = (e) => {
             if (e.target === modal) {
+                // Clicking outside closes it?
+                // Standard alert behavior: usually yes or specific cancel.
+                // Let's allow close on backdrop click for convenience.
                 closeModal();
                 if (onCancel) onCancel();
             }
         };
 
         document.body.appendChild(modal);
+
+        // Draggable
+        if (window.ModalManager) {
+            const win = modal.querySelector('.af-modal-window');
+            const header = modal.querySelector('.af-window-header');
+            window.ModalManager.makeDraggable(win, header);
+            window.ModalManager.openModal(modal);
+        } else {
+            modal.style.display = 'flex';
+        }
+
         if (window.lucide) lucide.createIcons();
 
         return modal;
