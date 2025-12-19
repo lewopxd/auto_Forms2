@@ -31,6 +31,7 @@ import json
 import ctypes
 import signal
 import atexit
+import io
 from pathlib import Path
 from datetime import datetime
 
@@ -198,10 +199,30 @@ class DevServerConsole:
     def enable_ansi():
         if sys.platform == 'win32':
             try:
+                # Enable ANSI escape codes
                 kernel32 = ctypes.windll.kernel32
                 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
             except Exception:
                 pass
+            
+            try:
+                # Force UTF-8 output
+                sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+                sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+                # Also set console codepage
+                os.system('chcp 65001 > nul 2>&1')
+            except Exception:
+                pass
+    
+    @staticmethod
+    def safe_print(text: str):
+        """Print text handling encoding errors gracefully."""
+        try:
+            print(text)
+        except UnicodeEncodeError:
+            # Fallback: replace problematic characters
+            safe_text = text.encode('ascii', errors='replace').decode('ascii')
+            print(safe_text)
     
     @staticmethod
     def timestamp():
@@ -211,46 +232,51 @@ class DevServerConsole:
     def header(cls, app_name: str, version: str, port: int):
         cls.enable_ansi()
         width = 64
-        print()
-        print(f"{cls.CYAN}{'═' * width}{cls.RESET}")
-        title = f"  🚀 {app_name} Dev Server v{version}"
-        print(f"{cls.CYAN}║{cls.BOLD}{cls.WHITE}{title}{cls.RESET}{' ' * (width - len(title) - 2)}{cls.CYAN}║{cls.RESET}")
+        cls.safe_print("")
+        cls.safe_print(f"{cls.CYAN}{'=' * width}{cls.RESET}")
+        title = f"  [*] {app_name} Dev Server v{version}"
+        padding = max(0, width - len(title) - 2)
+        cls.safe_print(f"{cls.CYAN}|{cls.BOLD}{cls.WHITE}{title}{cls.RESET}{' ' * padding}{cls.CYAN}|{cls.RESET}")
         port_line = f"  Port: {port} | PID: {os.getpid()} | Press Ctrl+C to quit"
-        print(f"{cls.CYAN}║{cls.RESET}{cls.YELLOW}{port_line}{cls.RESET}{' ' * (width - len(port_line) - 2)}{cls.CYAN}║{cls.RESET}")
-        print(f"{cls.CYAN}{'═' * width}{cls.RESET}")
-        print()
+        padding2 = max(0, width - len(port_line) - 2)
+        cls.safe_print(f"{cls.CYAN}|{cls.RESET}{cls.YELLOW}{port_line}{cls.RESET}{' ' * padding2}{cls.CYAN}|{cls.RESET}")
+        cls.safe_print(f"{cls.CYAN}{'=' * width}{cls.RESET}")
+        cls.safe_print("")
     
     @classmethod
     def info(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.GREEN}✓{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.GREEN}[OK]{cls.RESET} {msg}")
     
     @classmethod
     def warn(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.YELLOW}⚠{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.YELLOW}[!!]{cls.RESET} {msg}")
     
     @classmethod
     def error(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.RED}✗{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.RED}[ERR]{cls.RESET} {msg}")
     
     @classmethod
     def incoming(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.BLUE}←{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.BLUE}[<-]{cls.RESET} {msg}")
     
     @classmethod
     def outgoing(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.MAGENTA}→{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.MAGENTA}[->]{cls.RESET} {msg}")
     
     @classmethod
     def waiting(cls, msg: str = "Waiting for commands...", inline: bool = False):
         """Print waiting status. If inline=True, overwrites the same line."""
         if inline:
-            print(f"\r{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}►{cls.RESET} {msg}        ", end='', flush=True)
+            try:
+                print(f"\r{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}[>>]{cls.RESET} {msg}        ", end='', flush=True)
+            except:
+                pass
         else:
-            print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}►{cls.RESET} {msg}")
+            cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}[>>]{cls.RESET} {msg}")
     
     @classmethod
     def webview(cls, msg: str):
-        print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.WHITE}🌐{cls.RESET} {msg}")
+        cls.safe_print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.WHITE}[WEB]{cls.RESET} {msg}")
 
 
 class DevServer:
@@ -579,15 +605,15 @@ class DevServer:
         
         # Show immediate startup message
         self.console.enable_ansi()
-        print(f"\n{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}")
-        print(f"{self.console.CYAN}║{self.console.BOLD}{self.console.WHITE}  🚀 {APP_NAME} Dev Server v{APP_VERSION} - Starting...{self.console.RESET}")
-        print(f"{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}\n")
+        self.console.safe_print(f"\n{self.console.CYAN}{'=' * 64}{self.console.RESET}")
+        self.console.safe_print(f"{self.console.CYAN}|{self.console.BOLD}{self.console.WHITE}  [*] {APP_NAME} Dev Server v{APP_VERSION} - Starting...{self.console.RESET}")
+        self.console.safe_print(f"{self.console.CYAN}{'=' * 64}{self.console.RESET}\n")
         
         # Try to acquire lock
         if not acquire_lock():
             self.console.error("Another dev server instance is already running!")
             self.console.error("Close the existing server first or use it.")
-            print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
+            self.console.safe_print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
             try:
                 import msvcrt
                 msvcrt.getch()
