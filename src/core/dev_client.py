@@ -185,8 +185,19 @@ def launch_dev_server() -> bool:
             print(f"[DevClient] Error: dev_server.py not found at {dev_server_path}")
             return False
         
-        # Get the Python executable
-        python_exe = sys.executable
+        # CRITICAL: Always use the venv Python to ensure correct environment
+        # This prevents issues when launching from IDEs or terminals that might
+        # have a different Python in PATH
+        project_root = Path(__file__).parent.parent.parent  # src/core -> src -> project
+        venv_python = project_root / "venv" / "Scripts" / "python.exe"
+        
+        if venv_python.exists():
+            python_exe = str(venv_python)
+            print(f"[DevClient] Using venv Python: {python_exe}")
+        else:
+            # Fallback to sys.executable if venv not found
+            python_exe = sys.executable
+            print(f"[DevClient] Warning: venv not found, using: {python_exe}")
         
         if sys.platform == 'win32':
             # On Windows, use CREATE_NEW_CONSOLE to make truly independent process

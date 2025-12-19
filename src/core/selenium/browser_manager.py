@@ -2,6 +2,9 @@
 Browser Manager with anti-detection capabilities.
 Uses undetected-chromedriver to bypass bot detection.
 Adapted from last_projects/auto_Forms_prevTest/core/browser_manager.py
+
+NOTE: Selenium imports are OPTIONAL. If not available, this module
+will load but methods will return errors gracefully.
 """
 import os
 import random
@@ -9,15 +12,29 @@ import time
 import threading
 from typing import Optional, Callable
 
+# === OPTIONAL IMPORTS ===
+# undetected-chromedriver
 try:
     import undetected_chromedriver as uc
 except ImportError:
     uc = None
 
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException, WebDriverException
+# selenium.webdriver - wrapped in try/except to prevent crash if not installed
+SELENIUM_WEBDRIVER_AVAILABLE = False
+try:
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.common.by import By
+    from selenium.common.exceptions import TimeoutException, WebDriverException
+    SELENIUM_WEBDRIVER_AVAILABLE = True
+except ImportError as e:
+    print(f"[BrowserManager] WARNING: selenium.webdriver not available: {e}")
+    # Define dummy classes so code doesn't crash at definition time
+    WebDriverWait = None
+    EC = None
+    By = None
+    TimeoutException = Exception
+    WebDriverException = Exception
 
 
 # Default browser settings
@@ -158,6 +175,11 @@ class BrowserManager:
         Returns:
             True if initialization successful, False otherwise
         """
+        # Check selenium availability first
+        if not SELENIUM_WEBDRIVER_AVAILABLE:
+            print("[BrowserManager] Error: selenium.webdriver not available")
+            return False
+        
         if uc is None:
             print("[BrowserManager] Error: undetected-chromedriver not installed")
             return False

@@ -1,6 +1,9 @@
 """
 Selenium Handlers for Bridge API
 Handles browser detection, form record management, and recording sessions.
+
+NOTE: Selenium imports are OPTIONAL. If selenium is not installed,
+the handlers will return graceful error messages instead of crashing.
 """
 import sys
 import os
@@ -9,19 +12,41 @@ from typing import Dict, Any
 # Ensure core is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.selenium.browser_detector import BrowserDetector
-from core.selenium.form_storage import (
-    get_all_forms, 
-    load_form_data_from_path, 
-    delete_record,
-    rename_record,
-    import_record
-)
-from core.selenium.recording_session import (
-    start_new_session,
-    stop_active_session,
-    get_active_session
-)
+# === OPTIONAL SELENIUM IMPORTS ===
+# These are wrapped in try/except so the server doesn't crash if selenium isn't installed
+SELENIUM_AVAILABLE = False
+_selenium_import_error = None
+
+try:
+    from core.selenium.browser_detector import BrowserDetector
+    from core.selenium.form_storage import (
+        get_all_forms, 
+        load_form_data_from_path, 
+        delete_record,
+        rename_record,
+        import_record
+    )
+    from core.selenium.recording_session import (
+        start_new_session,
+        stop_active_session,
+        get_active_session
+    )
+    SELENIUM_AVAILABLE = True
+except ImportError as e:
+    _selenium_import_error = str(e)
+    print(f"[SeleniumHandler] WARNING: Selenium modules not available: {e}")
+    print("[SeleniumHandler] Recording features will be disabled.")
+    
+    # Define dummy functions so the code doesn't crash
+    BrowserDetector = None
+    get_all_forms = None
+    load_form_data_from_path = None
+    delete_record = None
+    rename_record = None
+    import_record = None
+    start_new_session = None
+    stop_active_session = None
+    get_active_session = None
 
 
 class SeleniumHandler:
@@ -29,11 +54,16 @@ class SeleniumHandler:
     
     def __init__(self, bridge):
         self.bridge = bridge
-        self.detector = BrowserDetector()
+        self.detector = None
         
-        print("[SeleniumHandler] Registering handlers...")
+        # Only create detector if selenium is available
+        if SELENIUM_AVAILABLE and BrowserDetector:
+            self.detector = BrowserDetector()
+            print("[SeleniumHandler] Registering handlers (Selenium AVAILABLE)")
+        else:
+            print(f"[SeleniumHandler] Registering handlers (Selenium NOT available: {_selenium_import_error})")
         
-        # Register handlers
+        # Register handlers - they will return errors if selenium not available
         bridge.register_handler("detect_browsers", self.handle_detect_browsers)
         bridge.register_handler("list_form_records", self.handle_list_records)
         bridge.register_handler("load_form_record", self.handle_load_record)
@@ -49,9 +79,24 @@ class SeleniumHandler:
         print("[SeleniumHandler] Handlers registered: detect_browsers, records, recording session")
 
     
+    def _check_selenium(self) -> Dict[str, Any] | None:
+        """Check if selenium is available. Returns error dict if not."""
+        if not SELENIUM_AVAILABLE:
+            return {
+                "success": False, 
+                "error": f"Selenium not installed: {_selenium_import_error}",
+                "selenium_missing": True
+            }
+        return None
+    
     def handle_detect_browsers(self, content: Dict[str, Any]) -> Dict[str, Any]:
         """Detect installed browsers."""
         print("[SeleniumHandler] handle_detect_browsers called")
+        
+        # Check selenium availability
+        if not self.detector:
+            return {"success": False, "error": "Browser detection not available", "browsers": []}
+        
         try:
             browsers = self.detector.get_dropdown_choices()
             print(f"[SeleniumHandler] Detected {len(browsers)} browsers")
@@ -63,6 +108,11 @@ class SeleniumHandler:
     def handle_list_records(self, content: Dict[str, Any]) -> Dict[str, Any]:
         """List all saved form records."""
         print("[SeleniumHandler] handle_list_records called")
+        
+        if err := self._check_selenium():
+            err["forms"] = []
+            return err
+        
         try:
             forms = get_all_forms()
             print(f"[SeleniumHandler] Found {len(forms)} form records")

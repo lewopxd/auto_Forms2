@@ -77,7 +77,8 @@ def main():
             print("[Main] Dev server not running, launching...")
             if launch_dev_server():
                 print("[Main] Dev server launched, waiting for it to be ready...")
-                if wait_for_server(timeout=30.0):
+                # Only wait for socket server (webview may take longer)
+                if wait_for_server(timeout=10.0, wait_for_webview=False):
                     print("[Main] Dev server is ready!")
                 else:
                     print("[Main] Warning: Timeout waiting for dev server")

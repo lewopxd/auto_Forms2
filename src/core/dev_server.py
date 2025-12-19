@@ -195,8 +195,14 @@ class DevServerConsole:
     CYAN = "\033[96m"
     WHITE = "\033[97m"
     
-    @staticmethod
-    def enable_ansi():
+    _ansi_enabled = False  # Flag to prevent double initialization
+    
+    @classmethod
+    def enable_ansi(cls):
+        if cls._ansi_enabled:
+            return  # Already initialized
+        cls._ansi_enabled = True
+        
         if sys.platform == 'win32':
             try:
                 # Enable ANSI escape codes
@@ -206,10 +212,7 @@ class DevServerConsole:
                 pass
             
             try:
-                # Force UTF-8 output
-                sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-                sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-                # Also set console codepage
+                # Set console codepage to UTF-8
                 os.system('chcp 65001 > nul 2>&1')
             except Exception:
                 pass
