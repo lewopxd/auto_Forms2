@@ -1400,3 +1400,1049 @@
     color: #c2410c;
     /* Orange-700 */
 }
+
+/* =========================================
+   SPINNER ANIMATION
+   ========================================= */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* =========================================
+   MAPPING DROPDOWN STYLES
+   ========================================= */
+.af-map-select {
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.af-map-select:hover:not(:disabled) {
+    border-color: #9ca3af !important;
+}
+
+.af-map-select:focus {
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.2);
+}
+
+.af-map-select:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* =========================================
+   MAPPED MODE STYLES
+   ========================================= */
+
+/* Mapped mode options container */
+.af-opts.mapped-mode {
+    opacity: 0.9;
+}
+
+/* Disabled option styling */
+.af-opt.disabled {
+    cursor: default;
+    opacity: 0.85;
+}
+
+.af-opt.disabled:hover {
+    background: transparent !important;
+}
+
+/* Mapped chip in footer */
+.af-mapped-chip {
+    display: inline-flex;
+    align-items: center;
+    background-color: #f3e8ff;
+    border: 1px solid #d8b4fe;
+    color: #7e22ce;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+/* Mapped value chip next to each option */
+.af-opt-mapped-chip {
+    display: inline-flex;
+    align-items: center;
+    background-color: #f3e8ff;
+    border: 1px solid #d8b4fe;
+    color: #7e22ce;
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 10px;
+    font-weight: 500;
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+/* =========================================
+   SMART INPUT - EDIT MODE (EXACT COPY FROM MODAL)
+   ========================================= */
+
+/* Container - same structure as modal */
+.af-smart-input-container {
+    position: relative;
+    height: 32px;
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.af-smart-input-container:focus-within {
+    border-color: #9ca3af;
+}
+
+/* Backdrop - shows chips (NO flexbox to preserve spaces!) */
+.af-smart-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: 0 10px;
+    font-size: 12px;
+    font-family: inherit;
+    white-space: pre;
+    color: #374151;
+    overflow: hidden;
+    line-height: 32px;
+    /* Same as container height for vertical centering */
+    width: 100%;
+}
+
+/* Input - EXACT same as modal */
+.af-smart-text-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0 10px;
+    font-size: 12px;
+    font-family: inherit;
+    background: transparent;
+    color: transparent;
+    caret-color: #374151;
+    border: none;
+    outline: none;
+}
+
+.af-smart-text-input::placeholder {
+    color: #9ca3af;
+}
+
+.af-smart-input-container.error {
+    border-color: #ef4444;
+}
+
+/* Chip base style - ZERO extra width for perfect sync */
+.af-input-chip {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border-radius: 3px;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    white-space: pre;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+/* Valid - Select (Purple) */
+.af-input-chip.valid-select {
+    background-color: #f3e8ff;
+    color: #7e22ce;
+}
+
+/* Valid - Fill (Indigo) */
+.af-input-chip.valid-fill {
+    background-color: #e0e7ff;
+    color: #4338ca;
+}
+
+/* Valid - Concept (Sky Blue - vibrant) */
+.af-input-chip.valid-concept {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+/* Invalid (Orange) */
+.af-input-chip.invalid {
+    background-color: #ffedd5;
+    color: #c2410c;
+}
+
+/* Alert icon in chip - tiny, no extra space */
+.af-input-chip svg,
+.af-chip-alert {
+    display: none;
+    /* Hide icon to maintain perfect sync */
+}
+
+/* =========================================
+   TEXT TYPE CHIP (Párrafo indicator)
+   ========================================= */
+.af-text-type-chip {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+    margin-right: 8px;
+}
+
+.af-text-type-chip.short {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.af-text-type-chip.long {
+    background: #e0e7ff;
+    color: #4338ca;
+}
+
+/* =========================================
+   TEXT TYPE TOGGLE (Modal config)
+   ========================================= */
+.af-text-type-toggle {
+    display: flex;
+    background: #f3f4f6;
+    padding: 2px;
+    border-radius: 6px;
+    gap: 2px;
+    border: 1px solid #e5e7eb;
+}
+
+.af-text-type-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: transparent;
+}
+
+.af-text-type-option:hover {
+    color: #6b7280;
+}
+
+.af-text-type-option.active {
+    background: white;
+    color: #3b82f6;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================
+   SMART TEXTAREA - LONG TEXT MODE
+   ========================================= */
+
+/* Container */
+.af-smart-textarea-container {
+    position: relative;
+    width: 100%;
+    min-height: 60px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    overflow: hidden;
+}
+
+.af-smart-textarea-container:focus-within {
+    border-color: #9ca3af;
+}
+
+/* Backdrop for Textarea */
+.af-smart-textarea-backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #374151;
+    overflow: hidden;
+    line-height: 1.5;
+}
+
+/* Textarea */
+.af-smart-textarea {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 60px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1.5;
+    background: transparent;
+    color: transparent;
+    caret-color: #374151;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+}
+
+.af-smart-textarea::placeholder {
+    color: #9ca3af;
+}
+
+/* =========================================
+   CONFIG WRAPPER - Indicador de configuración
+   ========================================= */
+
+/* Contenedor base */
+.af-config-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 8px 0 5px;
+    /* top:0, right:12px, bottom:0, left:3px */
+    border-radius: 5px;
+    border: 1.5px solid transparent;
+    transition: all 0.2s ease;
+}
+
+/* Botón interno cuando está en wrapper */
+.af-config-wrapper .af-settings-btn {
+    color: #9ca3af;
+    position: relative;
+}
+
+.af-config-wrapper .af-settings-btn:hover {
+    color: #6b7280;
+}
+
+/* Estado: Configuración Personalizada */
+.af-config-wrapper.customized {
+    border-style: dashed;
+}
+
+.af-config-wrapper.customized .af-settings-btn {
+    color: inherit;
+}
+
+/* Check badge */
+.af-config-check {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #efefef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    border: 1px solid currentColor;
+}
+
+.af-config-check i,
+.af-config-check svg {
+    width: 8px !important;
+    height: 8px !important;
+    stroke-width: 3px !important;
+}
+
+/* Variantes por color de énfasis */
+.af-config-wrapper.customized.accent-blue {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.af-config-wrapper.customized.accent-purple {
+    border-color: #a855f7;
+    color: #a855f7;
+}
+
+.af-config-wrapper.customized.accent-green {
+    border-color: #22c55e;
+    color: #22c55e;
+}
+
+/* Reset Link */
+.af-reset-link {
+    font-size: 11px;
+    color: #9ca3af;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.af-reset-link:hover {
+    color: #6b7280;
+    text-decoration: underline;
+}
+
+/* ===================================
+   Orange Checkbox (Border + Check only)
+   (For New Recording Modal)
+   =================================== */
+.af-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #4b5563;
+}
+
+.af-checkbox-row:hover {
+    color: #374151;
+}
+
+.af-checkbox-orange {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #9ca3af;
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+
+.af-checkbox-orange:checked {
+    border-color: #f97316;
+    background: transparent;
+}
+
+.af-checkbox-orange:checked::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1px;
+    width: 4px;
+    height: 8px;
+    border: solid #f97316;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.af-checkbox-orange:focus {
+    outline: 2px solid rgba(249, 115, 22, 0.3);
+    outline-offset: 1px;
+}
+
+/* ===================================
+   Bouncing Robot Animation
+   (For Recording State)
+   =================================== */
+@keyframes af-bounce-spin {
+    0% {
+        transform: translateY(0) scale(1);
+    }
+
+    20% {
+        transform: translateY(-25px) scale(0.95);
+    }
+
+    40% {
+        transform: translateY(-30px) scale(0.9);
+    }
+
+    60% {
+        transform: translateY(0) scale(1);
+    }
+
+    70% {
+        transform: translateY(0) scaleY(0.85) scaleX(1.1);
+    }
+
+    80% {
+        transform: translateY(-8px) scale(1);
+    }
+
+    90% {
+        transform: translateY(0) scaleY(0.95) scaleX(1.02);
+    }
+
+    100% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+.af-bounce-bot {
+    animation: af-bounce-spin 1.5s ease-in-out infinite;
+    transform-origin: center bottom;
+}
+
+/* ========================================
+   AF VIEW MODE - Compact Flow Timeline
+   Professional Desktop App Styling v2
+   ======================================== */
+
+/* View Container */
+.afv-view-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    gap: 0;
+    overflow-y: auto;
+    background: #fafafa;
+}
+
+/* Flow Grid - Single unified grid for all pages */
+.afv-flow-grid {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    gap: 0;
+    width: 100%;
+    max-width: 650px;
+}
+
+/* Flow Row - uses display:contents for grid layout */
+.afv-flow-row {
+    display: contents;
+}
+
+/* Flow Line Column - vertical connector */
+.afv-flow-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+
+/* Continuous vertical line - always visible */
+.afv-flow-line::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #d1d5db;
+}
+
+/* First action: line starts from top of the flow-line */
+.afv-flow-row.first .afv-flow-line::before {
+    top: 0;
+}
+
+/* Last action: line ends at center of number circle */
+.afv-flow-row.last .afv-flow-line::before {
+    bottom: calc(100% - 20px);
+}
+
+/* Single item: hide line */
+.afv-flow-row.first.last .afv-flow-line::before {
+    display: none;
+}
+
+/* Number Circle on Timeline - Colored by action type */
+.afv-flow-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #6b7280;
+    z-index: 2;
+    margin-top: 10px;
+    flex-shrink: 0;
+}
+
+/* Colored borders for number circles */
+.afv-flow-num.fill {
+    border-color: #3b82f6;
+    color: #3b82f6;
+}
+
+.afv-flow-num.select {
+    border-color: #7e22ce;
+    color: #7e22ce;
+}
+
+.afv-flow-num.click {
+    border-color: #10b981;
+    color: #10b981;
+}
+
+/* Line segment for separators - connects to dots */
+.afv-flow-line-segment {
+    width: 2px;
+    height: 100%;
+    background: #d1d5db;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Page Label - border-title style */
+.afv-flow-row.separator .afv-flow-line::before {
+    /* Continuous line through separator */
+}
+
+.afv-page-label {
+    display: flex;
+    align-items: center;
+    padding: 14px 0 10px 8px;
+    position: relative;
+}
+
+.afv-page-label::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 8px;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, #f97316 0%, #fed7aa 50%, transparent 100%);
+    transform: translateY(-50%);
+}
+
+.afv-page-label span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #f97316;
+    background: #fafafa;
+    padding: 0 10px 0 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* ========================================
+   COMPACT CARDS - Divided Layout v3
+   ======================================== */
+
+.afv-card {
+    display: flex;
+    flex-direction: row;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin: 4px 0 4px 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    min-height: 36px;
+}
+
+.afv-card:hover {
+    border-color: #9ca3af;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Left Accent Panel with Icon */
+.afv-card-accent {
+    width: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 7px;
+    flex-shrink: 0;
+}
+
+.afv-card-accent.fill {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.afv-card-accent.select {
+    background: #f3e8ff;
+    color: #7e22ce;
+}
+
+.afv-card-accent.click {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.afv-card-accent i,
+.afv-card-accent svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Right Content Panel */
+.afv-card-content {
+    flex: 1;
+    padding: 5px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+/* Question Text - Compact, lighter, smaller */
+.afv-question {
+    font-size: 10px;
+    font-weight: 500;
+    color: #6b7280;
+    line-height: 1.3;
+}
+
+/* Answer Text - Compact */
+.afv-answer {
+    font-size: 12px;
+    color: #1f2937;
+    line-height: 1.4;
+}
+
+.afv-answer.paragraph {
+    white-space: pre-wrap;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #374151;
+}
+
+/* Select Options - Compact */
+.afv-select-options {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 2px;
+}
+
+.afv-select-opt {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #9ca3af;
+    background: transparent;
+    border: none;
+}
+
+/* Selected option - Purple accent for select type */
+.afv-select-opt.selected {
+    background: #f3e8ff;
+    color: #7e22ce;
+    font-weight: 500;
+}
+
+/* Select Radio Indicator - Compact */
+.afv-select-radio {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.afv-select-opt.selected .afv-select-radio {
+    border-color: #7e22ce;
+    background: #7e22ce;
+}
+
+.afv-select-opt.selected .afv-select-radio::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    background: #ffffff;
+    border-radius: 50%;
+}
+
+/* ========================================
+   VIEW MODE CHIPS - Placeholder Values
+   ======================================== */
+
+/* Base chip style */
+.afv-chip {
+    display: inline;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+/* Column placeholder - Blue (fill emphasis) */
+.afv-chip.column {
+    background: #dbeafe;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+/* Concept placeholder - Light blue/cyan */
+.afv-chip.concept {
+    background: #e0f2fe;
+    border: 1px solid #7dd3fc;
+    color: #0369a1;
+}
+
+/* Pending - No row selected yet - Indigo */
+.afv-chip.pending {
+    background: #e0e7ff;
+    border: 1px solid #a5b4fc;
+    color: #4338ca;
+}
+
+/* Empty value - Row selected but value is empty - Red with alert */
+.afv-chip.empty {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+}
+
+.afv-chip.empty i,
+.afv-chip.empty svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+/* Empty answer placeholder */
+.afv-empty {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* ========================================
+   VIEW MODE HEADER (URL + Player)
+   ======================================== */
+
+/* Scroll container for cards */
+.af-view-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 16px 16px 16px;
+}
+
+/* View Header Container */
+.afv-view-header {
+    flex-shrink: 0;
+}
+
+/* Control Row - All controls in one line */
+.afv-control-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #d1d5db;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    z-index: 10;
+}
+
+.afv-sep {
+    color: #d1d5db;
+    font-size: 12px;
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+.afv-spacer {
+    flex: 1;
+}
+
+.afv-url-ico {
+    width: 12px;
+    height: 12px;
+    color: #9ca3af;
+    flex-shrink: 0;
+}
+
+.afv-url-input {
+    flex: 1;
+    max-width: 320px;
+    font-size: 11px;
+    color: #6b7280;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    outline: none;
+    padding: 2px 6px;
+    cursor: text;
+    transition: all 0.15s ease;
+}
+
+.afv-url-input:hover {
+    border-color: #e5e7eb;
+}
+
+.afv-url-input:focus {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+.afv-url-open {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.afv-url-open:hover:not(:disabled) {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.afv-url-open:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.afv-url-open i,
+.afv-url-open svg {
+    width: 11px;
+    height: 11px;
+}
+
+/* Status Row - Below controls */
+.afv-status-row {
+    padding: 2px 16px 6px 16px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.afv-status {
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+/* Player Box - White with rounded corners */
+.afv-player-box {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 2px 4px;
+}
+
+.afv-count-current {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    min-width: 14px;
+    text-align: right;
+}
+
+.afv-count-sep {
+    font-size: 10px;
+    color: #9ca3af;
+    margin: 0 2px;
+}
+
+.afv-count-total {
+    font-size: 10px;
+    color: #6b7280;
+    min-width: 14px;
+    text-align: left;
+    margin-right: 6px;
+}
+
+/* Player Buttons - Transparent */
+.afv-pbtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.afv-pbtn:hover:not(:disabled) {
+    color: #374151;
+}
+
+.afv-pbtn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.afv-pbtn i,
+.afv-pbtn svg {
+    width: 12px;
+    height: 12px;
+}
+
+.afv-pbtn.play:hover:not(:disabled) {
+    color: #059669;
+}
+
+.afv-pbtn.pause:hover:not(:disabled) {
+    color: #ea580c;
+}
+
+.afv-pbtn.stop:hover:not(:disabled) {
+    color: #dc2626;
+}
+
+/* Config Button - Subtle */
+.afv-cfg-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.afv-cfg-btn:hover {
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.afv-cfg-btn i,
+.afv-cfg-btn svg {
+    width: 12px;
+    height: 12px;
+}

@@ -7,6 +7,45 @@ const AutoFormViewModule = (function () {
 
     const tabs = new Map();
 
+    /**
+     * Renders the empty state for a tab
+     * Shows "Grabando..." if recording is active, otherwise the default message
+     */
+    function renderEmptyState(tabId) {
+        const tab = window.findTab ? window.findTab(tabId) : null;
+        const isRecording = tab?.isRecording === true;
+        const isLoadingRecording = tab?.isLoadingRecording === true;
+
+        if (isRecording) {
+            // Recording in progress - animated robot
+            return `
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                    <i data-lucide="bot" class="w-16 h-16 text-orange-400 mb-4 af-bounce-bot"></i>
+                    <p class="text-gray-500 mb-2">Grabando...</p>
+                    <p class="text-xs text-gray-400">La grabación está en progreso</p>
+                </div>
+            `;
+        } else if (isLoadingRecording) {
+            // Recording stopped, loading the file - static robot
+            return `
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                    <i data-lucide="bot" class="w-16 h-16 text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 mb-2">Cargando grabación...</p>
+                    <p class="text-xs text-gray-400">Procesando el archivo grabado</p>
+                </div>
+            `;
+        } else {
+            // Default - no recording loaded
+            return `
+                <div class="flex flex-col items-center justify-center py-16 text-center">
+                <i data-lucide="bot" class="w-16 h-16 text-gray-300 mb-4"></i>
+                    <p class="text-gray-500 mb-2">Carga una grabación de formulario para comenzar</p>
+                    <p class="text-xs text-gray-400">Usa el botón "Cargar" en la barra superior</p>
+                </div>
+            `;
+        }
+    }
+
     // ============================================================
     // 1. STRUCTURE GENERATION
     // ============================================================
@@ -65,6 +104,10 @@ const AutoFormViewModule = (function () {
             }
         }
 
+        // Read saved mode BEFORE generating HTML to avoid flash
+        const savedMode = tabData?.uiState?.mode || 'edit';
+        const isViewMode = savedMode === 'view';
+
         tabs.set(tabId, {
             formData: formData,
             filePath: filePath,
@@ -101,42 +144,13 @@ const AutoFormViewModule = (function () {
                 <div class="flex items-center gap-2">
                     <!-- Toggle Group -->
                     <div class="af-toggle-group" id="af-toggle-group-${tabId}" style="display:${state.formData ? 'flex' : 'none'}">
-                        <div class="af-toggle-item active-edit" id="af-tog-edit-${tabId}">
+                        <div class="af-toggle-item ${isViewMode ? '' : 'active-edit'}" id="af-tog-edit-${tabId}">
                             <i data-lucide="edit-3"></i> Editar
                         </div>
-                        <div class="af-toggle-item" id="af-tog-view-${tabId}">
+                        <div class="af-toggle-item ${isViewMode ? 'active-view' : ''}" id="af-tog-view-${tabId}">
                             <i data-lucide="eye"></i> Vista
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- INFO BAR: Grabación (siempre) | URL (solo con archivo) -->
-            <div class="af-info-bar" id="af-info-bar-${tabId}">
-                <!-- Recording Section (siempre visible) -->
-                <div class="af-info-record">
-                    <i data-lucide="clapperboard"></i>
-                    <span class="af-rec-name ${state.fileName ? '' : 'empty'}" id="af-raf-name-${tabId}">
-                        ${state.fileName || 'Sin grabación'}
-                    </span>
-                    <button class="af-rec-btn" id="af-btn-open-${tabId}" title="Gestionar grabaciones">
-                        <i data-lucide="folder-open"></i>
-                        Cargar
-                    </button>
-                </div>
-                
-                <!-- Divider (solo con archivo) -->
-                <div class="af-info-divider" id="af-divider-${tabId}" style="display:${state.formData ? 'block' : 'none'}"></div>
-                
-                <!-- URL Section (solo visible cuando hay archivo cargado, readonly input) -->
-                <div class="af-info-url" id="af-url-section-${tabId}" style="display:${state.formData ? 'flex' : 'none'}">
-                    <i data-lucide="link"></i>
-                    <input type="text" class="af-url-input" id="af-url-text-${tabId}" 
-                           value="${escHtml(state.formData?.url || '')}" 
-                           readonly title="${escHtml(state.formData?.url || '')}">
-                    <button class="af-url-open" title="Abrir URL" onclick="AutoFormViewModule.openUrl('${tabId}')">
-                        <i data-lucide="external-link"></i>
-                    </button>
                 </div>
             </div>
 
@@ -145,16 +159,18 @@ const AutoFormViewModule = (function () {
                 
                 <!-- EDIT MODE VIEW -->
                 <div class="edit-mode" id="af-edit-${tabId}" 
-                     style="position:absolute; inset:0; display:flex; flex-direction:column; overflow:hidden;">
+                     style="position:absolute; inset:0; display:${isViewMode ? 'none' : 'flex'}; flex-direction:column; overflow:hidden;">
+                    <!-- INFO BAR: Only in Edit Mode -->
+                    <div class="af-info-bar" id="af-info-bar-${tabId}"></div>
                     <div class="af-content-scroll" id="af-container-edit-${tabId}">
-                        ${renderEmptyState()}
+                        ${renderEmptyState(tabId)}
                     </div>
                 </div>
 
                 <!-- PREVIEW MODE VIEW -->
                 <div class="view-mode" id="af-view-${tabId}" 
-                     style="position:absolute; inset:0; display:none; flex-direction:column; overflow:hidden; background:white;">
-                    <div class="af-content-scroll" id="af-container-view-${tabId}" style="background:white;"></div>
+                     style="position:absolute; inset:0; display:${isViewMode ? 'flex' : 'none'}; flex-direction:column; overflow:hidden; background:#fafafa;">
+                    <div class="af-view-scroll" id="af-container-view-${tabId}"></div>
                 </div>
 
             </div>
@@ -162,7 +178,7 @@ const AutoFormViewModule = (function () {
 
         setTimeout(() => {
             setupToggleEvents(tabId, root);
-            root.querySelector(`#af-btn-open-${tabId}`).onclick = () => openRecordingManager(tabId);
+            renderInfoBar(tabId); // Initial Render
 
             // Setup title editing
             const titleWrapper = root.querySelector(`#af-header-title-${tabId}`);
@@ -209,13 +225,6 @@ const AutoFormViewModule = (function () {
         return root;
     }
 
-    function renderEmptyState() {
-        return `
-            <div style="text-align:center;color:#9ca3af;margin-top:40px;">
-                <p>Carga un archivo .raf para comenzar</p>
-            </div>
-        `;
-    }
 
     // ============================================================
     // 1.5 PERSISTENCE - Sync to projectData
@@ -296,6 +305,128 @@ const AutoFormViewModule = (function () {
 
     let currentManagerTabId = null;
 
+    // ============================================================
+    // 1.5 INFO BAR & RECORDING STATE
+    // ============================================================
+
+    function renderInfoBar(tabId) {
+        const state = tabs.get(tabId);
+        const tab = window.findTab ? window.findTab(tabId) : null;
+        const container = document.getElementById(`af-info-bar-${tabId}`);
+        if (!container) return;
+
+        const isRecording = tab?.isRecording === true;
+        const recInfo = tab?.recordingInfo || {};
+
+        container.innerHTML = '';
+
+        if (isRecording) {
+            // === RECORDING MODE ===
+            container.innerHTML = `
+                <div class="af-info-record active">
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex h-3 w-3">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+                        </div>
+                        <span class="font-bold text-orange-600 tracking-wide text-sm">REC</span>
+                    </div>
+                    
+                    <span class="af-rec-name text-gray-800 font-medium ml-2">
+                        ${escHtml(recInfo.filename || 'Grabando...')}
+                    </span>
+
+                    <button class="af-rec-btn stop" id="af-btn-stop-${tabId}" title="Detener Grabación">
+                        <i data-lucide="square" class="fill-current"></i>
+                        Detener
+                    </button>
+                </div>
+
+                <div class="af-info-divider"></div>
+
+                <div class="af-info-url flex" style="opacity: 0.8;">
+                    <i data-lucide="${getBrowserIcon(recInfo.browser)}"></i>
+                    <span class="text-xs text-gray-500 ml-1 truncate max-w-[200px]" title="${escHtml(recInfo.url)}">
+                        ${escHtml(recInfo.url || 'Sin URL')}
+                    </span>
+                </div>
+            `;
+
+            // Attach Stop Handler
+            const stopBtn = container.querySelector(`#af-btn-stop-${tabId}`);
+            if (stopBtn) stopBtn.onclick = () => stopRecording(tabId);
+
+        } else {
+            // === STANDARD LOAD MODE ===
+            const hasFile = !!state.formData;
+
+            container.innerHTML = `
+                <div class="af-info-record">
+                    <i data-lucide="clapperboard"></i>
+                    <span class="af-rec-name ${state.fileName ? '' : 'empty'}" id="af-raf-name-${tabId}">
+                        ${state.fileName || 'Sin grabación'}
+                    </span>
+                    <button class="af-rec-btn" id="af-btn-open-${tabId}" title="Gestionar grabaciones">
+                        <i data-lucide="folder-open"></i>
+                        Cargar
+                    </button>
+                </div>
+                
+                <div class="af-info-divider" id="af-divider-${tabId}" style="display:${hasFile ? 'block' : 'none'}"></div>
+                
+                <div class="af-info-url" id="af-url-section-${tabId}" style="display:${hasFile ? 'flex' : 'none'}">
+                    <i data-lucide="link"></i>
+                    <input type="text" class="af-url-input" id="af-url-text-${tabId}" 
+                           value="${escHtml(state.formData?.url || '')}" 
+                           readonly title="${escHtml(state.formData?.url || '')}">
+                    <button class="af-url-open" title="Abrir URL" onclick="AutoFormViewModule.openUrl('${tabId}')">
+                        <i data-lucide="external-link"></i>
+                    </button>
+                </div>
+            `;
+
+            // Attach Open Handler
+            const openBtn = container.querySelector(`#af-btn-open-${tabId}`);
+            if (openBtn) openBtn.onclick = () => openRecordingManager(tabId);
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function stopRecording(tabId) {
+        const tab = window.findTab ? window.findTab(tabId) : null;
+        if (tab) {
+            tab.isRecording = false;
+            tab.isLoadingRecording = true; // Show "Cargando grabación" state
+
+            renderInfoBar(tabId);
+
+            // Also update main content area to show "Cargando grabación" state
+            const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
+            if (contentContainer) {
+                contentContainer.innerHTML = renderEmptyState(tabId);
+                if (window.lucide) lucide.createIcons();
+            }
+
+            window.showAlert({
+                icon: 'check-circle',
+                iconColor: 'text-green-500',
+                title: 'Grabación Finalizada',
+                message: 'La grabación se ha detenido correctamente.',
+                confirmText: 'Aceptar',
+                confirmColor: 'bg-green-600 hover:bg-green-700'
+            });
+        }
+    }
+
+    function getBrowserIcon(browser) {
+        switch (browser) {
+            case 'chrome': return 'chrome'; // Lucide doesn't have chrome, use globe or similar? 'chrome' exists in some sets
+            case 'edge': return 'monitor';
+            default: return 'globe';
+        }
+    }
+
     /**
      * Opens the Recording Manager modal
      */
@@ -362,7 +493,11 @@ const AutoFormViewModule = (function () {
                         <i data-lucide="folder-plus" class="w-4 h-4"></i>
                         Importar Externo
                     </button>
-                    <!-- Future: New Rec -->
+                    <button onclick="AutoFormViewModule.openNewRecordingModal()"
+                            class="af-btn-primary bg-orange-500 hover:bg-orange-600 border-none text-white flex items-center gap-2">
+                        <i data-lucide="video" class="w-4 h-4"></i>
+                        Nueva Grabación
+                    </button>
                 </div>
             </div>
         `;
@@ -606,6 +741,7 @@ const AutoFormViewModule = (function () {
         }
     }
 
+
     async function deleteRecording(path) {
         const fileName = path.split(/[/\\]/).pop();
 
@@ -686,6 +822,236 @@ const AutoFormViewModule = (function () {
     }
 
     // ============================================================
+    // 1.7 NEW RECORDING MODAL
+    // ============================================================
+
+    function openNewRecordingModal() {
+        // Hide manager modal if open
+        const managerModal = document.getElementById('modal-recording-manager');
+        if (managerModal) managerModal.style.display = 'none';
+
+        // Create modal if not exists
+        let modal = document.getElementById('modal-new-recording');
+        if (!modal) {
+            modal = createNewRecordingModal();
+            document.body.appendChild(modal);
+        }
+
+        // Delegate to robust ModalManager
+        if (window.ModalManager) {
+            // Center modal roughly
+            const win = modal.querySelector('.af-modal-window');
+            if (win) {
+                win.style.top = '15%';
+                win.style.left = '50%';
+                win.style.transform = 'translateX(-50%)';
+            }
+            window.ModalManager.openModal(modal);
+        } else {
+            modal.classList.add('open');
+        }
+
+        // Focus Filename input or URL
+        setTimeout(() => {
+            const input = document.getElementById('new-rec-filename');
+            if (input) input.focus();
+        }, 100);
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function createNewRecordingModal() {
+        let existing = document.getElementById('modal-new-recording');
+        if (existing) existing.remove();
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'modal-new-recording';
+        modalOverlay.className = 'af-modal-overlay';
+        modalOverlay.style.zIndex = '10002'; // Above manager
+
+        modalOverlay.innerHTML = `
+            <div class="af-modal-window accent-orange" style="width: 420px;">
+                <div class="af-window-header">
+                    <div class="af-window-title">
+                        <i data-lucide="video" class="w-5 h-5"></i>
+                        <span>Nueva Grabación</span>
+                    </div>
+                    <div class="af-window-close" onclick="AutoFormViewModule.closeNewRecordingModal()">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                
+                <div class="af-window-body">
+                    <!-- Filename -->
+                    <div class="af-config-section">
+                        <div class="af-config-sec-title">Nombre del Archivo</div>
+                        <div class="af-config-row">
+                            <input type="text" id="new-rec-filename" class="af-config-input" style="flex:1" placeholder="mi_grabacion">
+                            <span class="text-xs text-gray-500 ml-1">.raf</span>
+                        </div>
+                    </div>
+
+                    <!-- URL -->
+                    <div class="af-config-section">
+                        <div class="af-config-sec-title">URL Inicial</div>
+                        <div class="af-config-row">
+                            <input type="url" id="new-rec-url" class="af-config-input" style="flex:1" placeholder="https://ejemplo.com">
+                        </div>
+                    </div>
+
+                    <!-- Browser -->
+                    <div class="af-config-section">
+                        <div class="af-config-sec-title">Navegador</div>
+                        <div class="af-config-row">
+                            <select id="new-rec-browser" class="af-config-select" style="flex:1">
+                                <option value="chrome">Google Chrome</option>
+                                <option value="edge">Microsoft Edge</option>
+                                <option value="webview">Native WebView</option>
+                                <option value="brave">Brave Browser</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="af-config-section">
+                        <div class="af-config-sec-title">Opciones</div>
+                        <div class="af-config-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                            <label class="af-checkbox-row">
+                                <input type="checkbox" id="new-rec-nocache" class="af-checkbox-orange">
+                                <span>Iniciar sin Caché (Incógnito)</span>
+                            </label>
+                            <label class="af-checkbox-row">
+                                <input type="checkbox" id="new-rec-login" class="af-checkbox-orange">
+                                <span>Modo con Login (Permitir Interacción)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="af-window-footer">
+                    <div style="flex:1"></div>
+                    <button class="af-btn-ghost" onclick="AutoFormViewModule.closeNewRecordingModal()">
+                        Cancelar
+                    </button>
+                    <button class="af-btn-primary" onclick="AutoFormViewModule.startNewRecording()">
+                        <i data-lucide="play-circle" class="w-4 h-4"></i>
+                        Iniciar
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modalOverlay);
+
+        // Make Draggable
+        const win = modalOverlay.querySelector('.af-modal-window');
+        const header = modalOverlay.querySelector('.af-window-header');
+        if (window.ModalManager) window.ModalManager.makeDraggable(win, header);
+
+        return modalOverlay;
+    }
+
+    function closeNewRecordingModal() {
+        const modal = document.getElementById('modal-new-recording');
+        if (window.ModalManager) {
+            window.ModalManager.closeModal(modal);
+        } else if (modal) {
+            modal.classList.remove('open');
+        }
+
+        // Restore manager modal if it exists (Stacking behavior)
+        const managerModal = document.getElementById('modal-recording-manager');
+        if (managerModal) {
+            // Slight delay to allow smooth transition overlap or immediate
+            managerModal.style.display = 'flex';
+        }
+    }
+
+    async function startNewRecording() {
+        const filenameEl = document.getElementById('new-rec-filename');
+        const urlEl = document.getElementById('new-rec-url');
+        const browserEl = document.getElementById('new-rec-browser');
+        const noCacheEl = document.getElementById('new-rec-nocache');
+        const loginEl = document.getElementById('new-rec-login');
+
+        if (!filenameEl || !urlEl || !browserEl) return;
+
+        const filename = filenameEl.value.trim() || `recording_${Date.now()}`;
+        const url = urlEl.value.trim();
+        const browser = browserEl.value;
+        const noCache = noCacheEl.checked;
+        const withLogin = loginEl.checked;
+
+        if (!url) {
+            alert('Por favor ingresa una URL válida');
+            return;
+        }
+
+        console.log('[AutoForm] Starting Recording:', { filename, url, browser, noCache, withLogin });
+
+        // Close NEW modal first
+        const newModal = document.getElementById('modal-new-recording');
+        if (window.ModalManager) window.ModalManager.closeModal(newModal);
+        else newModal?.classList.remove('open');
+
+        // Close MANAGER modal permanently (don't restore it)
+        const managerModal = document.getElementById('modal-recording-manager');
+        if (window.ModalManager && managerModal) {
+            window.ModalManager.closeModal(managerModal);
+            // Ensure it doesn't pop back up from closeNewRecordingModal logic if triggered elsewhere
+            managerModal.style.display = 'none';
+        } else if (managerModal) {
+            managerModal.classList.remove('open');
+        }
+
+        // Set Recording State on BOTH local state AND global tab
+        if (currentManagerTabId) {
+            // Update local state
+            const localState = tabs.get(currentManagerTabId);
+            if (localState) {
+                localState.isRecording = true;
+                localState.recordingInfo = {
+                    filename: filename + '.raf',
+                    url: url,
+                    browser: browser
+                };
+            }
+
+            // Update global tab (used by renderInfoBar)
+            const globalTab = window.findTab ? window.findTab(currentManagerTabId) : null;
+            if (globalTab) {
+                globalTab.isRecording = true;
+                globalTab.recordingInfo = {
+                    filename: filename + '.raf',
+                    url: url,
+                    browser: browser
+                };
+                console.log('[AutoForm] Recording state set:', globalTab.isRecording, globalTab.recordingInfo);
+            } else {
+                console.warn('[AutoForm] Could not find global tab for:', currentManagerTabId);
+            }
+
+            // Update UI for recording mode
+            console.log('[AutoForm] Calling renderInfoBar for:', currentManagerTabId);
+            renderInfoBar(currentManagerTabId);
+
+            // Also update main content area to show "Grabando..." state
+            const contentContainer = document.getElementById(`af-container-edit-${currentManagerTabId}`);
+            if (contentContainer) {
+                contentContainer.innerHTML = renderEmptyState(currentManagerTabId);
+                if (window.lucide) lucide.createIcons();
+            }
+        } else {
+            console.warn('[AutoForm] currentManagerTabId is not set!');
+        }
+
+        // Send to backend (Stub)
+        if (window.bridgePy) {
+            // window.bridgePy.send('start_recording', { ... });
+        }
+    }
+
+    // ============================================================
     // 2. TOGGLE EVENTS
     // ============================================================
 
@@ -696,6 +1062,9 @@ const AutoFormViewModule = (function () {
         const viewDiv = root.querySelector(`#af-view-${tabId}`);
 
         const setMode = (isEdit) => {
+            // Trigger autosave BEFORE changing mode to persist current state
+            syncToProjectData(tabId);
+
             if (isEdit) {
                 btnEdit.classList.add('active-edit');
                 btnView.classList.remove('active-view');
@@ -706,16 +1075,23 @@ const AutoFormViewModule = (function () {
                 btnEdit.classList.remove('active-edit');
                 viewDiv.style.display = 'flex';
                 editDiv.style.display = 'none';
-                renderPreview(tabId);
+                renderViewMode(tabId);
             }
             if (window.lucide) lucide.createIcons();
 
-            // Persist mode change
+            // Persist mode change after UI update
             syncToProjectData(tabId);
         };
 
         btnEdit.onclick = () => setMode(true);
         btnView.onclick = () => setMode(false);
+
+        // If view mode was restored, render the view content (HTML is already correct, no need for setMode)
+        const tabData = window.findTab ? window.findTab(tabId) : null;
+        if (tabData?.uiState?.mode === 'view') {
+            // Just render the view content, UI is already in view mode
+            setTimeout(() => renderViewMode(tabId), 0);
+        }
     }
 
     function updateUrl(tabId, url) {
@@ -805,6 +1181,10 @@ const AutoFormViewModule = (function () {
         });
 
         if (window.lucide) lucide.createIcons();
+
+        // Initialize smart inputs for chip rendering
+        initSmartInputs();
+        initSmartTextareas();
     }
 
     function createCard(tabId, pKey, qKey, q, num, isViewMode, selectedData = {}) {
@@ -833,11 +1213,16 @@ const AutoFormViewModule = (function () {
                     </span>
                  </div>
                  ${!isViewMode ? `
-                    <button class="af-settings-btn" style="border:none;background:transparent;color:#9ca3af;cursor:pointer;padding:4px" 
-                            title="Configurar Acción" id="af-btn-cfg-${tabId}-${pKey}-${qKey}">
-                        <i data-lucide="settings-2" style="width:14px"></i>
-                        ${q.config ? '<span style="display:inline-block;width:6px;height:6px;background:#f97316;border-radius:50%;position:absolute;top:4px;right:4px"></span>' : ''}
-                    </button>
+                    <div style="display:flex;align-items:center;">
+                        ${!isSelect ? `<span class="af-text-type-chip ${q.config?.textType === 'long' ? 'long' : 'short'}">${q.config?.textType === 'long' ? 'Párrafo' : 'Corto'}</span>` : ''}
+                        <div class="af-config-wrapper ${q.config?.isCustomized ? 'customized' : ''} ${isSelect ? 'accent-purple' : 'accent-blue'}">
+                            <button class="af-settings-btn" style="border:none;background:transparent;cursor:pointer;padding:4px" 
+                                    title="Configurar Acción" id="af-btn-cfg-${tabId}-${pKey}-${qKey}">
+                                <i data-lucide="settings-2" style="width:14px"></i>
+                            </button>
+                            ${q.config?.isCustomized ? '<span class="af-config-check"><i data-lucide="check"></i></span>' : ''}
+                        </div>
+                    </div>
                  ` : ''}
             </div>
         `;
@@ -852,21 +1237,39 @@ const AutoFormViewModule = (function () {
         const displayVal = isViewMode ? processPlaceholders(rawVal, selectedData) : rawVal;
 
         if (isSelect && q.options?.length) {
-            bodyHtml += `<div class="af-opts">`;
+            const isMapped = q.config?.mapping?.enabled;
+            const mappedPlaceholder = q.config?.mapping?.placeholder || '';
+
+            bodyHtml += `<div class="af-opts ${isMapped ? 'mapped-mode' : ''}">`;
             q.options.forEach(opt => {
                 const val = opt.value || opt.text;
-                const isSelected = rawVal === val;
+                // Don't show selected when in mapped mode
+                const isSelected = !isMapped && (rawVal === val);
                 let itemClass = 'af-opt';
                 if (isSelected) itemClass += ' selected';
+                if (isMapped) itemClass += ' disabled';
 
-                const clickAttr = !isViewMode
+                // Disable clicks when in mapped mode
+                const clickAttr = (!isViewMode && !isMapped)
                     ? `onclick="AutoFormViewModule.setOption('${tabId}','${pKey}','${qKey}','${escJs(val)}')"`
                     : '';
+
+                // Get mapped value for this option (if in mapped mode)
+                let mappedChipHtml = '';
+                if (isMapped && q.config?.mapping?.map) {
+                    const mappedVal = q.config.mapping.map[val];
+                    if (mappedVal) {
+                        // Remove brackets if present
+                        const cleanVal = mappedVal.replace(/^\{|\}$/g, '');
+                        mappedChipHtml = `<span class="af-opt-mapped-chip">${escHtml(cleanVal)}</span>`;
+                    }
+                }
 
                 bodyHtml += `
                     <div class="${itemClass}" ${clickAttr}>
                         <div class="af-radio"></div>
                         <span>${opt.text}</span>
+                        ${mappedChipHtml}
                     </div>
                 `;
             });
@@ -880,12 +1283,36 @@ const AutoFormViewModule = (function () {
                 `;
             } else {
                 const inputType = type.includes('number') ? 'number' : 'text';
-                bodyHtml += `
-                    <input type="text" class="af-input" 
-                           value="${escHtml(rawVal)}" 
-                           placeholder="${inputType === 'number' ? '123 o {Columna}' : '{Columna} o valor fijo'}"
-                           oninput="AutoFormViewModule.handleInputWithValidation(this, '${tabId}','${pKey}','${qKey}', '${inputType}')">
-                `;
+                const inputId = `af-input-${tabId}-${pKey}-${qKey}`;
+                const backdropId = `af-backdrop-${tabId}-${pKey}-${qKey}`;
+                const actionClass = isSelect ? 'select' : 'fill';
+                const isLongText = q.config?.textType === 'long';
+
+                if (isLongText) {
+                    // Long text - use textarea
+                    bodyHtml += `
+                        <div class="af-smart-textarea-container" data-action-type="${actionClass}">
+                            <div id="${backdropId}" class="af-smart-textarea-backdrop"></div>
+                            <textarea id="${inputId}" class="af-smart-textarea"
+                                      placeholder="{Columna} o texto largo..."
+                                      data-tab="${tabId}" data-page="${pKey}" data-question="${qKey}"
+                                      oninput="AutoFormViewModule.handleSmartTextarea(this)">${escHtml(rawVal)}</textarea>
+                        </div>
+                    `;
+                } else {
+                    // Short text - use input
+                    bodyHtml += `
+                        <div class="af-smart-input-container" data-action-type="${actionClass}">
+                            <div id="${backdropId}" class="af-smart-backdrop"></div>
+                            <input type="text" id="${inputId}" class="af-smart-text-input" 
+                                   value="${escHtml(rawVal)}" 
+                                   placeholder="${inputType === 'number' ? '123 o {Columna}' : '{Columna} o valor fijo'}"
+                                   data-input-type="${inputType}"
+                                   data-tab="${tabId}" data-page="${pKey}" data-question="${qKey}"
+                                   oninput="AutoFormViewModule.handleSmartInput(this)">
+                        </div>
+                    `;
+                }
             }
         }
 
@@ -893,12 +1320,25 @@ const AutoFormViewModule = (function () {
 
         // FOOTER
         bodyHtml += `<div class="af-card-footer" style="display:flex;justify-content:space-between;align-items:center;min-height:20px;">`;
-        bodyHtml += `
-            <div class="af-error-msg" style="display:none;align-items:center;color:#ef4444;font-size:11px;gap:4px;">
-                <i data-lucide="alert-circle" style="width:14px;height:14px"></i>
-                <span>Debe ser un número</span>
-            </div>
-        `;
+
+        // Left side: Mapping indicator OR error message
+        if (isSelect && q.config?.mapping?.enabled && q.config?.mapping?.placeholder) {
+            const placeholder = q.config.mapping.placeholder;
+            bodyHtml += `
+                <div class="af-mapped-indicator" style="display:flex;align-items:center;gap:6px;font-size:11px;color:#7e22ce;">
+                    <span style="color:#9ca3af;">Mapeado:</span>
+                    <span class="af-mapped-chip">${escHtml(placeholder)}</span>
+                </div>
+            `;
+        } else {
+            bodyHtml += `
+                <div class="af-error-msg" style="display:none;align-items:center;color:#ef4444;font-size:11px;gap:4px;">
+                    <i data-lucide="alert-circle" style="width:14px;height:14px"></i>
+                    <span>Debe ser un número</span>
+                </div>
+            `;
+        }
+
         if (q.required) {
             bodyHtml += `<div class="af-req" style="margin-left:auto;">* Obligatoria</div>`;
         }
@@ -945,11 +1385,13 @@ const AutoFormViewModule = (function () {
                         CLICK
                     </span>
                 </div>
-                 <button class="af-settings-btn" style="border:none;background:transparent;color:#9ca3af;cursor:pointer;padding:4px" 
+                 <div class="af-config-wrapper ${navObj.config?.isCustomized ? 'customized' : ''} accent-green">
+                    <button class="af-settings-btn" style="border:none;background:transparent;cursor:pointer;padding:4px" 
                             title="Configurar Navegación" id="${cardId}">
                         <i data-lucide="settings-2" style="width:14px"></i>
-                        ${navObj.config ? '<span style="display:inline-block;width:6px;height:6px;background:#f97316;border-radius:50%;position:absolute;top:4px;right:4px"></span>' : ''}
-                </button>
+                    </button>
+                    ${navObj.config?.isCustomized ? '<span class="af-config-check"><i data-lucide="check"></i></span>' : ''}
+                </div>
             </div>
             <div class="af-card-body">
                 <div class="af-question-title">Acción: ${label}</div>
@@ -1071,61 +1513,644 @@ const AutoFormViewModule = (function () {
         setValue(tabId, pKey, qKey, val);
     }
 
-    function onRowSelected() {
-        tabs.forEach((s, id) => {
-            const v = document.querySelector(`#af-tog-view-${id}.${'active-view'}`);
-            if (v) renderPreview(id);
+    /**
+     * Smart Input handler - renders chips in backdrop and validates columns
+     * Uses DOM manipulation for perfect text synchronization
+     * @param {HTMLInputElement} inputEl - The input element
+     */
+    function handleSmartInput(inputEl) {
+        const tabId = inputEl.dataset.tab;
+        const pKey = inputEl.dataset.page;
+        const qKey = inputEl.dataset.question;
+        const inputType = inputEl.dataset.inputType;
+        const val = inputEl.value;
+
+        // Get the container and backdrop
+        const container = inputEl.closest('.af-smart-input-container');
+        const actionType = container?.dataset.actionType || 'fill';
+        const backdropId = inputEl.id.replace('af-input-', 'af-backdrop-');
+        const backdrop = document.getElementById(backdropId);
+
+        // Render chips in backdrop using DOM manipulation
+        if (backdrop) {
+            // Clear backdrop
+            backdrop.innerHTML = '';
+
+            // Parse and render chips using combined regex for {} and [[]]
+            const headers = window.globalHeaders || [];
+
+            // Get concept tabs titles for validation
+            const conceptTitles = (window.projectData?.tabs || [])
+                .filter(t => t.type === 'concept' || (!t.type && t.content !== undefined))
+                .map(t => t.title?.toLowerCase().trim())
+                .filter(Boolean);
+
+            let lastIndex = 0;
+            // Combined regex: matches {column} OR [[concept]]
+            const regex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+            let match;
+
+            while ((match = regex.exec(val)) !== null) {
+                // Text before match
+                const textBefore = val.substring(lastIndex, match.index);
+                if (textBefore) {
+                    backdrop.appendChild(document.createTextNode(textBefore));
+                }
+
+                // Create chip span
+                const chip = document.createElement('span');
+                chip.className = 'af-input-chip';
+
+                if (match[1] !== undefined) {
+                    // It's a {column} placeholder
+                    const colName = match[1];
+                    const cleanName = colName.trim();
+
+                    if (headers.length > 0) {
+                        const isValidCol = headers.includes(cleanName);
+                        chip.classList.add(isValidCol
+                            ? (actionType === 'select' ? 'valid-select' : 'valid-fill')
+                            : 'invalid'
+                        );
+                    } else {
+                        chip.classList.add(actionType === 'select' ? 'valid-select' : 'valid-fill');
+                    }
+                } else if (match[2] !== undefined) {
+                    // It's a [[concept]] placeholder
+                    const conceptName = match[2].trim().toLowerCase();
+                    const isValidConcept = conceptTitles.includes(conceptName);
+                    chip.classList.add(isValidConcept ? 'valid-concept' : 'invalid');
+                }
+
+                // Set chip text with exact content
+                chip.textContent = match[0];
+                backdrop.appendChild(chip);
+
+                lastIndex = regex.lastIndex;
+            }
+
+            // Remaining text after last match
+            const textAfter = val.substring(lastIndex);
+            if (textAfter) {
+                backdrop.appendChild(document.createTextNode(textAfter));
+            }
+
+            // Sync scroll
+            backdrop.scrollLeft = inputEl.scrollLeft;
+        }
+
+        // Handle number validation for error display
+        const card = inputEl.closest('.af-action-card');
+        const errorMsgEl = card ? card.querySelector('.af-error-msg') : null;
+        let isValid = true;
+
+        if (inputType === 'number') {
+            if (!val || val.trim() === '') {
+                isValid = true;
+            } else if (/^\{.*\}$/.test(val.trim())) {
+                isValid = true;
+            } else {
+                isValid = /^-?\d*(\.\d+)?$/.test(val);
+            }
+        }
+
+        if (!isValid) {
+            container?.classList.add('error');
+            if (errorMsgEl) {
+                errorMsgEl.style.display = 'flex';
+                if (window.lucide) lucide.createIcons();
+            }
+        } else {
+            container?.classList.remove('error');
+            if (errorMsgEl) errorMsgEl.style.display = 'none';
+        }
+
+        // Update value
+        setValue(tabId, pKey, qKey, val);
+    }
+
+    /**
+     * Initialize smart inputs after rendering (scroll sync)
+     */
+    function initSmartInputs() {
+        document.querySelectorAll('.af-smart-text-input').forEach(input => {
+            const backdropId = input.id.replace('af-input-', 'af-backdrop-');
+            const backdrop = document.getElementById(backdropId);
+
+            if (backdrop) {
+                // Sync scroll on input scroll
+                input.onscroll = () => {
+                    backdrop.scrollLeft = input.scrollLeft;
+                };
+
+                // Initial render
+                handleSmartInput(input);
+            }
         });
     }
 
-    function renderPreview(tabId) {
-        const state = tabs.get(tabId);
-        const container = document.getElementById(`af-container-view-${tabId}`);
-        if (!container || !state.formData) return;
+    /**
+     * Smart Textarea handler - renders chips in backdrop with auto-resize
+     * @param {HTMLTextAreaElement} textareaEl - The textarea element
+     */
+    function handleSmartTextarea(textareaEl) {
+        const tabId = textareaEl.dataset.tab;
+        const pKey = textareaEl.dataset.page;
+        const qKey = textareaEl.dataset.question;
+        const val = textareaEl.value;
 
-        container.innerHTML = '';
+        // Get the container and backdrop
+        const container = textareaEl.closest('.af-smart-textarea-container');
+        const actionType = container?.dataset.actionType || 'fill';
+        const backdropId = textareaEl.id.replace('af-input-', 'af-backdrop-');
+        const backdrop = document.getElementById(backdropId);
+
+        // Auto-resize textarea and container
+        textareaEl.style.height = 'auto';
+        const newHeight = Math.max(60, textareaEl.scrollHeight);
+        textareaEl.style.height = newHeight + 'px';
+        if (container) container.style.height = newHeight + 'px';
+        if (backdrop) backdrop.style.height = newHeight + 'px';
+
+        // Render chips in backdrop
+        if (backdrop) {
+            backdrop.innerHTML = '';
+
+            const headers = window.globalHeaders || [];
+            const conceptTitles = (window.projectData?.tabs || [])
+                .filter(t => t.type === 'concept' || (!t.type && t.content !== undefined))
+                .map(t => t.title?.toLowerCase().trim())
+                .filter(Boolean);
+
+            let lastIndex = 0;
+            const regex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+            let match;
+
+            while ((match = regex.exec(val)) !== null) {
+                const textBefore = val.substring(lastIndex, match.index);
+                if (textBefore) {
+                    backdrop.appendChild(document.createTextNode(textBefore));
+                }
+
+                const chip = document.createElement('span');
+                chip.className = 'af-input-chip';
+
+                if (match[1] !== undefined) {
+                    const cleanName = match[1].trim();
+                    if (headers.length > 0) {
+                        const isValidCol = headers.includes(cleanName);
+                        chip.classList.add(isValidCol
+                            ? (actionType === 'select' ? 'valid-select' : 'valid-fill')
+                            : 'invalid'
+                        );
+                    } else {
+                        chip.classList.add(actionType === 'select' ? 'valid-select' : 'valid-fill');
+                    }
+                } else if (match[2] !== undefined) {
+                    const conceptName = match[2].trim().toLowerCase();
+                    const isValidConcept = conceptTitles.includes(conceptName);
+                    chip.classList.add(isValidConcept ? 'valid-concept' : 'invalid');
+                }
+
+                chip.textContent = match[0];
+                backdrop.appendChild(chip);
+                lastIndex = regex.lastIndex;
+            }
+
+            const textAfter = val.substring(lastIndex);
+            if (textAfter) {
+                backdrop.appendChild(document.createTextNode(textAfter));
+            }
+
+            // Sync scroll
+            backdrop.scrollTop = textareaEl.scrollTop;
+        }
+
+        // Update value
+        setValue(tabId, pKey, qKey, val);
+    }
+
+    /**
+     * Initialize smart textareas after rendering
+     */
+    function initSmartTextareas() {
+        document.querySelectorAll('.af-smart-textarea').forEach(textarea => {
+            const backdropId = textarea.id.replace('af-input-', 'af-backdrop-');
+            const backdrop = document.getElementById(backdropId);
+
+            if (backdrop) {
+                textarea.onscroll = () => {
+                    backdrop.scrollTop = textarea.scrollTop;
+                };
+
+                // Initial render
+                handleSmartTextarea(textarea);
+            }
+        });
+    }
+
+    function onRowSelected() {
+        tabs.forEach((s, id) => {
+            const v = document.querySelector(`#af-tog-view-${id}.${'active-view'}`);
+            if (v) renderViewMode(id);
+        });
+    }
+
+    // ============================================================
+    // VIEW MODE - Complete Redesign with Flow Timeline
+    // ============================================================
+
+    /**
+     * Get concept content by title (from template_view.js logic)
+     */
+    function getConceptContent(conceptTitle) {
+        if (!conceptTitle || !window.projectData?.tabs) return null;
+        const searchTitle = conceptTitle.toLowerCase().trim();
+        const tab = window.projectData.tabs.find(t => {
+            const isConceptType = t.type === 'concept' || t.type === undefined || !t.type;
+            const titleMatches = t.title && t.title.toLowerCase().trim() === searchTitle;
+            return isConceptType && titleMatches && t.content !== undefined;
+        });
+        if (!tab) return null;
+        // Process column placeholders in concept content
+        return tab.content.replace(/\{([^{}]+)\}/g, (match, key) => {
+            const trimmedKey = key.trim();
+            if (window.globalSelectedData && window.globalSelectedData[trimmedKey] !== undefined) {
+                return window.globalSelectedData[trimmedKey];
+            }
+            return match;
+        });
+    }
+
+    /**
+     * Resolve all placeholders ({Column} and [[Concept]]) in a value
+     */
+    function resolveAllPlaceholders(text, selectedData) {
+        if (!text) return '';
+        let result = text;
+        // First resolve [[Concept]] placeholders
+        result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, name) => {
+            const content = getConceptContent(name.trim());
+            return content !== null ? content : match;
+        });
+        // Then resolve {Column} placeholders
+        result = result.replace(/\{([^{}]+)\}/g, (match, col) => {
+            const val = selectedData?.[col.trim()] ?? selectedData?.[col.trim().toLowerCase()];
+            return val !== undefined && val !== '' ? val : match;
+        });
+        return result;
+    }
+
+    /**
+     * Process text and generate HTML with chips for placeholders
+     * - No row selected: indigo chip with placeholder name
+     * - Row selected + value exists: blue/cyan chip with value
+     * - Row selected + empty value: red chip with placeholder name + alert icon
+     */
+    function processTextWithChips(originalText, selectedData) {
+        if (!originalText) return '<span class="afv-empty">—</span>';
+
+        const hasRowSelected = selectedData && Object.keys(selectedData).length > 0;
+
+        let result = '';
+        let lastIndex = 0;
+
+        // Combined regex to match both {column} and [[concept]]
+        const combinedRegex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+        let match;
+
+        while ((match = combinedRegex.exec(originalText)) !== null) {
+            // Add text before the match
+            if (match.index > lastIndex) {
+                result += escHtml(originalText.substring(lastIndex, match.index));
+            }
+
+            if (match[1] !== undefined) {
+                // It's a {Column} placeholder
+                const colName = match[1].trim();
+
+                if (!hasRowSelected) {
+                    // No row selected - show indigo chip with placeholder name
+                    result += `<span class="afv-chip pending">{${escHtml(colName)}}</span>`;
+                } else {
+                    const val = selectedData?.[colName] ?? selectedData?.[colName.toLowerCase()];
+                    if (val !== undefined && val !== '') {
+                        // Resolved - show value in blue chip
+                        result += `<span class="afv-chip column">${escHtml(val)}</span>`;
+                    } else {
+                        // Row selected but empty value - show placeholder name + alert
+                        result += `<span class="afv-chip empty">{${escHtml(colName)}}<i data-lucide="alert-circle"></i></span>`;
+                    }
+                }
+            } else if (match[2] !== undefined) {
+                // It's a [[Concept]] placeholder
+                const conceptName = match[2].trim();
+                const content = getConceptContent(conceptName);
+
+                if (!hasRowSelected) {
+                    // No row selected - show indigo chip with placeholder name
+                    result += `<span class="afv-chip pending">[[${escHtml(conceptName)}]]</span>`;
+                } else if (content !== null && content !== '') {
+                    // Resolved - show content in cyan chip
+                    result += `<span class="afv-chip concept">${escHtml(content)}</span>`;
+                } else {
+                    // Row selected but concept not found/empty - show placeholder name + alert
+                    result += `<span class="afv-chip empty">[[${escHtml(conceptName)}]]<i data-lucide="alert-circle"></i></span>`;
+                }
+            }
+
+            lastIndex = combinedRegex.lastIndex;
+        }
+
+        // Add remaining text after last match
+        if (lastIndex < originalText.length) {
+            result += escHtml(originalText.substring(lastIndex));
+        }
+
+        return result || '<span class="afv-empty">—</span>';
+    }
+
+    /**
+     * Resolve value considering mappings for select actions
+     * Mapping structure: { optionValue: excelCellValue }
+     * e.g., { "Cliente Premium": "Premium", "Cliente Regular": "Regular" }
+     */
+    function resolveValueWithMappings(question, selectedData) {
+        const action = question.selenium?.action || 'fill';
+        const isSelect = action === 'select' || question.type === 'choice';
+
+        if (isSelect && question.config?.mapping?.enabled && question.config?.mapping?.placeholder) {
+            // Get the column name from placeholder (remove { and })
+            const placeholder = question.config.mapping.placeholder;
+            const columnName = placeholder.replace(/^\{|\}$/g, '').trim();
+
+            // Get the current row's value for this column
+            const columnValue = selectedData?.[columnName] ?? selectedData?.[columnName.toLowerCase()];
+
+            if (columnValue && question.config.mapping.map) {
+                // Find which option has this column value mapped to it
+                // The map is: { "Option A": "ExcelValue1", "Option B": "ExcelValue2" }
+                for (const [optionValue, mappedExcelValue] of Object.entries(question.config.mapping.map)) {
+                    if (mappedExcelValue === columnValue || String(mappedExcelValue) === String(columnValue)) {
+                        return optionValue;
+                    }
+                }
+
+                // No direct mapping found, check if there's a default value
+                if (question.config.mapping.defaultValue) {
+                    return question.config.mapping.defaultValue;
+                }
+            }
+            return null; // No matching mapping found
+        }
+
+        // For fill actions, resolve placeholders in response
+        return resolveAllPlaceholders(question.response || '', selectedData);
+    }
+
+    /**
+     * Create page separator with orange border-title style
+     */
+    function createPageSeparator(page, index) {
+        const separator = document.createElement('div');
+        separator.className = 'afv-page-separator';
+
+        const pageNum = index + 1;
+        const sectionInfo = page.pageInfo ? ` — Sección ${page.pageInfo.current || '?'}/${page.pageInfo.total || '?'}` : '';
+
+        separator.innerHTML = `<span class="afv-page-title">Página ${pageNum}${sectionInfo}</span>`;
+        return separator;
+    }
+
+    /**
+     * Create the flow grid container
+     */
+    function createFlowGrid() {
+        const grid = document.createElement('div');
+        grid.className = 'afv-flow-grid';
+        return grid;
+    }
+
+    /**
+     * Create a flow row with line segment + compact divided card for fill/select actions
+     */
+    function createViewFlowRow(question, actionNum, selectedData, isFirst, isLast) {
+        const row = document.createElement('div');
+        row.className = 'afv-flow-row';
+        if (isFirst) row.classList.add('first');
+        if (isLast) row.classList.add('last');
+
+        const action = question.selenium?.action || 'fill';
+        const isSelect = action === 'select' || question.type === 'choice';
+        const actionType = isSelect ? 'select' : 'fill';
+        const iconName = isSelect ? 'list' : 'type';
+        const isLongText = question.config?.textType === 'long';
+
+        // Resolve the final value
+        const resolvedValue = resolveValueWithMappings(question, selectedData);
+
+        // Build answer content based on type
+        let answerHtml = '';
+
+        if (isSelect && question.options?.length) {
+            // Show all options with the selected one highlighted
+            const isMapped = question.config?.mapping?.enabled;
+            let selectedOptValue = resolvedValue;
+
+            // If not mapped, use the stored response
+            if (!isMapped) {
+                selectedOptValue = question.response || '';
+            }
+
+            answerHtml = `<div class="afv-select-options">`;
+            question.options.forEach(opt => {
+                const optValue = opt.value || opt.text;
+                const isSelected = optValue === selectedOptValue;
+                answerHtml += `
+                    <div class="afv-select-opt ${isSelected ? 'selected' : ''}">
+                        <span class="afv-select-radio"></span>
+                        <span>${escHtml(opt.text)}</span>
+                    </div>
+                `;
+            });
+            answerHtml += `</div>`;
+        } else {
+            // Fill action - show the response with chips for placeholders
+            const originalText = question.response || '';
+            const answerClass = isLongText ? 'afv-answer paragraph' : 'afv-answer';
+            // Use processTextWithChips to render placeholders as colored chips
+            const chipHtml = processTextWithChips(originalText, selectedData);
+            answerHtml = `<div class="${answerClass}">${chipHtml}</div>`;
+        }
+
+        row.innerHTML = `
+            <div class="afv-flow-line">
+                <div class="afv-flow-num ${actionType}">${actionNum}</div>
+            </div>
+            <div class="afv-card ${actionType}">
+                <div class="afv-card-accent ${actionType}">
+                    <i data-lucide="${iconName}"></i>
+                </div>
+                <div class="afv-card-content">
+                    <div class="afv-question">${escHtml(question.text || 'Sin pregunta')}</div>
+                    ${answerHtml}
+                </div>
+            </div>
+        `;
+
+        return row;
+    }
+
+    /**
+     * Create a flow row for click/navigation actions
+     */
+    function createViewClickRow(label, navObj, actionNum, isFirst, isLast) {
+        const row = document.createElement('div');
+        row.className = 'afv-flow-row';
+        if (isFirst) row.classList.add('first');
+        if (isLast) row.classList.add('last');
+
+        row.innerHTML = `
+            <div class="afv-flow-line">
+                <div class="afv-flow-num click">${actionNum}</div>
+            </div>
+            <div class="afv-card click">
+                <div class="afv-card-accent click">
+                    <i data-lucide="mouse-pointer-click"></i>
+                </div>
+                <div class="afv-card-content">
+                    <div class="afv-question">${escHtml(label)}</div>
+                </div>
+            </div>
+        `;
+
+        return row;
+    }
+
+    /**
+     * Main render function for the new View Mode
+     * Uses a single grid for ALL pages so the line connects everything
+     */
+    function renderViewMode(tabId) {
+        const state = tabs.get(tabId);
+        const viewModeContainer = document.getElementById(`af-view-${tabId}`);
+        const scrollContainer = document.getElementById(`af-container-view-${tabId}`);
+        if (!viewModeContainer || !scrollContainer || !state.formData) return;
+
+        // Clear scroll container only
+        scrollContainer.innerHTML = '';
+
         const selectedData = window.globalSelectedData || {};
         const pages = state.formData.pages || {};
         const sortedPages = getSortedPages(pages);
+
+        // Count total actions across ALL pages for global first/last
+        let totalGlobalActions = 0;
+        sortedPages.forEach(pKey => {
+            const page = pages[pKey];
+            const questions = Object.keys(page.questions || {});
+            const nav = page.navigation || {};
+            totalGlobalActions += questions.length;
+            if (nav.next) totalGlobalActions++;
+            if (nav.submit) totalGlobalActions++;
+        });
+
+        // === VIEW MODE HEADER (URL + Player) - prepend to view-mode ===
+        // Remove existing if re-rendering
+        const existingHeader = viewModeContainer.querySelector('.afv-view-header');
+        if (existingHeader) existingHeader.remove();
+
+        const viewHeader = document.createElement('div');
+        viewHeader.className = 'afv-view-header';
+        viewHeader.innerHTML = `
+            <!-- Single Control Row: URL | Player | Status | Config -->
+            <div class="afv-control-row">
+                <i data-lucide="link" class="afv-url-ico"></i>
+                <input type="text" class="afv-url-input" value="${escHtml(state.formData.url || 'Sin URL')}" readonly title="${escHtml(state.formData.url || '')}">
+                <button class="afv-url-open" onclick="window.open('${escHtml(state.formData.url || '')}', '_blank')" title="Abrir" ${!state.formData.url ? 'disabled' : ''}>
+                    <i data-lucide="external-link"></i>
+                </button>
+                <span class="afv-sep">|</span>
+                <div class="afv-player-box">
+                    <span class="afv-count-current" id="afv-current-${tabId}">0</span>
+                    <span class="afv-count-sep">/</span>
+                    <span class="afv-count-total" id="afv-total-${tabId}">${totalGlobalActions}</span>
+                    <button class="afv-pbtn play" id="afv-play-${tabId}" title="Iniciar"><i data-lucide="play"></i></button>
+                    <button class="afv-pbtn pause" id="afv-pause-${tabId}" title="Pausar" disabled><i data-lucide="pause"></i></button>
+                    <button class="afv-pbtn stop" id="afv-stop-${tabId}" title="Detener" disabled><i data-lucide="square"></i></button>
+                </div>
+                <span class="afv-sep">|</span>
+                <span class="afv-status" id="afv-status-${tabId}">Listo</span>
+                <div class="afv-spacer"></div>
+                <span class="afv-sep">|</span>
+                <button class="afv-cfg-btn" id="afv-config-${tabId}" title="Configuración"><i data-lucide="settings"></i></button>
+            </div>
+        `;
+        // Insert at beginning of view-mode (before scroll container)
+        viewModeContainer.insertBefore(viewHeader, scrollContainer);
+
+        // Create a SINGLE grid for all pages inside scroll container
+        const gridContainer = createFlowGrid();
+        scrollContainer.appendChild(gridContainer);
+
         let globalActionIndex = 0;
 
-        sortedPages.forEach((pKey, index) => {
+        sortedPages.forEach((pKey, pageIndex) => {
             const page = pages[pKey];
-            const sectionCard = document.createElement('div');
-            sectionCard.className = 'af-section-card';
-            sectionCard.style.flexShrink = '0';
-            const pCurrent = page.pageInfo?.current || '?';
-            const pTotal = page.pageInfo?.total || '?';
-            const seqPageNum = index + 1;
 
-            sectionCard.innerHTML = `
-            <div class="af-section-header">
-                <div style="display:flex;align-items:center;">
-                    <span style="font-size:13px;font-weight:700;">PÁGINA ${seqPageNum}</span>
+            // Add page separator as a grid row
+            const sepRow = document.createElement('div');
+            sepRow.className = 'afv-flow-row separator';
+            sepRow.innerHTML = `
+                <div class="afv-flow-line">
+                    <div class="afv-flow-line-segment"></div>
                 </div>
-                <span class="af-section-chip">SECCIÓN ${pCurrent}/${pTotal}</span>
-            </div>
-            <div class="questions-container" id="af-pv-body-${pKey}"></div>
-        `;
-            container.appendChild(sectionCard);
-            const pageBody = sectionCard.querySelector(`#af-pv-body-${pKey}`);
+                <div class="afv-page-label">
+                    <span>Página ${pageIndex + 1}${page.pageInfo ? ` — ${page.pageInfo.current || '?'}/${page.pageInfo.total || '?'}` : ''}</span>
+                </div>
+            `;
+            gridContainer.appendChild(sepRow);
 
-            getSortedQuestions(page.questions || {}).forEach(qKey => {
+            // Render question cards
+            const questions = getSortedQuestions(page.questions || {});
+            const nav = page.navigation || {};
+
+            questions.forEach(qKey => {
                 globalActionIndex++;
-                pageBody.appendChild(createCard(tabId, pKey, qKey, page.questions[qKey], globalActionIndex, true, selectedData));
+                const isFirst = globalActionIndex === 1;
+                const isLast = globalActionIndex === totalGlobalActions;
+                const flowRow = createViewFlowRow(
+                    page.questions[qKey],
+                    globalActionIndex,
+                    selectedData,
+                    isFirst,
+                    isLast
+                );
+                gridContainer.appendChild(flowRow);
             });
 
-            const nav = page.navigation || {};
+            // Render navigation actions
             if (nav.next) {
                 globalActionIndex++;
-                pageBody.appendChild(createClickCard(tabId, globalActionIndex, 'Siguiente', nav.next));
+                const isFirst = globalActionIndex === 1;
+                const isLast = globalActionIndex === totalGlobalActions;
+                gridContainer.appendChild(createViewClickRow('Siguiente', nav.next, globalActionIndex, isFirst, isLast));
             }
             if (nav.submit) {
                 globalActionIndex++;
-                pageBody.appendChild(createClickCard(tabId, globalActionIndex, 'Enviar', nav.submit));
+                const isFirst = globalActionIndex === 1;
+                const isLast = globalActionIndex === totalGlobalActions;
+                gridContainer.appendChild(createViewClickRow('Enviar', nav.submit, globalActionIndex, isFirst, isLast));
             }
         });
+
+
         if (window.lucide) lucide.createIcons();
+    }
+
+    // Keep renderPreview as alias for backwards compatibility
+    function renderPreview(tabId) {
+        renderViewMode(tabId);
     }
 
     function getTabData(id) { return tabs.get(id); }
@@ -1136,14 +2161,20 @@ const AutoFormViewModule = (function () {
         onRowSelected,
         getTabData, restoreTabData,
         openFileManager, setValue, setOption, updateUrl, openUrl,
-        syncToProjectData, handleInputWithValidation,
+        syncToProjectData, handleInputWithValidation, handleSmartInput, initSmartInputs,
+        handleSmartTextarea, initSmartTextareas,
         // Recording Manager
         openRecordingManager,
         closeRecordingManager,
         loadRecording,
         exportRecording,
         deleteRecording,
-        importExternalRecording
+        importExternalRecording,
+        // New Recording Modal
+        openNewRecordingModal,
+        closeNewRecordingModal,
+        startNewRecording,
+        stopRecording
     };
 })();
 

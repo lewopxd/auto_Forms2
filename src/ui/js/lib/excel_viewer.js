@@ -227,7 +227,31 @@ class ExcelViewer {
                 const r = parseInt(tr.dataset.rowIndex);
                 this._selectRow(r);
             }
+
+            // Handle click on header row 1 (the row with column names) - this clears selection
+            const headerRowNum = e.target.closest('.ev-row-num-header');
+            if (headerRowNum) {
+                this._selectHeaderRow();
+            }
         });
+    }
+
+    _selectHeaderRow() {
+        this._clearSelection();
+        this.state.selectedCell = null;
+        this.state.selectedRow = -1;
+
+        // Highlight the header row
+        const headerRow = this.thead.querySelector('.ev-names-row');
+        if (headerRow) {
+            headerRow.classList.add('ev-row-selected');
+        }
+
+        this.cellRefEl.textContent = 'Row 1';
+        this.cellContentEl.textContent = 'Headers';
+
+        // Emit selection with rowIndex -1 to indicate header row (reset state)
+        this._emitSelection(-1, -1, null);
     }
 
     _selectCell(rowIndex, colIndex, emit = true) {

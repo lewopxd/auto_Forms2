@@ -187,7 +187,29 @@ const SheetViewModule = (function () {
         // e: { rowIndex, colIndex, rowData }
         // rowIndex is -1 for header row
 
-        if (e.rowIndex === -1) return; // Don't select header row (like original)
+        if (e.rowIndex === -1) {
+            // Header row selected - RESET state (clear selected data)
+            window.globalSelectedData = null;
+
+            // Clear saved selection in project data
+            if (window.projectData && window.projectData.excel) {
+                window.projectData.excel.selectedRow = -1;
+                window.projectData.excel.selectedCol = -1;
+            }
+
+            // Notify ALL template tabs to reset
+            document.querySelectorAll('.tab-content').forEach(content => {
+                if (content.updateView) {
+                    content.updateView();
+                }
+            });
+
+            // Directly notify AutoFormViewModule to reset
+            if (typeof AutoFormViewModule !== 'undefined' && typeof AutoFormViewModule.onRowSelected === 'function') {
+                AutoFormViewModule.onRowSelected(null);
+            }
+            return;
+        }
 
         const rowData = e.rowData || [];
 

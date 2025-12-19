@@ -152,7 +152,8 @@ class DevServer:
             self.PORT_FILE.write_text(json.dumps({
                 "port": port,
                 "pid": os.getpid(),
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
+                "status": "ready"
             }))
         except Exception as e:
             self.console.warn(f"Could not save port: {e}")
@@ -163,6 +164,41 @@ class DevServer:
                 self.PORT_FILE.unlink()
         except Exception:
             pass
+    
+    def is_another_instance_running(self) -> tuple[bool, int | None]:
+        """
+        Check if another dev server instance is already running.
+        Returns (is_running, port) tuple.
+        """
+        if not self.PORT_FILE.exists():
+            return False, None
+        
+        try:
+            data = json.loads(self.PORT_FILE.read_text())
+            port = data.get("port")
+            if not port:
+                return False, None
+            
+            # Try to connect and ping the existing server
+            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            test_socket.settimeout(1.0)
+            try:
+                test_socket.connect(('127.0.0.1', port))
+                test_socket.sendall(b"PING\n")
+                response = test_socket.recv(64).decode('utf-8').strip()
+                test_socket.close()
+                
+                if response == "PONG":
+                    return True, port
+                return False, None
+            except (ConnectionRefusedError, socket.timeout, OSError):
+                # Server not responding - it's a zombie port file
+                self.console.warn(f"Stale port file found (port {port}), cleaning up...")
+                self.clear_port_file()
+                return False, None
+        except Exception as e:
+            self.console.warn(f"Error checking for existing instance: {e}")
+            return False, None
     
     def disable_close_button(self):
         """Disable X button on console window."""
@@ -438,6 +474,65 @@ class DevServer:
         print(f"\n{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}")
         print(f"{self.console.CYAN}║{self.console.BOLD}{self.console.WHITE}  🚀 {APP_NAME} Dev Server v{APP_VERSION} - Starting...{self.console.RESET}")
         print(f"{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}\n")
+        
+        # IMMEDIATELY create a reservation file to prevent race conditions
+        # This blocks other instances from starting while we initialize
+        my_pid = os.getpid()
+        reservation_data = {
+            "port": 0,  # Will be updated once socket is ready
+            "pid": my_pid,
+            "timestamp": datetime.now().isoformat(),
+            "status": "starting"
+        }
+        
+        # Check if another instance is already running (or reserving)
+        is_running, existing_port = self.is_another_instance_running()
+        if is_running:
+            self.console.error(f"Another dev server is already running on port {existing_port}!")
+            self.console.error("Cannot start a second instance. Use the existing server or close it first.")
+            print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
+            try:
+                import msvcrt
+                msvcrt.getch()
+            except Exception:
+                input()
+            return
+        
+        # Also check for a reservation file (race condition prevention)
+        if self.PORT_FILE.exists():
+            try:
+                existing_data = json.loads(self.PORT_FILE.read_text())
+                existing_pid = existing_data.get("pid")
+                existing_status = existing_data.get("status")
+                
+                # If another process is "starting", check if it's still alive
+                if existing_status == "starting" and existing_pid and existing_pid != my_pid:
+                    # Check if that PID is still running
+                    try:
+                        os.kill(existing_pid, 0)  # Signal 0 = check if process exists
+                        # Process exists - another instance is starting
+                        self.console.error(f"Another dev server (PID {existing_pid}) is starting up!")
+                        self.console.error("Wait for it to finish or close it first.")
+                        print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
+                        try:
+                            import msvcrt
+                            msvcrt.getch()
+                        except Exception:
+                            input()
+                        return
+                    except (OSError, ProcessLookupError):
+                        # Process is dead - we can take over
+                        self.console.warn(f"Stale reservation file from dead PID {existing_pid}, cleaning up...")
+            except Exception as e:
+                self.console.warn(f"Error reading reservation file: {e}")
+        
+        # Write our reservation immediately
+        try:
+            self.PORT_FILE.write_text(json.dumps(reservation_data))
+            self.console.info(f"Reservation created (PID {my_pid})")
+        except Exception as e:
+            self.console.error(f"Could not create reservation file: {e}")
+            return
         
         # Disable close button
         self.disable_close_button()

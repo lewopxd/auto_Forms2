@@ -1014,6 +1014,7 @@ const TemplateViewModule = (function () {
             if (content.updateView) content.updateView();
         }
         noTabsState.classList.add('hidden');
+        window.triggerAutoSave(); // Save active tab state
     }
 
     function reset() {

@@ -11,7 +11,24 @@
     window.globalExcelData = null;
     window.projectData = {
         tabs: [],
-        excel: null
+        excel: null,
+        defaultActionSettings: {
+            fill: {
+                timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
+                validation: { verifyContent: false },
+                strategy: { type: 'native', typingSpeed: 50 },
+                textType: 'short'
+            },
+            select: {
+                timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
+                validation: { verifyContent: false },
+                strategy: { type: 'native' },
+                mapping: { enabled: false, placeholder: '', map: {} }
+            },
+            click: {
+                timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 }
+            }
+        }
     };
 
     // === HELPERS ===
@@ -219,8 +236,13 @@
         const sidebarIconEl = document.getElementById('status-icon');
 
         if (footerEl) {
-            const icons = { saving: '⏳', saved: '✓', restoring: '↻', error: '⚠' };
-            footerEl.textContent = `${icons[status] || '✓'} ${text}`;
+            const icons = {
+                saving: '<span class="spinner"></span>',
+                saved: '✓',
+                restoring: '↻',
+                error: '⚠'
+            };
+            footerEl.innerHTML = `${icons[status] || '✓'} ${text}`;
         }
 
         if (sidebarTextEl) sidebarTextEl.textContent = text;
@@ -248,7 +270,7 @@
         clearTimeout(autosaveTimeout);
 
         // Show "saving" status immediately
-        updateSaveStatus('saving', 'Guardando...');
+        updateSaveStatus('saving', 'Saving...');
 
         // Debounce the actual save
         autosaveTimeout = setTimeout(async () => {
