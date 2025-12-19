@@ -96,6 +96,14 @@ class ExcelViewer {
         const count = this.state.rows.length + 1;
         const width = String(count).length * 8 + 20;
         this.state.rowNumWidth = Math.max(30, width);
+
+        // Update scroll padding for container to account for sticky row headers
+        if (this.gridContainer) {
+            // Left padding: exact sticky width (plus a tiny 1px buffer for border)
+            this.gridContainer.style.scrollPaddingLeft = `${this.state.rowNumWidth + 1}px`;
+            // Right padding: 10px buffer to ensure right border is visible
+            this.gridContainer.style.scrollPaddingRight = '10px';
+        }
     }
 
     _render() {
@@ -213,6 +221,9 @@ class ExcelViewer {
     }
 
     _setupEventListeners() {
+        this.table.tabIndex = 0; // Make table focusable
+        this.table.style.outline = 'none'; // Custom focus style is handled by selection
+
         this.table.addEventListener('click', (e) => {
             const cell = e.target.closest('td, th.ev-name-cell');
             if (cell && cell.dataset.rowIndex !== undefined) {
@@ -234,6 +245,74 @@ class ExcelViewer {
                 this._selectHeaderRow();
             }
         });
+
+        // Keyboard Navigation
+        this.table.addEventListener('keydown', this._handleKeyDown.bind(this));
+    }
+
+    _handleKeyDown(e) {
+        // Only handle navigation keys
+        const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+        if (!navKeys.includes(e.key)) return;
+
+        // If no selection, select first cell
+        if (!this.state.selectedCell && this.state.selectedRow === null) {
+            e.preventDefault();
+            this._selectCell(0, 0);
+            return;
+        }
+
+        e.preventDefault(); // Prevent page scroll
+
+        let r, c;
+
+        // Current coordinates
+        if (this.state.selectedCell) {
+            r = this.state.selectedCell.row;
+            c = this.state.selectedCell.col;
+        } else if (this.state.selectedRow !== null) {
+            r = this.state.selectedRow;
+            c = 0; // Default to first column when moving from row selection
+        } else {
+            return;
+        }
+
+        // Calculate new coordinates
+        switch (e.key) {
+            case 'ArrowUp':
+                if (r > 0) r--;
+                break;
+            case 'ArrowDown':
+            case 'Enter':
+                if (r < this.state.rows.length - 1) r++;
+                break;
+            case 'ArrowLeft':
+                // Shift+Tab also behaves like Left
+                if (c > 0) c--;
+                break;
+            case 'ArrowRight':
+            case 'Tab':
+                if (c < this.state.columns.length - 1) c++;
+                break;
+        }
+
+        // Apply new selection
+        // If we were in Row Mode (selectedRow != null), we switch to Cell Mode (selectCell)
+        // This is standard behavior: selecting a row then moving right enters the first cell.
+        // Moving up/down from a row usually selects the next row, BUT implementation details
+        // suggest unifying to Cell selection is easier and acceptable.
+        // However, to be more "Excel-like":
+        // - If Row Selected + Up/Down -> Select Prev/Next Row
+        // - If Row Selected + Left/Right -> Enter Cell Mode at (r, 0)
+
+        if (this.state.selectedRow !== null && !this.state.selectedCell) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Enter') {
+                this._selectRow(r);
+                return;
+            }
+        }
+
+        this._selectCell(r, c);
     }
 
     _selectHeaderRow() {

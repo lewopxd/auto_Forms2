@@ -1193,9 +1193,6 @@ const AutoFormViewModule = (function () {
         const type = q.type || 'text';
         const isSelect = action === 'select' || type === 'choice';
 
-        // Extract question number from qKey (e.g., "q3" -> 3)
-        const questionNum = parseInt(qKey.replace(/\D/g, ''), 10) || num;
-
         // Icon logic
         const iconName = isSelect ? 'list' : 'type';
         const typeLabel = isSelect ? 'SELECCIÓN' : 'RELLENAR';
@@ -1234,7 +1231,7 @@ const AutoFormViewModule = (function () {
         // BODY WRAPPER
         bodyHtml += `<div class="af-card-body">`;
 
-        bodyHtml += `<div class="af-question-title"><span class="af-q-num">${questionNum}.</span> ${q.text || 'Sin texto'}</div>`;
+        bodyHtml += `<div class="af-question-title">${q.text || 'Sin texto'}</div>`;
 
         const rawVal = q.response || '';
         const displayVal = isViewMode ? processPlaceholders(rawVal, selectedData) : rawVal;
@@ -1937,7 +1934,7 @@ const AutoFormViewModule = (function () {
     /**
      * Create a flow row with line segment + compact divided card for fill/select actions
      */
-    function createViewFlowRow(question, actionNum, selectedData, isFirst, isLast, qKey) {
+    function createViewFlowRow(question, actionNum, selectedData, isFirst, isLast) {
         const row = document.createElement('div');
         row.className = 'afv-flow-row';
         if (isFirst) row.classList.add('first');
@@ -1948,9 +1945,6 @@ const AutoFormViewModule = (function () {
         const actionType = isSelect ? 'select' : 'fill';
         const iconName = isSelect ? 'list' : 'type';
         const isLongText = question.config?.textType === 'long';
-
-        // Extract question number from qKey (e.g., "q3" -> 3)
-        const questionNum = parseInt((qKey || '').replace(/\D/g, ''), 10) || actionNum;
 
         // Resolve the final value
         const resolvedValue = resolveValueWithMappings(question, selectedData);
@@ -1998,7 +1992,7 @@ const AutoFormViewModule = (function () {
                     <i data-lucide="${iconName}"></i>
                 </div>
                 <div class="afv-card-content">
-                    <div class="afv-question"><span class="afv-q-num">${questionNum}.</span> ${escHtml(question.text || 'Sin pregunta')}</div>
+                    <div class="afv-question">${escHtml(question.text || 'Sin pregunta')}</div>
                     ${answerHtml}
                 </div>
             </div>
@@ -2130,8 +2124,7 @@ const AutoFormViewModule = (function () {
                     globalActionIndex,
                     selectedData,
                     isFirst,
-                    isLast,
-                    qKey
+                    isLast
                 );
                 gridContainer.appendChild(flowRow);
             });

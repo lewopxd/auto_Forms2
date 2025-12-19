@@ -66,6 +66,10 @@
     overflow: auto;
     position: relative;
     background: #ffffff;
+    scroll-padding-top: 51px;
+    /* Exact height for sticky headers (25px + 25px + 1px buffer) */
+    scroll-padding-bottom: 4px;
+    /* Ensure bottom border is visible */
 }
 
 /* ==================== TABLE ==================== */
