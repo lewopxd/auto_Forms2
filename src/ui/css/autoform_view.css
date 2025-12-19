@@ -2446,3 +2446,31 @@
     width: 12px;
     height: 12px;
 }
+
+/* =========================================
+   BROWSER DETECTION SPINNER
+   ========================================= */
+.af-browser-spinner {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #f97316;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.af-browser-spinner i,
+.af-browser-spinner svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Disabled select state styling */
+#new-rec-browser:disabled {
+    background: #f3f4f6;
+    color: #9ca3af;
+    cursor: wait;
+}

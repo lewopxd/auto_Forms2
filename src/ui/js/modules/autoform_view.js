@@ -858,6 +858,9 @@ const AutoFormViewModule = (function () {
         }, 100);
 
         if (window.lucide) lucide.createIcons();
+
+        // Load available browsers dynamically
+        loadBrowserOptions();
     }
 
     function createNewRecordingModal() {
@@ -902,13 +905,13 @@ const AutoFormViewModule = (function () {
                     <!-- Browser -->
                     <div class="af-config-section">
                         <div class="af-config-sec-title">Navegador</div>
-                        <div class="af-config-row">
-                            <select id="new-rec-browser" class="af-config-select" style="flex:1">
-                                <option value="chrome">Google Chrome</option>
-                                <option value="edge">Microsoft Edge</option>
-                                <option value="webview">Native WebView</option>
-                                <option value="brave">Brave Browser</option>
+                        <div class="af-config-row" style="position: relative;">
+                            <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled>
+                                <option value="">Cargando navegadores...</option>
                             </select>
+                            <div id="new-rec-browser-spinner" class="af-browser-spinner">
+                                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            </div>
                         </div>
                     </div>
 
@@ -949,6 +952,49 @@ const AutoFormViewModule = (function () {
         if (window.ModalManager) window.ModalManager.makeDraggable(win, header);
 
         return modalOverlay;
+    }
+
+    /**
+     * Load available browsers from backend and populate the select element
+     */
+    async function loadBrowserOptions() {
+        const selectEl = document.getElementById('new-rec-browser');
+        const spinnerEl = document.getElementById('new-rec-browser-spinner');
+
+        if (!selectEl) return;
+
+        try {
+            // Call backend to detect installed browsers
+            const result = await window.bridgePy.send('detect_browsers', {});
+
+            // Clear loading state
+            selectEl.innerHTML = '';
+
+            if (result.success && result.browsers && result.browsers.length > 0) {
+                // Populate with detected browsers
+                result.browsers.forEach((browser, index) => {
+                    const option = document.createElement('option');
+                    option.value = browser.name;
+                    option.textContent = browser.display;
+                    option.dataset.path = browser.path || '';
+                    if (index === 0) option.selected = true;
+                    selectEl.appendChild(option);
+                });
+                selectEl.disabled = false;
+            } else {
+                // No browsers found
+                selectEl.innerHTML = '<option value="">No se encontraron navegadores</option>';
+                selectEl.disabled = true;
+            }
+        } catch (e) {
+            console.error('[AutoForm] Error detecting browsers:', e);
+            selectEl.innerHTML = '<option value="">Error al detectar navegadores</option>';
+            selectEl.disabled = true;
+        } finally {
+            // Hide spinner
+            if (spinnerEl) spinnerEl.style.display = 'none';
+            if (window.lucide) lucide.createIcons();
+        }
     }
 
     function closeNewRecordingModal() {
