@@ -830,12 +830,12 @@ const AutoFormViewModule = (function () {
         const managerModal = document.getElementById('modal-recording-manager');
         if (managerModal) managerModal.style.display = 'none';
 
-        // Create modal if not exists
-        let modal = document.getElementById('modal-new-recording');
-        if (!modal) {
-            modal = createNewRecordingModal();
-            document.body.appendChild(modal);
-        }
+        // ALWAYS recreate modal to ensure fresh state (no cached browser list)
+        let existingModal = document.getElementById('modal-new-recording');
+        if (existingModal) existingModal.remove();
+
+        const modal = createNewRecordingModal();
+        document.body.appendChild(modal);
 
         // Delegate to robust ModalManager
         if (window.ModalManager) {
@@ -844,23 +844,23 @@ const AutoFormViewModule = (function () {
             if (win) {
                 win.style.top = '15%';
                 win.style.left = '50%';
-                win.style.transform = 'translateX(-50%)';
+                win.style.transform = 'translateX(-50%)'
             }
             window.ModalManager.openModal(modal);
         } else {
             modal.classList.add('open');
         }
 
-        // Focus Filename input or URL
+        if (window.lucide) lucide.createIcons();
+
+        // Focus Filename input after modal is visible
         setTimeout(() => {
             const input = document.getElementById('new-rec-filename');
             if (input) input.focus();
         }, 100);
 
-        if (window.lucide) lucide.createIcons();
-
-        // Load available browsers dynamically
-        loadBrowserOptions();
+        // ALWAYS call browser detection when modal opens
+        load_analyze_browsers_core();
     }
 
     function createNewRecordingModal() {
@@ -905,7 +905,7 @@ const AutoFormViewModule = (function () {
                     <!-- Browser -->
                     <div class="af-config-section">
                         <div class="af-config-sec-title">Navegador</div>
-                        <div class="af-config-row" style="position: relative;">
+                        <div class="af-config-row" style="gap: 8px; align-items: center;">
                             <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled>
                                 <option value="">Cargando navegadores...</option>
                             </select>
@@ -936,9 +936,9 @@ const AutoFormViewModule = (function () {
                     <button class="af-btn-ghost" onclick="AutoFormViewModule.closeNewRecordingModal()">
                         Cancelar
                     </button>
-                    <button class="af-btn-primary" onclick="AutoFormViewModule.startNewRecording()">
-                        <i data-lucide="play-circle" class="w-4 h-4"></i>
-                        Iniciar
+                    <button class="af-btn-primary" onclick="AutoFormViewModule.startNewRecording()" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+                        <i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i>
+                        Iniciar Grabación
                     </button>
                 </div>
             </div>
@@ -955,23 +955,43 @@ const AutoFormViewModule = (function () {
     }
 
     /**
-     * Load available browsers from backend and populate the select element
+     * CORE: Detect and load available browsers into the select element
+     * Called every time the New Recording modal opens
+     * 
+     * Flow:
+     * 1. Block/disable the select list
+     * 2. Show spinner
+     * 3. Call backend detect_browsers and wait for data
+     * 4. Update select list with browser data
+     * 5. Unblock/enable the select list
+     * 6. Hide spinner
      */
-    async function loadBrowserOptions() {
+    async function load_analyze_browsers_core() {
         const selectEl = document.getElementById('new-rec-browser');
         const spinnerEl = document.getElementById('new-rec-browser-spinner');
 
-        if (!selectEl) return;
+        if (!selectEl) {
+            console.error('[AutoForm] Browser select element not found');
+            return;
+        }
+
+        // 1. Block list
+        selectEl.disabled = true;
+        selectEl.innerHTML = '<option value="">Detectando navegadores...</option>';
+
+        // 2. Show spinner
+        if (spinnerEl) spinnerEl.style.display = 'flex';
 
         try {
-            // Call backend to detect installed browsers
+            // 3. Call backend and wait for data
+            console.log('[AutoForm] Calling detect_browsers...');
             const result = await window.bridgePy.send('detect_browsers', {});
+            console.log('[AutoForm] detect_browsers result:', result);
 
-            // Clear loading state
+            // 4. Update list with browser data
             selectEl.innerHTML = '';
 
             if (result.success && result.browsers && result.browsers.length > 0) {
-                // Populate with detected browsers
                 result.browsers.forEach((browser, index) => {
                     const option = document.createElement('option');
                     option.value = browser.name;
@@ -980,9 +1000,11 @@ const AutoFormViewModule = (function () {
                     if (index === 0) option.selected = true;
                     selectEl.appendChild(option);
                 });
+
+                // 5. Unblock list (success)
                 selectEl.disabled = false;
             } else {
-                // No browsers found
+                // No browsers found - keep blocked
                 selectEl.innerHTML = '<option value="">No se encontraron navegadores</option>';
                 selectEl.disabled = true;
             }
@@ -991,7 +1013,7 @@ const AutoFormViewModule = (function () {
             selectEl.innerHTML = '<option value="">Error al detectar navegadores</option>';
             selectEl.disabled = true;
         } finally {
-            // Hide spinner
+            // 6. Hide spinner
             if (spinnerEl) spinnerEl.style.display = 'none';
             if (window.lucide) lucide.createIcons();
         }

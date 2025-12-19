@@ -16,4 +16,6 @@ Inicia la descripcion siempre con:
 
 "Tu nombre" es tu nombre de IA, con el que te bautizaron tus creadores, sin el numero de tu version.  ¿Eres Claude o Gemini o GPT?. Estas seguro que no eres Claude? El sistema menciona "Antigravity" como nombre del proyecto/herramienta, pero eso no cambia TU identidad.
 
+Identa y organiza bien la descripcion con saltos de linea para mantener un diseño legible
+
 informa que hiciste el commit.

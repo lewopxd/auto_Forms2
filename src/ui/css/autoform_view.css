@@ -2451,15 +2451,13 @@
    BROWSER DETECTION SPINNER
    ========================================= */
 .af-browser-spinner {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
     color: #f97316;
     display: flex;
     align-items: center;
     justify-content: center;
-    pointer-events: none;
 }
 
 .af-browser-spinner i,

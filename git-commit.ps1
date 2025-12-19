@@ -4,13 +4,13 @@
 # =============================================================================
 
 param(
-    [Parameter(Mandatory=$true, Position=0)]
+    [Parameter(Mandatory = $true, Position = 0)]
     [string]$Title,
     
-    [Parameter(Mandatory=$false, Position=1)]
+    [Parameter(Mandatory = $false, Position = 1)]
     [string]$Description,
     
-    [Parameter(Mandatory=$false, Position=2)]
+    [Parameter(Mandatory = $false, Position = 2)]
     [string]$AI
 )
 
@@ -48,14 +48,16 @@ if (-not [string]::IsNullOrWhiteSpace($SafeAI)) {
 if (-not [string]::IsNullOrWhiteSpace($SafeDescription)) {
     if (-not [string]::IsNullOrWhiteSpace($Body)) {
         $Body = "$Body - $SafeDescription"
-    } else {
+    }
+    else {
         $Body = $SafeDescription
     }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($Body)) {
     $CommitMsg = "$SafeTitle - $Body"
-} else {
+}
+else {
     $CommitMsg = $SafeTitle
 }
 
@@ -73,7 +75,8 @@ if ($commitExitCode -ne 0) {
     if ($output -match "nothing to commit") {
         Write-Host "Info: Nothing to commit, working tree clean" -ForegroundColor Yellow
         exit 0
-    } else {
+    }
+    else {
         Write-Host "Error during commit:" -ForegroundColor Red
         Write-Host $output -ForegroundColor Red
         exit 1
@@ -98,3 +101,9 @@ Write-Host ""
 Write-Host "==================================================" -ForegroundColor Green
 Write-Host "  OK - Commit y push completados!" -ForegroundColor Green
 Write-Host "==================================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "[SUCCESS] Tarea completada exitosamente. Cerrando..." -ForegroundColor Green
+Write-Host ""
+
+# Salida exitosa - el script se cierra automaticamente
+exit 0
