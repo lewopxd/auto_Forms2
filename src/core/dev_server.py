@@ -13,6 +13,12 @@ Persistent WebView Dev Server.
 Runs as a completely independent process with its own console.
 The webview lives inside this process - when browser closes,
 the server waits for commands to reopen it.
+
+ROBUSTNESS FEATURES:
+- File-based locking with PID validation
+- Automatic cleanup of stale lock files
+- Socket heartbeat verification
+- Graceful shutdown on all exit paths
 ============================================
 """
 
@@ -24,6 +30,7 @@ import time
 import json
 import ctypes
 import signal
+import atexit
 from pathlib import Path
 from datetime import datetime
 
@@ -31,6 +38,145 @@ from datetime import datetime
 src_dir = Path(__file__).parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
+
+
+# ============================================
+# LOCK FILE MANAGEMENT
+# ============================================
+
+PORT_FILE = Path.home() / ".autoforms_dev_port"
+LOCK_FILE = Path.home() / ".autoforms_dev.lock"
+
+
+def is_process_running(pid: int) -> bool:
+    """Check if a process with given PID is running."""
+    if pid <= 0:
+        return False
+    try:
+        if sys.platform == 'win32':
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+            return False
+        else:
+            os.kill(pid, 0)
+            return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
+def acquire_lock() -> bool:
+    """
+    Try to acquire the lock file.
+    Returns True if lock acquired, False if another instance is running.
+    """
+    my_pid = os.getpid()
+    
+    # Check if lock file exists
+    if LOCK_FILE.exists():
+        try:
+            data = json.loads(LOCK_FILE.read_text())
+            existing_pid = data.get("pid", 0)
+            
+            # Check if the process is actually running
+            if is_process_running(existing_pid):
+                return False  # Another instance is truly running
+            else:
+                # Stale lock file - remove it
+                print(f"[Lock] Removing stale lock file (PID {existing_pid} is dead)")
+                LOCK_FILE.unlink()
+        except Exception as e:
+            print(f"[Lock] Error reading lock file: {e}, removing...")
+            try:
+                LOCK_FILE.unlink()
+            except:
+                pass
+    
+    # Also check port file
+    if PORT_FILE.exists():
+        try:
+            data = json.loads(PORT_FILE.read_text())
+            existing_pid = data.get("pid", 0)
+            port = data.get("port", 0)
+            
+            # First check if process exists
+            if not is_process_running(existing_pid):
+                print(f"[Lock] Removing stale port file (PID {existing_pid} is dead)")
+                PORT_FILE.unlink()
+            elif port > 0:
+                # Process exists, try to ping the server
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(1.0)
+                    sock.connect(('127.0.0.1', port))
+                    sock.sendall(b"PING\n")
+                    response = sock.recv(64).decode('utf-8').strip()
+                    sock.close()
+                    if response == "PONG":
+                        return False  # Server is truly running
+                except (socket.error, socket.timeout, ConnectionRefusedError):
+                    # Can't connect, but process exists - maybe starting up
+                    # Give it a short grace period
+                    time.sleep(0.5)
+                    # Try again
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(1.0)
+                        sock.connect(('127.0.0.1', port))
+                        sock.sendall(b"PING\n")
+                        response = sock.recv(64).decode('utf-8').strip()
+                        sock.close()
+                        if response == "PONG":
+                            return False
+                    except:
+                        pass
+                    # Still can't connect - server is dead, clean up
+                    print(f"[Lock] Server not responding, cleaning up...")
+                    PORT_FILE.unlink()
+        except Exception as e:
+            print(f"[Lock] Error checking port file: {e}")
+            try:
+                PORT_FILE.unlink()
+            except:
+                pass
+    
+    # Create lock file
+    try:
+        LOCK_FILE.write_text(json.dumps({
+            "pid": my_pid,
+            "timestamp": datetime.now().isoformat()
+        }))
+        return True
+    except Exception as e:
+        print(f"[Lock] Error creating lock file: {e}")
+        return False
+
+
+def release_lock():
+    """Release the lock file."""
+    my_pid = os.getpid()
+    
+    # Only delete if it's our lock
+    try:
+        if LOCK_FILE.exists():
+            data = json.loads(LOCK_FILE.read_text())
+            if data.get("pid") == my_pid:
+                LOCK_FILE.unlink()
+    except Exception:
+        pass
+    
+    # Also clean port file if it's ours
+    try:
+        if PORT_FILE.exists():
+            data = json.loads(PORT_FILE.read_text())
+            if data.get("pid") == my_pid:
+                PORT_FILE.unlink()
+    except Exception:
+        pass
 
 
 class DevServerConsole:
@@ -69,7 +215,7 @@ class DevServerConsole:
         print(f"{cls.CYAN}{'═' * width}{cls.RESET}")
         title = f"  🚀 {app_name} Dev Server v{version}"
         print(f"{cls.CYAN}║{cls.BOLD}{cls.WHITE}{title}{cls.RESET}{' ' * (width - len(title) - 2)}{cls.CYAN}║{cls.RESET}")
-        port_line = f"  Port: {port} | Press Ctrl+C to quit"
+        port_line = f"  Port: {port} | PID: {os.getpid()} | Press Ctrl+C to quit"
         print(f"{cls.CYAN}║{cls.RESET}{cls.YELLOW}{port_line}{cls.RESET}{' ' * (width - len(port_line) - 2)}{cls.CYAN}║{cls.RESET}")
         print(f"{cls.CYAN}{'═' * width}{cls.RESET}")
         print()
@@ -98,7 +244,6 @@ class DevServerConsole:
     def waiting(cls, msg: str = "Waiting for commands...", inline: bool = False):
         """Print waiting status. If inline=True, overwrites the same line."""
         if inline:
-            # Use carriage return to overwrite same line
             print(f"\r{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}►{cls.RESET} {msg}        ", end='', flush=True)
         else:
             print(f"{cls.DIM}[{cls.timestamp()}]{cls.RESET} {cls.CYAN}►{cls.RESET} {msg}")
@@ -119,7 +264,6 @@ class DevServer:
     
     PORT_RANGE_START = 57432
     PORT_RANGE_END = 57532
-    PORT_FILE = Path.home() / ".autoforms_dev_port"
     
     def __init__(self):
         self.window = None
@@ -134,7 +278,16 @@ class DevServer:
         self.window_api = None
         self._window_open = False
         self._pending_open = threading.Event()
+        self._shutdown_initiated = False
         
+        # Register cleanup on exit
+        atexit.register(self._cleanup_on_exit)
+    
+    def _cleanup_on_exit(self):
+        """Called on any exit path."""
+        if not self._shutdown_initiated:
+            release_lock()
+    
     def find_available_port(self) -> int:
         for port in range(self.PORT_RANGE_START, self.PORT_RANGE_END):
             try:
@@ -149,7 +302,7 @@ class DevServer:
     
     def save_port(self, port: int):
         try:
-            self.PORT_FILE.write_text(json.dumps({
+            PORT_FILE.write_text(json.dumps({
                 "port": port,
                 "pid": os.getpid(),
                 "timestamp": datetime.now().isoformat(),
@@ -157,48 +310,6 @@ class DevServer:
             }))
         except Exception as e:
             self.console.warn(f"Could not save port: {e}")
-    
-    def clear_port_file(self):
-        try:
-            if self.PORT_FILE.exists():
-                self.PORT_FILE.unlink()
-        except Exception:
-            pass
-    
-    def is_another_instance_running(self) -> tuple[bool, int | None]:
-        """
-        Check if another dev server instance is already running.
-        Returns (is_running, port) tuple.
-        """
-        if not self.PORT_FILE.exists():
-            return False, None
-        
-        try:
-            data = json.loads(self.PORT_FILE.read_text())
-            port = data.get("port")
-            if not port:
-                return False, None
-            
-            # Try to connect and ping the existing server
-            test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            test_socket.settimeout(1.0)
-            try:
-                test_socket.connect(('127.0.0.1', port))
-                test_socket.sendall(b"PING\n")
-                response = test_socket.recv(64).decode('utf-8').strip()
-                test_socket.close()
-                
-                if response == "PONG":
-                    return True, port
-                return False, None
-            except (ConnectionRefusedError, socket.timeout, OSError):
-                # Server not responding - it's a zombie port file
-                self.console.warn(f"Stale port file found (port {port}), cleaning up...")
-                self.clear_port_file()
-                return False, None
-        except Exception as e:
-            self.console.warn(f"Error checking for existing instance: {e}")
-            return False, None
     
     def disable_close_button(self):
         """Disable X button on console window."""
@@ -299,7 +410,6 @@ class DevServer:
     def do_reload(self) -> str:
         """Reload the page or open window if closed."""
         if not self._window_open or not self.window:
-            # Window is closed, trigger reopen
             self.console.webview("Window was closed, reopening...")
             self._pending_open.set()
             return "OK:REOPENING"
@@ -340,9 +450,10 @@ class DevServer:
         self.webview_ready = False
     
     def shutdown(self):
+        self._shutdown_initiated = True
         time.sleep(0.3)
         self.running = False
-        self.clear_port_file()
+        release_lock()
         
         if self.server_socket:
             try:
@@ -447,12 +558,9 @@ class DevServer:
         self.webview_module.start(debug=DEBUG_MODE)
         
         # If we get here, user closed the window
-        # Now we wait for OPEN/RELOAD command to restart
         self.console.webview("Webview engine stopped")
         
         while self.running:
-            # Silent wait - no log spam
-            
             # Wait for pending open signal
             if self._pending_open.wait(timeout=1.0):
                 self._pending_open.clear()
@@ -469,27 +577,16 @@ class DevServer:
         """Main entry point."""
         from core.config import APP_NAME, APP_VERSION, DEBUG_MODE
         
-        # Show immediate startup message - user sees this instantly
+        # Show immediate startup message
         self.console.enable_ansi()
         print(f"\n{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}")
         print(f"{self.console.CYAN}║{self.console.BOLD}{self.console.WHITE}  🚀 {APP_NAME} Dev Server v{APP_VERSION} - Starting...{self.console.RESET}")
         print(f"{self.console.CYAN}══════════════════════════════════════════════════════════════{self.console.RESET}\n")
         
-        # IMMEDIATELY create a reservation file to prevent race conditions
-        # This blocks other instances from starting while we initialize
-        my_pid = os.getpid()
-        reservation_data = {
-            "port": 0,  # Will be updated once socket is ready
-            "pid": my_pid,
-            "timestamp": datetime.now().isoformat(),
-            "status": "starting"
-        }
-        
-        # Check if another instance is already running (or reserving)
-        is_running, existing_port = self.is_another_instance_running()
-        if is_running:
-            self.console.error(f"Another dev server is already running on port {existing_port}!")
-            self.console.error("Cannot start a second instance. Use the existing server or close it first.")
+        # Try to acquire lock
+        if not acquire_lock():
+            self.console.error("Another dev server instance is already running!")
+            self.console.error("Close the existing server first or use it.")
             print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
             try:
                 import msvcrt
@@ -498,41 +595,7 @@ class DevServer:
                 input()
             return
         
-        # Also check for a reservation file (race condition prevention)
-        if self.PORT_FILE.exists():
-            try:
-                existing_data = json.loads(self.PORT_FILE.read_text())
-                existing_pid = existing_data.get("pid")
-                existing_status = existing_data.get("status")
-                
-                # If another process is "starting", check if it's still alive
-                if existing_status == "starting" and existing_pid and existing_pid != my_pid:
-                    # Check if that PID is still running
-                    try:
-                        os.kill(existing_pid, 0)  # Signal 0 = check if process exists
-                        # Process exists - another instance is starting
-                        self.console.error(f"Another dev server (PID {existing_pid}) is starting up!")
-                        self.console.error("Wait for it to finish or close it first.")
-                        print(f"\n{self.console.YELLOW}Press any key to exit...{self.console.RESET}")
-                        try:
-                            import msvcrt
-                            msvcrt.getch()
-                        except Exception:
-                            input()
-                        return
-                    except (OSError, ProcessLookupError):
-                        # Process is dead - we can take over
-                        self.console.warn(f"Stale reservation file from dead PID {existing_pid}, cleaning up...")
-            except Exception as e:
-                self.console.warn(f"Error reading reservation file: {e}")
-        
-        # Write our reservation immediately
-        try:
-            self.PORT_FILE.write_text(json.dumps(reservation_data))
-            self.console.info(f"Reservation created (PID {my_pid})")
-        except Exception as e:
-            self.console.error(f"Could not create reservation file: {e}")
-            return
+        self.console.info(f"Lock acquired (PID {os.getpid()})")
         
         # Disable close button
         self.disable_close_button()
@@ -555,6 +618,9 @@ class DevServer:
         
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
+        
+        # Show header with port info
+        self.console.header(APP_NAME, APP_VERSION, self.port)
         
         # Run main webview loop
         self.run_webview_loop()

@@ -11,6 +11,11 @@ Author: @lewopxd
 Description:
 Client module to communicate with the persistent 
 WebView dev server.
+
+ROBUSTNESS FEATURES:
+- Better PID validation before launching
+- Cleans up stale files automatically
+- Prevents launching duplicate servers
 ============================================
 """
 
@@ -23,7 +28,47 @@ from pathlib import Path
 
 
 PORT_FILE = Path.home() / ".autoforms_dev_port"
+LOCK_FILE = Path.home() / ".autoforms_dev.lock"
 DEFAULT_PORT = 57432
+
+
+def is_process_running(pid: int) -> bool:
+    """Check if a process with given PID is running."""
+    if pid <= 0:
+        return False
+    try:
+        if sys.platform == 'win32':
+            import ctypes
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+            if handle:
+                kernel32.CloseHandle(handle)
+                return True
+            return False
+        else:
+            os.kill(pid, 0)
+            return True
+    except (OSError, ProcessLookupError):
+        return False
+
+
+def cleanup_stale_files():
+    """Remove stale lock and port files from dead processes."""
+    for file in [LOCK_FILE, PORT_FILE]:
+        if file.exists():
+            try:
+                data = json.loads(file.read_text())
+                pid = data.get("pid", 0)
+                if not is_process_running(pid):
+                    print(f"[DevClient] Removing stale file: {file.name} (PID {pid} is dead)")
+                    file.unlink()
+            except Exception as e:
+                print(f"[DevClient] Error checking {file.name}: {e}")
+                try:
+                    file.unlink()
+                except:
+                    pass
 
 
 def get_server_info() -> dict | None:
@@ -45,20 +90,32 @@ def is_dev_server_running() -> tuple[bool, int | None]:
     Check if the dev server is running.
     Returns (is_running, port).
     """
+    # First cleanup any stale files
+    cleanup_stale_files()
+    
     info = get_server_info()
     
     if not info:
         return False, None
     
     port = info.get("port", DEFAULT_PORT)
+    pid = info.get("pid", 0)
     
-    # Try to connect
+    # Check if the process is actually running
+    if not is_process_running(pid):
+        print(f"[DevClient] Server PID {pid} is not running, cleaning up...")
+        try:
+            PORT_FILE.unlink()
+        except:
+            pass
+        return False, None
+    
+    # Try to connect and ping
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(1.0)
+        sock.settimeout(2.0)
         sock.connect(('127.0.0.1', port))
         
-        # Send ping
         sock.sendall(b"PING\n")
         response = sock.recv(1024).decode('utf-8').strip()
         sock.close()
@@ -68,12 +125,9 @@ def is_dev_server_running() -> tuple[bool, int | None]:
         else:
             return False, None
             
-    except (socket.error, socket.timeout, ConnectionRefusedError):
-        # Server not responding, clean up stale port file
-        try:
-            PORT_FILE.unlink()
-        except Exception:
-            pass
+    except (socket.error, socket.timeout, ConnectionRefusedError) as e:
+        print(f"[DevClient] Can't connect to server: {e}")
+        # Process exists but server not responding - might be starting up
         return False, None
 
 
@@ -114,6 +168,15 @@ def launch_dev_server() -> bool:
     This console is NOT a child of the current process.
     Returns True if launched successfully.
     """
+    # First, make sure we clean up any stale files
+    cleanup_stale_files()
+    
+    # Double-check no server is running
+    running, port = is_dev_server_running()
+    if running:
+        print(f"[DevClient] Server already running on port {port}, not launching")
+        return True  # Consider this success - server is running
+    
     try:
         # Path to dev_server.py
         dev_server_path = Path(__file__).parent / "dev_server.py"
@@ -156,7 +219,7 @@ def launch_dev_server() -> bool:
         return False
 
 
-def wait_for_server(timeout: float = 10.0, wait_for_webview: bool = True) -> bool:
+def wait_for_server(timeout: float = 15.0, wait_for_webview: bool = True) -> bool:
     """
     Wait for the dev server to become ready.
     If wait_for_webview is True, also waits for webview to be loaded.
@@ -164,20 +227,30 @@ def wait_for_server(timeout: float = 10.0, wait_for_webview: bool = True) -> boo
     """
     import time
     start = time.time()
+    check_interval = 0.3  # Check more frequently
+    
+    print("[DevClient] Waiting for server to be ready...")
     
     while time.time() - start < timeout:
         running, port = is_dev_server_running()
         if running:
+            print(f"[DevClient] Server responding on port {port}")
+            
             if not wait_for_webview:
                 return True
             
             # Check if webview is ready
             success, response = send_command("STATUS", port)
-            if success and "READY" in response:
-                return True
+            if success:
+                if "READY" in response:
+                    print("[DevClient] Server fully ready!")
+                    return True
+                elif "LOADING" in response:
+                    print("[DevClient] WebView is loading...")
         
-        time.sleep(0.5)
+        time.sleep(check_interval)
     
+    print("[DevClient] Timeout waiting for server")
     return False
 
 
@@ -185,10 +258,15 @@ def main():
     """Command-line interface for dev client."""
     if len(sys.argv) < 2:
         print("Usage: dev_client.py <command>")
-        print("Commands: ping, reload, quit, status, launch")
+        print("Commands: ping, reload, quit, status, launch, cleanup")
         return 1
     
     cmd = sys.argv[1].upper()
+    
+    if cmd == "CLEANUP":
+        cleanup_stale_files()
+        print("Cleanup complete")
+        return 0
     
     if cmd == "LAUNCH":
         running, port = is_dev_server_running()
