@@ -244,3 +244,42 @@ def import_record(src_path: str) -> Dict[str, Union[bool, str]]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+def save_recording(filename: str, data: dict) -> str:
+    """
+    Save a complete recording to file.
+    
+    Args:
+        filename: Name for the recording (without extension)
+        data: Recording data to save
+        
+    Returns:
+        Path to the saved file
+    """
+    # Ensure filename is clean
+    safe_name = re.sub(r'[^\w\-_\. ]', '', filename)
+    if not safe_name:
+        safe_name = f"recording_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Add extension if needed
+    if not safe_name.endswith('.raf'):
+        safe_name += '.raf'
+    
+    filepath = get_data_dir() / safe_name
+    
+    # Avoid overwrite
+    counter = 1
+    base_name = filepath.stem
+    while filepath.exists():
+        filepath = get_data_dir() / f"{base_name}_{counter}.raf"
+        counter += 1
+    
+    # Add metadata
+    data["name"] = filepath.stem
+    data["created"] = datetime.now().isoformat()
+    data["updated"] = datetime.now().isoformat()
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    
+    return str(filepath)

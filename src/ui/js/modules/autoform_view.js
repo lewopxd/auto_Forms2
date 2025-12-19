@@ -393,15 +393,22 @@ const AutoFormViewModule = (function () {
         if (window.lucide) lucide.createIcons();
     }
 
-    function stopRecording(tabId) {
+    /**
+     * Stop recording with confirmation dialog
+     * @param {string} tabId - The tab ID
+     * @param {boolean} skipConfirm - Whether to skip confirmation (e.g., browser closed externally)
+     * @param {boolean} browserClosed - Whether browser was closed externally
+     */
+    async function stopRecording(tabId, skipConfirm = false, browserClosed = false) {
         const tab = window.findTab ? window.findTab(tabId) : null;
-        if (tab) {
-            tab.isRecording = false;
-            tab.isLoadingRecording = true; // Show "Cargando grabación" state
+        if (!tab) return;
 
+        if (browserClosed) {
+            // Browser was closed externally - discard and show alert
+            tab.isRecording = false;
+            tab.isLoadingRecording = false;
             renderInfoBar(tabId);
 
-            // Also update main content area to show "Cargando grabación" state
             const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
             if (contentContainer) {
                 contentContainer.innerHTML = renderEmptyState(tabId);
@@ -409,13 +416,103 @@ const AutoFormViewModule = (function () {
             }
 
             window.showAlert({
-                icon: 'check-circle',
-                iconColor: 'text-green-500',
-                title: 'Grabación Finalizada',
-                message: 'La grabación se ha detenido correctamente.',
-                confirmText: 'Aceptar',
-                confirmColor: 'bg-green-600 hover:bg-green-700'
+                icon: 'alert-triangle',
+                iconColor: 'text-orange-500',
+                title: 'Grabación Detenida',
+                message: 'El navegador fue cerrado manualmente. La grabación se ha descartado.',
+                confirmText: 'Entendido',
+                confirmColor: 'bg-orange-600 hover:bg-orange-700'
             });
+            return;
+        }
+
+        if (skipConfirm) {
+            // Stop was triggered from injected UI with save preference
+            await handleStopComplete(tabId, true);
+            return;
+        }
+
+        // Show confirmation dialog
+        window.showAlert({
+            icon: 'square',
+            iconColor: 'text-red-500',
+            title: 'Detener Grabación',
+            message: `
+                <p class="mb-3">¿Estás seguro de que deseas detener la grabación?</p>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" id="stop-save-checkbox" checked class="accent-green-500">
+                    <span>Guardar grabación antes de cerrar</span>
+                </label>
+            `,
+            confirmText: 'Confirmar',
+            cancelText: 'Cancelar',
+            confirmColor: 'bg-red-600 hover:bg-red-700',
+            onConfirm: async () => {
+                const saveCheckbox = document.getElementById('stop-save-checkbox');
+                const shouldSave = saveCheckbox?.checked ?? true;
+                await handleStopComplete(tabId, shouldSave);
+            }
+        });
+    }
+
+    /**
+     * Handle the completion of stopping a recording
+     */
+    async function handleStopComplete(tabId, shouldSave) {
+        const tab = window.findTab ? window.findTab(tabId) : null;
+        if (!tab) return;
+
+        tab.isRecording = false;
+        tab.isLoadingRecording = shouldSave;
+
+        renderInfoBar(tabId);
+
+        const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
+        if (contentContainer) {
+            contentContainer.innerHTML = renderEmptyState(tabId);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        try {
+            // Call backend to stop recording
+            const result = await window.bridgePy.send('stop_recording', { save: shouldSave });
+            console.log('[AutoForm] Stop recording result:', result);
+
+            if (result.success && result.path && shouldSave) {
+                // Recording saved - load it into the tab
+                await handleLoadRecording(result.path, null);
+
+                window.showAlert({
+                    icon: 'check-circle',
+                    iconColor: 'text-green-500',
+                    title: 'Grabación Guardada',
+                    message: 'La grabación se ha guardado y cargado correctamente.',
+                    confirmText: 'Aceptar',
+                    confirmColor: 'bg-green-600 hover:bg-green-700'
+                });
+            } else if (!shouldSave) {
+                tab.isLoadingRecording = false;
+                if (contentContainer) {
+                    contentContainer.innerHTML = renderEmptyState(tabId);
+                    if (window.lucide) lucide.createIcons();
+                }
+
+                window.showAlert({
+                    icon: 'info',
+                    iconColor: 'text-blue-500',
+                    title: 'Grabación Descartada',
+                    message: 'La grabación se ha detenido sin guardar.',
+                    confirmText: 'Aceptar',
+                    confirmColor: 'bg-blue-600 hover:bg-blue-700'
+                });
+            }
+        } catch (e) {
+            console.error('[AutoForm] Error stopping recording:', e);
+            tab.isLoadingRecording = false;
+            if (contentContainer) {
+                contentContainer.innerHTML = renderEmptyState(tabId);
+                if (window.lucide) lucide.createIcons();
+            }
         }
     }
 
@@ -1041,81 +1138,119 @@ const AutoFormViewModule = (function () {
         const browserEl = document.getElementById('new-rec-browser');
         const noCacheEl = document.getElementById('new-rec-nocache');
         const loginEl = document.getElementById('new-rec-login');
+        const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
 
         if (!filenameEl || !urlEl || !browserEl) return;
 
         const filename = filenameEl.value.trim() || `recording_${Date.now()}`;
         const url = urlEl.value.trim();
         const browser = browserEl.value;
-        const noCache = noCacheEl.checked;
-        const withLogin = loginEl.checked;
+        const noCache = noCacheEl?.checked || false;
+        const withLogin = loginEl?.checked || false;
 
         if (!url) {
             alert('Por favor ingresa una URL válida');
             return;
         }
 
+        if (!browser) {
+            alert('Por favor selecciona un navegador');
+            return;
+        }
+
         console.log('[AutoForm] Starting Recording:', { filename, url, browser, noCache, withLogin });
 
-        // Close NEW modal first
-        const newModal = document.getElementById('modal-new-recording');
-        if (window.ModalManager) window.ModalManager.closeModal(newModal);
-        else newModal?.classList.remove('open');
-
-        // Close MANAGER modal permanently (don't restore it)
-        const managerModal = document.getElementById('modal-recording-manager');
-        if (window.ModalManager && managerModal) {
-            window.ModalManager.closeModal(managerModal);
-            // Ensure it doesn't pop back up from closeNewRecordingModal logic if triggered elsewhere
-            managerModal.style.display = 'none';
-        } else if (managerModal) {
-            managerModal.classList.remove('open');
+        // Show spinner on button (keep modal open until connected)
+        const originalBtnHtml = startBtn?.innerHTML || '';
+        if (startBtn) {
+            startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Conectando...';
+            startBtn.disabled = true;
+            if (window.lucide) lucide.createIcons();
         }
 
-        // Set Recording State on BOTH local state AND global tab
-        if (currentManagerTabId) {
-            // Update local state
-            const localState = tabs.get(currentManagerTabId);
-            if (localState) {
-                localState.isRecording = true;
-                localState.recordingInfo = {
-                    filename: filename + '.raf',
-                    url: url,
-                    browser: browser
-                };
-            }
+        // Store tabId for event handlers
+        const tabId = currentManagerTabId;
 
-            // Update global tab (used by renderInfoBar)
-            const globalTab = window.findTab ? window.findTab(currentManagerTabId) : null;
-            if (globalTab) {
-                globalTab.isRecording = true;
-                globalTab.recordingInfo = {
-                    filename: filename + '.raf',
-                    url: url,
-                    browser: browser
-                };
-                console.log('[AutoForm] Recording state set:', globalTab.isRecording, globalTab.recordingInfo);
+        try {
+            // Call backend to start recording
+            const result = await window.bridgePy.send('start_recording', {
+                filename: filename,
+                url: url,
+                browser: browser,
+                options: {
+                    noCache: noCache,
+                    withLogin: withLogin
+                }
+            });
+
+            console.log('[AutoForm] start_recording result:', result);
+
+            if (result.success && result.connected) {
+                // Connection successful - close modals and update state
+                const newModal = document.getElementById('modal-new-recording');
+                if (window.ModalManager) window.ModalManager.closeModal(newModal);
+                else newModal?.classList.remove('open');
+
+                const managerModal = document.getElementById('modal-recording-manager');
+                if (window.ModalManager && managerModal) {
+                    window.ModalManager.closeModal(managerModal);
+                    managerModal.style.display = 'none';
+                } else if (managerModal) {
+                    managerModal.classList.remove('open');
+                }
+
+                // Set Recording State
+                if (tabId) {
+                    const localState = tabs.get(tabId);
+                    if (localState) {
+                        localState.isRecording = true;
+                        localState.recordingInfo = {
+                            filename: filename + '.raf',
+                            url: url,
+                            browser: browser
+                        };
+                    }
+
+                    const globalTab = window.findTab ? window.findTab(tabId) : null;
+                    if (globalTab) {
+                        globalTab.isRecording = true;
+                        globalTab.recordingInfo = {
+                            filename: filename + '.raf',
+                            url: url,
+                            browser: browser
+                        };
+                    }
+
+                    renderInfoBar(tabId);
+
+                    const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
+                    if (contentContainer) {
+                        contentContainer.innerHTML = renderEmptyState(tabId);
+                        if (window.lucide) lucide.createIcons();
+                    }
+                }
             } else {
-                console.warn('[AutoForm] Could not find global tab for:', currentManagerTabId);
+                // Error - restore button
+                throw new Error(result.error || 'Failed to start recording');
             }
+        } catch (e) {
+            console.error('[AutoForm] Error starting recording:', e);
 
-            // Update UI for recording mode
-            console.log('[AutoForm] Calling renderInfoBar for:', currentManagerTabId);
-            renderInfoBar(currentManagerTabId);
-
-            // Also update main content area to show "Grabando..." state
-            const contentContainer = document.getElementById(`af-container-edit-${currentManagerTabId}`);
-            if (contentContainer) {
-                contentContainer.innerHTML = renderEmptyState(currentManagerTabId);
+            // Restore button state
+            if (startBtn) {
+                startBtn.innerHTML = originalBtnHtml;
+                startBtn.disabled = false;
                 if (window.lucide) lucide.createIcons();
             }
-        } else {
-            console.warn('[AutoForm] currentManagerTabId is not set!');
-        }
 
-        // Send to backend (Stub)
-        if (window.bridgePy) {
-            // window.bridgePy.send('start_recording', { ... });
+            window.showAlert({
+                icon: 'alert-circle',
+                iconColor: 'text-red-500',
+                title: 'Error al Iniciar',
+                message: `No se pudo iniciar la grabación: ${e.message || e}`,
+                confirmText: 'Entendido',
+                confirmColor: 'bg-red-600 hover:bg-red-700'
+            });
         }
     }
 
@@ -2231,6 +2366,87 @@ const AutoFormViewModule = (function () {
     function getTabData(id) { return tabs.get(id); }
     function restoreTabData() { }
 
+    // ============================================================
+    // EVENT LISTENERS FOR BACKEND RECORDING EVENTS
+    // ============================================================
+
+    /**
+     * Initialize event listeners for recording system
+     */
+    function initRecordingEvents() {
+        // Listen for browser closed externally
+        window.addEventListener('recording_browser_closed', (e) => {
+            console.log('[AutoForm] Browser closed externally event received');
+            // Find the tab that was recording
+            const recordingTab = Array.from(tabs.entries()).find(([id, state]) => state.isRecording);
+            if (recordingTab) {
+                const [tabId] = recordingTab;
+                stopRecording(tabId, true, true); // skipConfirm=true, browserClosed=true
+            }
+        });
+
+        // Listen for recording stopped from injected UI
+        window.addEventListener('recording_stopped', (e) => {
+            console.log('[AutoForm] Recording stopped event received:', e.detail);
+            const detail = e.detail || {};
+
+            // Find the tab that was recording
+            const recordingTab = Array.from(tabs.entries()).find(([id, state]) => state.isRecording);
+            if (recordingTab) {
+                const [tabId] = recordingTab;
+                const tab = window.findTab ? window.findTab(tabId) : null;
+
+                if (tab) {
+                    tab.isRecording = false;
+                    tab.isLoadingRecording = detail.path ? true : false;
+
+                    renderInfoBar(tabId);
+
+                    if (detail.path) {
+                        // Recording was saved - load it
+                        handleLoadRecording(detail.path, null).then(() => {
+                            window.showAlert({
+                                icon: 'check-circle',
+                                iconColor: 'text-green-500',
+                                title: 'Grabación Guardada',
+                                message: 'La grabación se ha guardado y cargado correctamente.',
+                                confirmText: 'Aceptar',
+                                confirmColor: 'bg-green-600 hover:bg-green-700'
+                            });
+                        });
+                    } else {
+                        // Recording was not saved
+                        const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
+                        if (contentContainer) {
+                            contentContainer.innerHTML = renderEmptyState(tabId);
+                            if (window.lucide) lucide.createIcons();
+                        }
+
+                        window.showAlert({
+                            icon: 'info',
+                            iconColor: 'text-blue-500',
+                            title: 'Grabación Descartada',
+                            message: 'La grabación se ha detenido sin guardar.',
+                            confirmText: 'Aceptar',
+                            confirmColor: 'bg-blue-600 hover:bg-blue-700'
+                        });
+                    }
+                }
+            }
+        });
+
+        console.log('[AutoForm] Recording event listeners initialized');
+    }
+
+    // Auto-initialize when module loads
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initRecordingEvents);
+        } else {
+            initRecordingEvents();
+        }
+    }
+
     return {
         createAutoFormContent,
         onRowSelected,
@@ -2249,7 +2465,9 @@ const AutoFormViewModule = (function () {
         openNewRecordingModal,
         closeNewRecordingModal,
         startNewRecording,
-        stopRecording
+        stopRecording,
+        // Events
+        initRecordingEvents
     };
 })();
 

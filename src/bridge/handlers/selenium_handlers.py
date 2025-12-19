@@ -1,6 +1,6 @@
 """
 Selenium Handlers for Bridge API
-Handles browser detection and form record management.
+Handles browser detection, form record management, and recording sessions.
 """
 import sys
 import os
@@ -16,6 +16,11 @@ from core.selenium.form_storage import (
     delete_record,
     rename_record,
     import_record
+)
+from core.selenium.recording_session import (
+    start_new_session,
+    stop_active_session,
+    get_active_session
 )
 
 
@@ -36,7 +41,13 @@ class SeleniumHandler:
         bridge.register_handler("rename_form_record", self.handle_rename_record)
         bridge.register_handler("import_form_record", self.handle_import_record)
         
-        print("[SeleniumHandler] Handlers registered: detect_browsers, list/load/delete/rename/import records")
+        # Recording session handlers
+        bridge.register_handler("start_recording", self.handle_start_recording)
+        bridge.register_handler("stop_recording", self.handle_stop_recording)
+        bridge.register_handler("get_recording_status", self.handle_get_recording_status)
+        
+        print("[SeleniumHandler] Handlers registered: detect_browsers, records, recording session")
+
     
     def handle_detect_browsers(self, content: Dict[str, Any]) -> Dict[str, Any]:
         """Detect installed browsers."""
@@ -188,6 +199,98 @@ class SeleniumHandler:
             return {"success": True, "path": dest}
         except Exception as e:
             print(f"[SeleniumHandler] Error copying file: {e}")
+            return {"success": False, "error": str(e)}
+
+    def handle_start_recording(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Start a new recording session."""
+        print(f"[SeleniumHandler] start_recording called: {content}")
+        try:
+            filename = content.get("filename", "recording")
+            url = content.get("url", "")
+            browser = content.get("browser", "")
+            options = content.get("options", {})
+            
+            if not url:
+                return {"success": False, "error": "URL is required"}
+            
+            # Get browser path from detector
+            browser_path = None
+            if browser:
+                browsers = self.detector.get_dropdown_choices()
+                for b in browsers:
+                    if b.get("name") == browser:
+                        browser_path = b.get("path")
+                        break
+            
+            # Callbacks for UI notification
+            def on_connected():
+                print("[SeleniumHandler] Recording connected, notifying UI")
+                if self.bridge.window:
+                    self.bridge.window.evaluate_js(
+                        "window.dispatchEvent(new CustomEvent('recording_connected', {detail: {}}));"
+                    )
+            
+            def on_browser_closed():
+                print("[SeleniumHandler] Browser closed externally, notifying UI")
+                if self.bridge.window:
+                    self.bridge.window.evaluate_js(
+                        "window.dispatchEvent(new CustomEvent('recording_browser_closed', {detail: {}}));"
+                    )
+            
+            def on_stop_requested(save: bool):
+                print(f"[SeleniumHandler] Stop requested from injected UI, save={save}")
+                result = stop_active_session(save=save)
+                if self.bridge.window:
+                    import json
+                    self.bridge.window.evaluate_js(
+                        f"window.dispatchEvent(new CustomEvent('recording_stopped', {{detail: {json.dumps(result)}}}));"
+                    )
+            
+            result = start_new_session(
+                filename=filename,
+                url=url,
+                browser_path=browser_path,
+                incognito=options.get("noCache", False),
+                callbacks={
+                    "on_connected": on_connected,
+                    "on_browser_closed": on_browser_closed,
+                    "on_stop_requested": on_stop_requested
+                }
+            )
+            
+            return result
+            
+        except Exception as e:
+            print(f"[SeleniumHandler] Error starting recording: {e}")
+            import traceback
+            traceback.print_exc()
+            return {"success": False, "error": str(e)}
+
+    def handle_stop_recording(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Stop the active recording session."""
+        print(f"[SeleniumHandler] stop_recording called: {content}")
+        try:
+            save = content.get("save", True)
+            result = stop_active_session(save=save)
+            return result
+        except Exception as e:
+            print(f"[SeleniumHandler] Error stopping recording: {e}")
+            return {"success": False, "error": str(e)}
+
+    def handle_get_recording_status(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Get the status of the active recording session."""
+        try:
+            session = get_active_session()
+            if session:
+                return {
+                    "success": True,
+                    "active": session.is_active,
+                    "connected": session.is_connected,
+                    "filename": session.filename,
+                    "url": session.url
+                }
+            return {"success": True, "active": False}
+        except Exception as e:
             return {"success": False, "error": str(e)}
 
 
