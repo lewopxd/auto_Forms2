@@ -21,7 +21,7 @@ APP_AUTHOR = "@lewopxd"
 # --- Development Settings ---
 DEBUG_MODE = True           # Enable DevTools in webview
 UNIQUE_URL = True           # Add UUID to URL to prevent cache
-PERSISTENT_WEBVIEW_DEV = True  # Keep browser instance running between restarts (dev mode)
+PERSISTENT_WEBVIEW_DEV = True  # Enable for fast dev - requires setuptools installed
 
 # --- Window Defaults ---
 DEFAULT_WINDOW = {

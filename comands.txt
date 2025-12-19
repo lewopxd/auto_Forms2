@@ -13,4 +13,4 @@ python.exe -m pip install --upgrade pip  <------------- UPDATE PIP
 pip install -r requirements.txt    <------ install and update dependencies
 
 
-python src\initial_test.py           <----- iniciar app
+python tests\initial_test.py           <----- iniciar app

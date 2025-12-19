@@ -34,6 +34,9 @@ def main():
     # CRITICAL: multiprocessing requires freeze_support on Windows
     multiprocessing.freeze_support()
     
+    # Timing for diagnostics
+    _start = time.time()
+    
     # --- Minimal imports in parent process for speed ---
     import ctypes
     from pathlib import Path
@@ -88,25 +91,33 @@ def main():
             return 0
     
     # --- Normal Mode (PERSISTENT_WEBVIEW_DEV = False) ---
+    # CRITICAL: Show splash IMMEDIATELY, before any other imports
     
-    # --- Single Instance Check (fast, no heavy imports) ---
-    from core.single_instance import SingleInstanceLock, show_already_running_dialog
-    from core.config import APP_NAME
-    
-    lock = SingleInstanceLock(APP_NAME)
-    if not lock.acquire():
-        show_already_running_dialog(APP_NAME)
-        return 1
+    print(f"[Main] T+{(time.time()-_start)*1000:.0f}ms - Creating splash...")
     
     try:
         # --- Create IPC primitives ---
         log_queue = multiprocessing.Queue()
         ready_event = multiprocessing.Event()
         
-        # --- FIRST: Create splash screen (must be before child starts) ---
+        # --- FIRST: Create splash screen BEFORE any other imports ---
         from core.splash import SplashScreen
+        print(f"[Main] T+{(time.time()-_start)*1000:.0f}ms - SplashScreen imported")
+        
         splash = SplashScreen(log_queue)
         splash.create()  # Creates tkinter window immediately
+        print(f"[Main] T+{(time.time()-_start)*1000:.0f}ms - Splash visible")
+        
+        # NOW do the heavier imports (while splash is visible)
+        from core.single_instance import SingleInstanceLock, show_already_running_dialog
+        from core.config import APP_NAME
+        print(f"[Main] T+{(time.time()-_start)*1000:.0f}ms - SingleInstance imported")
+        
+        lock = SingleInstanceLock(APP_NAME)
+        if not lock.acquire():
+            splash.close()
+            show_already_running_dialog(APP_NAME)
+            return 1
         
         # --- THEN: Start child process (runs webview) ---
         child = multiprocessing.Process(
@@ -133,7 +144,8 @@ def main():
         traceback.print_exc()
         return 1
     finally:
-        lock.release()
+        if 'lock' in dir() and lock:
+            lock.release()
 
 
 

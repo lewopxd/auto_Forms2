@@ -24,6 +24,13 @@ ROBUSTNESS FEATURES:
 
 import sys
 import os
+
+# Ensure venv site-packages is in path (defensive, in case subprocess loses it)
+_venv_sp = os.path.join(os.path.dirname(os.path.dirname(sys.executable)), "Lib", "site-packages")
+if os.path.exists(_venv_sp) and _venv_sp not in sys.path:
+    sys.path.insert(0, _venv_sp)
+
+
 import socket
 import threading
 import time

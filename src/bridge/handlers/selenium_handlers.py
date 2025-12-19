@@ -18,15 +18,15 @@ SELENIUM_AVAILABLE = False
 _selenium_import_error = None
 
 try:
-    from core.selenium.browser_detector import BrowserDetector
-    from core.selenium.form_storage import (
+    from core.browser_automation.browser_detector import BrowserDetector
+    from core.browser_automation.form_storage import (
         get_all_forms, 
         load_form_data_from_path, 
         delete_record,
         rename_record,
         import_record
     )
-    from core.selenium.recording_session import (
+    from core.browser_automation.recording_session import (
         start_new_session,
         stop_active_session,
         get_active_session
