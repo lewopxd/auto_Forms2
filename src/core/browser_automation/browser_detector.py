@@ -48,6 +48,29 @@ BROWSER_PATHS: Dict[str, Dict] = {
     },
 }
 
+# User data directories for each browser (Windows)
+# Used to open URLs in existing browser tabs instead of new windows
+BROWSER_USER_DATA_DIRS: Dict[str, str] = {
+    "brave": r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data",
+    "chrome": r"%LOCALAPPDATA%\Google\Chrome\User Data",
+    "edge": r"%LOCALAPPDATA%\Microsoft\Edge\User Data",
+}
+
+
+def get_browser_user_data_dir(browser_name: str) -> Optional[str]:
+    """
+    Get the user data directory for a browser.
+    When Chrome/Brave/Edge is launched with this user-data-dir and a browser
+    instance is already running with the same profile, it opens a new tab
+    instead of a new window.
+    """
+    path = BROWSER_USER_DATA_DIRS.get(browser_name)
+    if path:
+        expanded = os.path.expandvars(path)
+        if os.path.exists(expanded):
+            return expanded
+    return None
+
 
 class BrowserDetector:
     """Detects installed browsers silently (no window opening)."""

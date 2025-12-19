@@ -301,6 +301,7 @@ class SeleniumHandler:
                 url=url,
                 browser_path=browser_path,
                 incognito=options.get("noCache", False),
+                page_load_timeout=options.get("timeout", 120),
                 callbacks={
                     "on_connected": on_connected,
                     "on_browser_closed": on_browser_closed,

@@ -58,16 +58,18 @@ class BrowserManager:
     Uses undetected-chromedriver for stealth browsing.
     """
     
-    def __init__(self, browser_path: str = None, incognito: bool = False):
+    def __init__(self, browser_path: str = None, incognito: bool = False, page_load_timeout: int = 120):
         """
         Initialize the browser manager.
         
         Args:
             browser_path: Path to browser executable
             incognito: Whether to start in incognito mode
+            page_load_timeout: Timeout in seconds for page load (default 120)
         """
         self.browser_path = browser_path
         self.incognito = incognito
+        self.page_load_timeout = page_load_timeout
         self.driver = None
         self._is_initialized = False
         self._on_close_callback: Optional[Callable] = None
@@ -196,8 +198,9 @@ class BrowserManager:
                 use_subprocess=True,
             )
             
-            # Set page load timeout
-            self.driver.set_page_load_timeout(TIMEOUTS["page_load"])
+            # Set page load timeout (configurable by user)
+            self.driver.set_page_load_timeout(self.page_load_timeout)
+            print(f"[BrowserManager] Page load timeout set to {self.page_load_timeout}s")
             
             # Implicit wait for elements
             self.driver.implicitly_wait(5)

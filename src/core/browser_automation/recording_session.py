@@ -26,6 +26,7 @@ class RecordingSession:
         url: str,
         browser_path: str = None,
         incognito: bool = False,
+        page_load_timeout: int = 120,
         on_connected: Callable = None,
         on_browser_closed: Callable = None,
         on_stop_requested: Callable[[bool], None] = None,
@@ -39,6 +40,7 @@ class RecordingSession:
             url: Initial URL to navigate to
             browser_path: Path to browser executable
             incognito: Whether to start in incognito/no-cache mode
+            page_load_timeout: Timeout in seconds for page load (default 120)
             on_connected: Callback when browser is connected and UI injected
             on_browser_closed: Callback when browser is closed externally
             on_stop_requested: Callback when stop is requested from injected UI (save: bool)
@@ -48,6 +50,7 @@ class RecordingSession:
         self.url = url
         self.browser_path = browser_path
         self.incognito = incognito
+        self.page_load_timeout = page_load_timeout
         
         # Callbacks
         self.on_connected = on_connected
@@ -79,7 +82,8 @@ class RecordingSession:
             # Initialize browser
             self.browser = BrowserManager(
                 browser_path=self.browser_path,
-                incognito=self.incognito
+                incognito=self.incognito,
+                page_load_timeout=self.page_load_timeout
             )
             
             # Set callback for external close
@@ -279,6 +283,7 @@ def start_new_session(
     url: str,
     browser_path: str = None,
     incognito: bool = False,
+    page_load_timeout: int = 120,
     callbacks: dict = None
 ) -> Dict[str, Any]:
     """
@@ -289,6 +294,7 @@ def start_new_session(
         url: Initial URL
         browser_path: Browser executable path
         incognito: Whether to use incognito mode
+        page_load_timeout: Timeout in seconds for page load (default 120)
         callbacks: Dict of callback functions
         
     Returns:
@@ -307,6 +313,7 @@ def start_new_session(
         url=url,
         browser_path=browser_path,
         incognito=incognito,
+        page_load_timeout=page_load_timeout,
         on_connected=callbacks.get("on_connected"),
         on_browser_closed=callbacks.get("on_browser_closed"),
         on_stop_requested=callbacks.get("on_stop_requested"),

@@ -1012,6 +1012,15 @@ const AutoFormViewModule = (function () {
                         </div>
                     </div>
 
+                    <!-- Timeout -->
+                    <div class="af-config-section">
+                        <div class="af-config-sec-title">Tiempo de Espera</div>
+                        <div class="af-config-row" style="gap: 8px; align-items: center;">
+                            <input type="number" id="new-rec-timeout" class="af-config-input" style="width: 80px; text-align: center;" value="120" min="30" max="600">
+                            <span class="text-xs text-gray-500">segundos (máx espera para abrir navegador)</span>
+                        </div>
+                    </div>
+
                     <!-- Options -->
                     <div class="af-config-section">
                         <div class="af-config-sec-title">Opciones</div>
@@ -1136,6 +1145,7 @@ const AutoFormViewModule = (function () {
         const filenameEl = document.getElementById('new-rec-filename');
         const urlEl = document.getElementById('new-rec-url');
         const browserEl = document.getElementById('new-rec-browser');
+        const timeoutEl = document.getElementById('new-rec-timeout');
         const noCacheEl = document.getElementById('new-rec-nocache');
         const loginEl = document.getElementById('new-rec-login');
         const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
@@ -1145,6 +1155,7 @@ const AutoFormViewModule = (function () {
         const filename = filenameEl.value.trim() || `recording_${Date.now()}`;
         const url = urlEl.value.trim();
         const browser = browserEl.value;
+        const timeout = parseInt(timeoutEl?.value) || 120;
         const noCache = noCacheEl?.checked || false;
         const withLogin = loginEl?.checked || false;
 
@@ -1158,7 +1169,7 @@ const AutoFormViewModule = (function () {
             return;
         }
 
-        console.log('[AutoForm] Starting Recording:', { filename, url, browser, noCache, withLogin });
+        console.log('[AutoForm] Starting Recording:', { filename, url, browser, timeout, noCache, withLogin });
 
         // Show spinner on button (keep modal open until connected)
         const originalBtnHtml = startBtn?.innerHTML || '';
@@ -1178,6 +1189,7 @@ const AutoFormViewModule = (function () {
                 url: url,
                 browser: browser,
                 options: {
+                    timeout: timeout,
                     noCache: noCache,
                     withLogin: withLogin
                 }
