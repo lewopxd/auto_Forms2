@@ -9,6 +9,58 @@
     let onSaveCallback = null;
     let currentActionType = null;
 
+    /**
+     * Global Smart Input setup - accessible from anywhere in the module
+     * This function must be at module level to be called from renderTextRawMappings
+     */
+    function globalSetupSmartInput(inputId, backdropId) {
+        const input = document.getElementById(inputId);
+        const backdrop = document.getElementById(backdropId);
+        if (!input || !backdrop) return;
+
+        const update = () => {
+            const text = input.value;
+            let html = '';
+            let lastIndex = 0;
+            // Regex for [[Concept]] only (no column analysis needed for mapping inputs)
+            const regex = /\[\[([^\[\]]+)\]\]/g;
+            let match;
+
+            // Validation Data
+            const conceptTitles = (window.projectData?.tabs || [])
+                .filter(t => t.type === 'concept' || (!t.type && t.content !== undefined))
+                .map(t => t.title?.toLowerCase().trim())
+                .filter(Boolean);
+
+            while ((match = regex.exec(text)) !== null) {
+                // Text before match
+                html += escHtml(text.substring(lastIndex, match.index));
+
+                const content = match[1];
+                const cleanVal = content.toLowerCase().trim();
+                const isValid = conceptTitles.includes(cleanVal);
+
+                const chipClass = isValid ? 'valid-concept' : 'invalid';
+                const iconHtml = isValid
+                    ? ''
+                    : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+
+                html += `<span class="ac-smart-chip ${chipClass}">[[${escHtml(content)}]]${iconHtml}</span>`;
+                lastIndex = regex.lastIndex;
+            }
+            // Text after last match (PLAIN TEXT - visible!)
+            html += escHtml(text.substring(lastIndex));
+
+            backdrop.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        };
+
+        input.oninput = update;
+        input.onscroll = () => { backdrop.scrollLeft = input.scrollLeft; };
+        // Initial call to render existing value
+        update();
+    }
+
     // Get default config for action type from centralized projectData
     function getDefaultConfig(type) {
         const defaults = window.projectData?.defaultActionSettings;
@@ -655,9 +707,9 @@
             `;
         }).join('');
 
-        // Initialize Smart Behavior for all new inputs
+        // Initialize Smart Behavior for all new inputs using GLOBAL function
         values.forEach((_, idx) => {
-            setupSmartInput(`af-map-inp-${idx}`, `af-map-bd-${idx}`, false);
+            globalSetupSmartInput(`af-map-inp-${idx}`, `af-map-bd-${idx}`);
         });
     }
 
