@@ -129,13 +129,17 @@ const AutoFormViewModule = (function () {
                 filePath = loadedRec.path;
                 fileName = loadedRec.name;
 
-                // Apply saved responses from tab's cards onto formData
+                // Apply saved responses and configs from tab's cards onto formData
                 if (tabData.cards && formData?.pages) {
                     tabData.cards.forEach(card => {
                         const page = formData.pages[card.pageKey];
                         if (page?.questions?.[card.questionKey]) {
                             page.questions[card.questionKey].response = card.response;
                             page.questions[card.questionKey].selectedOptions = card.selectedOptions;
+                            // CRITICAL FIX: Also restore config (including mapping settings)
+                            if (card.config && Object.keys(card.config).length > 0) {
+                                page.questions[card.questionKey].config = JSON.parse(JSON.stringify(card.config));
+                            }
                         }
                     });
                 }
@@ -289,7 +293,7 @@ const AutoFormViewModule = (function () {
                     questionKey: qKey,
                     response: q.response || '',
                     selectedOptions: q.selectedOptions || [],
-                    config: {}  // Extensible for future
+                    config: q.config || {}  // Copy config from question
                 });
             });
         });
@@ -319,8 +323,31 @@ const AutoFormViewModule = (function () {
         if (!tab.cards) tab.cards = [];
 
         // Sync cards from formData (cards belong to the tab)
+        // buildCardsArray copies q.config from each question
         if (state.formData) {
             tab.cards = buildCardsArray(state.formData);
+        }
+
+        // CRITICAL FIX: Also sync configs back to recording.data
+        // This ensures configs persist after UI reload
+        if (tab.loadedRecordingId && window.projectData?.recordings) {
+            const recording = window.projectData.recordings.find(r => r.id === tab.loadedRecordingId);
+            if (recording && recording.data && state.formData?.pages) {
+                // Sync config from formData to recording.data
+                Object.keys(state.formData.pages).forEach(pageKey => {
+                    const srcPage = state.formData.pages[pageKey];
+                    const destPage = recording.data.pages?.[pageKey];
+                    if (srcPage?.questions && destPage?.questions) {
+                        Object.keys(srcPage.questions).forEach(qKey => {
+                            const srcQ = srcPage.questions[qKey];
+                            if (srcQ.config && Object.keys(srcQ.config).length > 0) {
+                                if (!destPage.questions[qKey]) destPage.questions[qKey] = {};
+                                destPage.questions[qKey].config = JSON.parse(JSON.stringify(srcQ.config));
+                            }
+                        });
+                    }
+                });
+            }
         }
 
         // Sync UI state
@@ -832,13 +859,17 @@ const AutoFormViewModule = (function () {
             state.filePath = recording.path;
             state.fileName = recording.name;
 
-            // Apply tab's cards to formData
+            // Apply tab's cards to formData (including user configs)
             if (tab.cards && state.formData?.pages) {
                 tab.cards.forEach(card => {
                     const page = state.formData.pages[card.pageKey];
                     if (page?.questions?.[card.questionKey]) {
                         page.questions[card.questionKey].response = card.response;
                         page.questions[card.questionKey].selectedOptions = card.selectedOptions;
+                        // Restore user config (mapping, isCustomized, etc.)
+                        if (card.config && Object.keys(card.config).length > 0) {
+                            page.questions[card.questionKey].config = card.config;
+                        }
                     }
                 });
             }
@@ -1816,6 +1847,7 @@ const AutoFormViewModule = (function () {
             urlText.title = state.formData?.url || '';
         }
 
+
         if (!container || !state.formData) return;
 
         container.innerHTML = '';
@@ -2642,6 +2674,7 @@ const AutoFormViewModule = (function () {
 
         // Build answer content based on type
         let answerHtml = '';
+        let mappingChipHtml = '';
 
         if (isSelect && question.options?.length) {
             // Show all options with the selected one highlighted
@@ -2665,6 +2698,23 @@ const AutoFormViewModule = (function () {
                 `;
             });
             answerHtml += `</div>`;
+
+            // Add mapping chip if mapping is enabled
+            if (isMapped && question.config?.mapping?.placeholder) {
+                const placeholder = question.config.mapping.placeholder;
+                const columnMatch = placeholder.match(/\{([^{}]+)\}/);
+                const columnName = columnMatch ? columnMatch[1] : placeholder;
+                const columnValue = selectedData?.[columnName] ?? '';
+
+                mappingChipHtml = `
+                    <div class="afv-mapping-indicator">
+                        <span class="afv-chip mapping">
+                            <i data-lucide="shuffle"></i>
+                            {${escHtml(columnName)}} → ${escHtml(columnValue || '—')}
+                        </span>
+                    </div>
+                `;
+            }
         } else {
             // Fill action - show the response with chips for placeholders
             const originalText = question.response || '';
@@ -2685,6 +2735,7 @@ const AutoFormViewModule = (function () {
                 <div class="afv-card-content">
                     <div class="afv-question"><span class="afv-q-num">${questionNum}.</span> ${escHtml(question.text || 'Sin pregunta')}</div>
                     ${answerHtml}
+                    ${mappingChipHtml}
                 </div>
             </div>
         `;

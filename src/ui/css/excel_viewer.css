@@ -114,6 +114,9 @@
     white-space: nowrap;
     overflow: hidden;
     vertical-align: middle;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
 }
 
 /* Corner cell */
@@ -211,6 +214,16 @@
     vertical-align: middle;
     color: #000000;
     font-size: 13px;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+/* Allow text selection in formula bar */
+.ev-cell-content {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
 }
 
 /* ==================== SELECTION ==================== */

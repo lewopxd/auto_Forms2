@@ -2472,3 +2472,29 @@
     color: #9ca3af;
     cursor: wait;
 }
+
+/* =========================================
+   MAPPING INDICATOR CHIP (View Mode)
+   ========================================= */
+.afv-mapping-indicator {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #e5e7eb;
+}
+
+/* Mapping chip - Purple variant */
+.afv-chip.mapping {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #f3e8ff;
+    border: 1px solid #c4b5fd;
+    color: #6b21a8;
+}
+
+.afv-chip.mapping i,
+.afv-chip.mapping svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}

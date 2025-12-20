@@ -4,6 +4,7 @@ Manages project persistence with autosave.afp file
 """
 import os
 import json
+import threading
 from datetime import datetime
 from pathlib import Path
 from core.logger import Logger
@@ -16,12 +17,15 @@ class ProjectHandler:
         self.bridge = bridge
         self.app_data_dir = self._get_app_data_dir()
         self.autosave_path = self.app_data_dir / "autosave.afp"
+        self.current_project_path = None  # Track manually saved project path
         
         # Register handlers
         bridge.register_handler("autosave", self.handle_autosave)
         bridge.register_handler("check_autosave", self.handle_check_autosave)
         bridge.register_handler("load_autosave", self.handle_load_autosave)
         bridge.register_handler("clear_autosave", self.handle_clear_autosave)
+        bridge.register_handler("save_project_as", self.handle_save_project_as)
+        bridge.register_handler("open_project", self.handle_open_project)
         
         Logger.debug(f"[Project] Autosave path: {self.autosave_path}")
     
@@ -117,4 +121,107 @@ class ProjectHandler:
             return {'success': True}
         except Exception as e:
             Logger.error(f"[Project] Clear autosave failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def handle_save_project_as(self, content: dict) -> dict:
+        """
+        Save project to a user-selected file location.
+        Uses tkinter file dialog.
+        """
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            
+            # Create hidden root window for dialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)  # Ensure dialog appears on top
+            
+            # Get suggested filename from project name
+            project_data = content.get('data', {})
+            suggested_name = project_data.get('name', 'proyecto') + '.afp'
+            
+            # Show save dialog
+            file_path = filedialog.asksaveasfilename(
+                title="Guardar Proyecto",
+                defaultextension=".afp",
+                filetypes=[("AutoForms Project", "*.afp"), ("Todos los archivos", "*.*")],
+                initialfile=suggested_name
+            )
+            
+            root.destroy()
+            
+            if not file_path:
+                # User cancelled
+                return {'success': False, 'cancelled': True}
+            
+            # Add metadata
+            project_data['_save'] = {
+                'timestamp': datetime.now().isoformat(),
+                'version': '1.0',
+                'path': file_path
+            }
+            
+            # Write to file
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(project_data, f, ensure_ascii=False, indent=2)
+            
+            self.current_project_path = file_path
+            Logger.info(f"[Project] Saved project to: {file_path}")
+            
+            return {
+                'success': True, 
+                'path': file_path,
+                'filename': Path(file_path).name
+            }
+            
+        except Exception as e:
+            Logger.error(f"[Project] Save project failed: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def handle_open_project(self, content: dict) -> dict:
+        """
+        Open a project file from user-selected location.
+        Uses tkinter file dialog.
+        """
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+            
+            # Create hidden root window for dialog
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)  # Ensure dialog appears on top
+            
+            # Show open dialog
+            file_path = filedialog.askopenfilename(
+                title="Abrir Proyecto",
+                filetypes=[("AutoForms Project", "*.afp"), ("Todos los archivos", "*.*")]
+            )
+            
+            root.destroy()
+            
+            if not file_path:
+                # User cancelled
+                return {'success': False, 'cancelled': True}
+            
+            # Read file
+            with open(file_path, 'r', encoding='utf-8') as f:
+                project_data = json.load(f)
+            
+            self.current_project_path = file_path
+            Logger.info(f"[Project] Opened project: {file_path}")
+            
+            return {
+                'success': True,
+                'data': project_data,
+                'path': file_path,
+                'filename': Path(file_path).name
+            }
+            
+        except json.JSONDecodeError as e:
+            Logger.error(f"[Project] Invalid project file: {e}")
+            return {'success': False, 'error': 'El archivo no es un proyecto válido'}
+        except Exception as e:
+            Logger.error(f"[Project] Open project failed: {e}")
             return {'success': False, 'error': str(e)}

@@ -496,6 +496,113 @@
         });
     }
 
+    // === PROJECT SAVE/LOAD ===
+
+    /**
+     * Open a project file from disk
+     */
+    async function openProject() {
+        try {
+            const result = await window.bridgePy.send('open_project', {});
+
+            if (result.cancelled) {
+                // User cancelled dialog
+                return;
+            }
+
+            if (!result.success) {
+                window.showAlert({
+                    icon: 'alert-circle',
+                    iconColor: 'text-red-500',
+                    title: 'Error al abrir',
+                    message: result.error || 'No se pudo abrir el proyecto',
+                    confirmText: 'Aceptar'
+                });
+                return;
+            }
+
+            // Restore project data
+            restoreProjectData(result.data);
+
+            // Show success notification
+            window.showAlert({
+                icon: 'check-circle',
+                iconColor: 'text-green-500',
+                title: 'Proyecto abierto',
+                message: `Se cargó: ${result.filename}`,
+                confirmText: 'Aceptar'
+            });
+
+        } catch (e) {
+            console.error('[App] Open project error:', e);
+            window.showAlert({
+                icon: 'alert-circle',
+                iconColor: 'text-red-500',
+                title: 'Error',
+                message: 'Error al abrir el proyecto: ' + e.message,
+                confirmText: 'Aceptar'
+            });
+        }
+    }
+
+    /**
+     * Save project to a user-selected file
+     */
+    async function saveProjectAs() {
+        try {
+            // Collect all project data
+            const projectData = collectProjectData();
+
+            const result = await window.bridgePy.send('save_project_as', { data: projectData });
+
+            if (result.cancelled) {
+                // User cancelled dialog
+                return;
+            }
+
+            if (!result.success) {
+                window.showAlert({
+                    icon: 'alert-circle',
+                    iconColor: 'text-red-500',
+                    title: 'Error al guardar',
+                    message: result.error || 'No se pudo guardar el proyecto',
+                    confirmText: 'Aceptar'
+                });
+                return;
+            }
+
+            // Show success notification
+            window.showAlert({
+                icon: 'check-circle',
+                iconColor: 'text-green-500',
+                title: 'Proyecto guardado',
+                message: `Guardado en: ${result.filename}`,
+                confirmText: 'Aceptar'
+            });
+
+        } catch (e) {
+            console.error('[App] Save project error:', e);
+            window.showAlert({
+                icon: 'alert-circle',
+                iconColor: 'text-red-500',
+                title: 'Error',
+                message: 'Error al guardar el proyecto: ' + e.message,
+                confirmText: 'Aceptar'
+            });
+        }
+    }
+
+    // Setup project button handlers
+    const btnOpenProject = document.getElementById('btn-open-project');
+    const btnSaveProject = document.getElementById('btn-save-project');
+
+    if (btnOpenProject) {
+        btnOpenProject.addEventListener('click', openProject);
+    }
+    if (btnSaveProject) {
+        btnSaveProject.addEventListener('click', saveProjectAs);
+    }
+
     // === INITIALIZATION ===
     function init() {
         console.log('[App] Initializing FormFlow...');
