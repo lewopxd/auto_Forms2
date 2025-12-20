@@ -2574,14 +2574,30 @@ const AutoFormViewModule = (function () {
      * Get concept content by title (from template_view.js logic)
      */
     function getConceptContent(conceptTitle) {
-        if (!conceptTitle || !window.projectData?.tabs) return null;
+        console.log(`[DEBUG getConceptContent] Input: "${conceptTitle}"`);
+        if (!conceptTitle || !window.projectData?.tabs) {
+            console.log(`[DEBUG getConceptContent] Early return: no title or no tabs`);
+            return null;
+        }
         const searchTitle = conceptTitle.toLowerCase().trim();
+        console.log(`[DEBUG getConceptContent] Searching for: "${searchTitle}"`);
+
+        // Log all available concept tabs for comparison
+        const conceptTabs = window.projectData.tabs.filter(t =>
+            t.type === 'concept' || t.type === undefined || !t.type
+        );
+        console.log(`[DEBUG getConceptContent] Available concepts:`, conceptTabs.map(t => t.title));
+
         const tab = window.projectData.tabs.find(t => {
             const isConceptType = t.type === 'concept' || t.type === undefined || !t.type;
             const titleMatches = t.title && t.title.toLowerCase().trim() === searchTitle;
             return isConceptType && titleMatches && t.content !== undefined;
         });
-        if (!tab) return null;
+        if (!tab) {
+            console.log(`[DEBUG getConceptContent] ❌ NOT FOUND! No tab matches "${searchTitle}"`);
+            return null;
+        }
+        console.log(`[DEBUG getConceptContent] ✅ FOUND! Tab: "${tab.title}", Content length: ${tab.content?.length}`);
         // Process column placeholders in concept content
         return tab.content.replace(/\{([^{}]+)\}/g, (match, key) => {
             const trimmedKey = key.trim();
@@ -2596,11 +2612,14 @@ const AutoFormViewModule = (function () {
      * Resolve all placeholders ({Column} and [[Concept]]) in a value
      */
     function resolveAllPlaceholders(text, selectedData) {
+        console.log(`[DEBUG resolveAllPlaceholders] Input text: "${text}"`);
         if (!text) return '';
         let result = text;
         // First resolve [[Concept]] placeholders
         result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, name) => {
+            console.log(`[DEBUG resolveAllPlaceholders] Found concept placeholder: "${match}" -> name: "${name.trim()}"`);
             const content = getConceptContent(name.trim());
+            console.log(`[DEBUG resolveAllPlaceholders] Content result:`, content !== null ? `"${content.substring(0, 50)}..."` : 'NULL');
             return content !== null ? content : match;
         });
         // Then resolve {Column} placeholders
@@ -2608,6 +2627,7 @@ const AutoFormViewModule = (function () {
             const val = selectedData?.[col.trim()] ?? selectedData?.[col.trim().toLowerCase()];
             return val !== undefined && val !== '' ? val : match;
         });
+        console.log(`[DEBUG resolveAllPlaceholders] Final result: "${result.substring(0, 100)}..."`);
         return result;
     }
 
@@ -2694,6 +2714,7 @@ const AutoFormViewModule = (function () {
         if (question.config?.mapping?.enabled && question.config?.mapping?.placeholder) {
             // Get the column name
             const placeholder = question.config.mapping.placeholder;
+            console.log(`[Mapping DEBUG] Raw placeholder: "${placeholder}" | JSON: ${JSON.stringify(placeholder)}`);
             const columnName = placeholder.replace(/^\{|\}$/g, '').trim();
 
             // Get the current row's value
