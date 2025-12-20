@@ -934,15 +934,8 @@ const AutoFormViewModule = (function () {
         const modal = createNewRecordingModal();
         document.body.appendChild(modal);
 
-        // Delegate to robust ModalManager
+        // Delegate to ModalManager (it will center automatically via CSS)
         if (window.ModalManager) {
-            // Center modal roughly
-            const win = modal.querySelector('.af-modal-window');
-            if (win) {
-                win.style.top = '15%';
-                win.style.left = '50%';
-                win.style.transform = 'translateX(-50%)'
-            }
             window.ModalManager.openModal(modal);
         } else {
             modal.classList.add('open');

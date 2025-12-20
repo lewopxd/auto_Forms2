@@ -137,18 +137,18 @@ const ModalManager = (function () {
     /**
      * Standard robust open Function
      * @param {HTMLElement} overlayEl - The overlay covering the screen
-     * @param {HTMLElement} modalEl - The actual modal box (for animation reset)
      */
-    function openModal(overlayEl, modalEl) {
+    function openModal(overlayEl) {
         if (!overlayEl) return;
 
-        // 1. Reset Position (Optional: re-center)
-        if (modalEl) {
-            modalEl.style.position = ''; // Revert to CSS default (usually relative/static inside flex container)
-            modalEl.style.left = '';
-            modalEl.style.top = '';
-            modalEl.style.margin = '';
-            modalEl.style.transform = ''; // Let CSS animation handle it
+        // 1. Reset Position - Find inner window and reset position styles for centering via CSS
+        const innerWin = overlayEl.querySelector('.af-modal-window, .modal-box');
+        if (innerWin) {
+            innerWin.style.position = ''; // Revert to CSS default (flex item)
+            innerWin.style.left = '';
+            innerWin.style.top = '';
+            innerWin.style.margin = '';
+            innerWin.style.transform = ''; // Let CSS animation handle it
         }
 
         // 2. Force Display
