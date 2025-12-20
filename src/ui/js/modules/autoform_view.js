@@ -1617,8 +1617,8 @@ const AutoFormViewModule = (function () {
                     }
 
                     // Activate the tab that launched the recording
-                    if (window.switchTab) {
-                        window.switchTab(tabId);
+                    if (window.TemplateViewModule && window.TemplateViewModule.activateTab) {
+                        window.TemplateViewModule.activateTab(tabId);
                     }
                 }
             } else {
