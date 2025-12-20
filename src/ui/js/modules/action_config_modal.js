@@ -2,7 +2,7 @@
  * Action Config Modal Module
  * Handles the configuration settings for AutoForm Action Cards.
  */
-window.ActionConfigModal = (function () {
+(function () {
     'use strict';
 
     let currentCardData = null;
@@ -786,7 +786,7 @@ window.ActionConfigModal = (function () {
 
         function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-        return {
+        window.ActionConfigModal = {
             open,
             close,
             toggleFillOpts,
