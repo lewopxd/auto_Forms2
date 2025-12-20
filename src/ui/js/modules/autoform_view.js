@@ -2708,10 +2708,8 @@ const AutoFormViewModule = (function () {
 
                 mappingChipHtml = `
                     <div class="afv-mapping-indicator">
-                        <span class="afv-chip mapping">
-                            <i data-lucide="shuffle"></i>
-                            {${escHtml(columnName)}} → ${escHtml(columnValue || '—')}
-                        </span>
+                        <span style="color:#9ca3af;font-size:11px;">Mapeado:</span>
+                        <span class="af-mapped-chip">${escHtml(placeholder)}</span>
                     </div>
                 `;
             }
