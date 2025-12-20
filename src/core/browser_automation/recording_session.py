@@ -11,7 +11,7 @@ from typing import Optional, Dict, Any, Callable
 from .browser_manager import BrowserManager
 from .browser_settings import BrowserConfig
 from . import js_injector
-from .form_analyzer import analyze_form
+from .form_analyzer import analyze_form, get_questions_for_ui
 from .form_storage import save_recording
 
 
@@ -189,20 +189,30 @@ class RecordingSession:
         self._should_poll = True
         
         def poll_loop():
+            print("[RecordingSession] Poll loop started")
             while self._should_poll and self.is_active:
                 try:
+                    # Check connection first
                     if not self.browser or not self.browser.is_browser_alive():
+                        print("[RecordingSession] Browser seemingly dead. Stopping poll loop.")
                         break
                     
+                    # Direct command polling (Legacy style)
                     commands = js_injector.get_commands(self.browser.get_driver())
+                    
+                    if commands:
+                        print(f"[RecordingSession] Got {len(commands)} commands from UI")
                     
                     for cmd in commands:
                         self._handle_command(cmd)
                     
                 except Exception as e:
                     print(f"[RecordingSession] Poll error: {e}")
+                    import traceback
+                    traceback.print_exc()
                 
                 time.sleep(0.5)
+            print("[RecordingSession] Poll loop finished")
         
         self._poll_thread = threading.Thread(target=poll_loop, daemon=True)
         self._poll_thread.start()
@@ -210,15 +220,19 @@ class RecordingSession:
     def _handle_command(self, cmd: dict):
         """Handle a command from the injected UI."""
         cmd_type = cmd.get("type")
+        print(f"[RecordingSession] Received command: {cmd_type}")
         
         if cmd_type == "analyze":
             self._analyze_current_page()
             
         elif cmd_type == "save":
+            print("[RecordingSession] Processing Save command...")
             data = cmd.get("data", {})
             self._save_page_data(data)
+            print("[RecordingSession] Save command processed.")
             
         elif cmd_type == "stop":
+            print("[RecordingSession] Processing Stop command...")
             save = cmd.get("save", True)
             if self.on_stop_requested:
                 self.on_stop_requested(save)
@@ -228,21 +242,29 @@ class RecordingSession:
     def _analyze_current_page(self):
         """Analyze the current page and update injected UI."""
         if not self.browser or not self.browser.is_browser_alive():
+            print("[RecordingSession] Browser not alive, skipping analysis")
             return
         
         try:
+            print("[RecordingSession] Starting page analysis...")
             driver = self.browser.get_driver()
-            data = analyze_form(driver)
+            # Use get_questions_for_ui to ensure correct format for UI
+            data = get_questions_for_ui(driver)
+            print(f"[RecordingSession] Analysis complete. Data keys: {list(data.keys()) if data else 'None'}")
             
             if data and not data.get("error"):
                 self.form_data = data
+                print("[RecordingSession] Sending data to UI...")
                 js_injector.set_form_data(driver, data)
+                print("[RecordingSession] Data sent to UI")
                 
                 if self.on_data_update:
                     self.on_data_update(data)
                     
         except Exception as e:
             print(f"[RecordingSession] Analysis error: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _save_page_data(self, data: dict):
         """Save data for current page."""

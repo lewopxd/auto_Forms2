@@ -1613,64 +1613,68 @@ const AutoFormViewModule = (function () {
             if (result.success && result.connected) {
                 // Connection successful
 
-                // If NOT in debug mode, close modals
-                if (!tempRecordingConfig.debug_mode) {
-                    const newModal = document.getElementById('modal-new-recording');
-                    if (window.ModalManager) window.ModalManager.closeModal(newModal);
-                    else newModal?.classList.remove('open');
+                // Update Modal UI to "Recording" state instead of closing
+                const filenameInput = document.getElementById('new-rec-filename');
+                const urlInput = document.getElementById('new-rec-url');
+                const browserSelect = document.getElementById('new-rec-browser');
 
-                    const managerModal = document.getElementById('modal-recording-manager');
-                    if (window.ModalManager && managerModal) {
-                        window.ModalManager.closeModal(managerModal);
-                        managerModal.style.display = 'none';
-                    } else if (managerModal) {
-                        managerModal.classList.remove('open');
+                if (filenameInput) filenameInput.disabled = true;
+                if (urlInput) urlInput.disabled = true;
+                if (browserSelect) browserSelect.disabled = true;
+
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.className = 'af-btn-danger w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700';
+                    startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i> Detener Grabación';
+
+                    // Add status text above button
+                    let statusEl = document.getElementById('rec-modal-status');
+                    if (!statusEl) {
+                        statusEl = document.createElement('div');
+                        statusEl.id = 'rec-modal-status';
+                        statusEl.className = 'text-center text-sm font-medium text-green-600 mb-2 animate-pulse';
+                        startBtn.parentNode.insertBefore(statusEl, startBtn);
                     }
-                } else {
-                    // In debug mode: keep modal open, add log entry
+                    statusEl.textContent = `● Grabando en ${browser}`;
+
+                    if (window.lucide) lucide.createIcons();
+
+                    // Change action to Stop
+                    startBtn.onclick = async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (!confirm('¿Detener grabación y guardar?')) return;
+
+                        startBtn.disabled = true;
+                        startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...';
+
+                        try {
+                            // Send stop command to backend
+                            // We use the same bridge logic. Assuming backend has a handler or we use generic command
+                            await window.bridgePy.send('stop_recording', { save: true });
+                        } catch (err) {
+                            console.error('Stop failed:', err);
+                            alert('Error al detener: ' + err.message);
+                            startBtn.disabled = false;
+                            startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i> Detener Grabación';
+                        }
+                    };
+                }
+
+                // If in debug mode, add log
+                if (tempRecordingConfig.debug_mode) {
                     const console_el = document.getElementById('debug-console');
                     if (console_el) {
                         const now = new Date().toLocaleTimeString('es-CO', { hour12: false });
-                        console_el.value += `\n[${now}] ✓ Conexión establecida con Selenium`;
+                        console_el.value += `\n[${now}] ✓ Grabando... (Pestaña liberada)`;
                         console_el.scrollTop = console_el.scrollHeight;
                     }
                 }
 
-                // Set Recording State
-                if (tabId) {
-                    const localState = tabs.get(tabId);
-                    if (localState) {
-                        localState.isRecording = true;
-                        localState.recordingInfo = {
-                            filename: filename + '.raf',
-                            url: url,
-                            browser: browser
-                        };
-                    }
+                // We DO NOT hijack the tab anymore.
+                // The Modal remains the control center.
 
-                    const globalTab = window.findTab ? window.findTab(tabId) : null;
-                    if (globalTab) {
-                        globalTab.isRecording = true;
-                        globalTab.recordingInfo = {
-                            filename: filename + '.raf',
-                            url: url,
-                            browser: browser
-                        };
-                    }
-
-                    renderInfoBar(tabId);
-
-                    const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
-                    if (contentContainer) {
-                        contentContainer.innerHTML = renderEmptyState(tabId);
-                        if (window.lucide) lucide.createIcons();
-                    }
-
-                    // Activate the tab that launched the recording
-                    if (window.TemplateViewModule && window.TemplateViewModule.activateTab) {
-                        window.TemplateViewModule.activateTab(tabId);
-                    }
-                }
             } else {
                 // Error - restore button
                 throw new Error(result.error || 'Failed to start recording');
@@ -2819,60 +2823,93 @@ const AutoFormViewModule = (function () {
         // Listen for browser closed externally
         window.addEventListener('recording_browser_closed', (e) => {
             console.log('[AutoForm] Browser closed externally event received');
-            // Find the tab that was recording
-            const recordingTab = Array.from(tabs.entries()).find(([id, state]) => state.isRecording);
-            if (recordingTab) {
-                const [tabId] = recordingTab;
-                stopRecording(tabId, true, true); // skipConfirm=true, browserClosed=true
+
+            // Reset Start Modal State
+            const startBtn = document.querySelector('#modal-new-recording .af-btn-danger'); // Red button
+            if (startBtn) {
+                // Reset to initial state
+                startBtn.disabled = false;
+                startBtn.className = 'af-btn-primary w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700';
+                startBtn.innerHTML = 'Iniciar Grabación';
+                startBtn.onclick = () => startNewRecording(); // Restore original handler
             }
+
+            // Re-enable inputs
+            const inputs = document.querySelectorAll('#modal-new-recording input, #modal-new-recording select');
+            inputs.forEach(el => el.disabled = false);
+
+            // Remove status message
+            const statusEl = document.getElementById('rec-modal-status');
+            if (statusEl) statusEl.remove();
+
+            // Close modal
+            closeNewRecordingModal();
         });
 
-        // Listen for recording stopped from injected UI
-        window.addEventListener('recording_stopped', (e) => {
+        // Listen for recording stopped from injected UI or App Modal
+        window.addEventListener('recording_stopped', async (e) => {
             console.log('[AutoForm] Recording stopped event received:', e.detail);
             const detail = e.detail || {};
 
-            // Find the tab that was recording
-            const recordingTab = Array.from(tabs.entries()).find(([id, state]) => state.isRecording);
-            if (recordingTab) {
-                const [tabId] = recordingTab;
-                const tab = window.findTab ? window.findTab(tabId) : null;
+            // 1. Reset "New Recording" Modal UI (if open)
+            const startBtn = document.querySelector('#modal-new-recording .af-btn-danger');
+            if (startBtn) {
+                startBtn.disabled = false;
+                startBtn.className = 'af-btn-primary w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700';
+                startBtn.innerHTML = 'Iniciar Grabación';
+                startBtn.onclick = () => startNewRecording(); // Restore handler
+            }
 
-                if (tab) {
-                    tab.isRecording = false;
-                    tab.isLoadingRecording = detail.path ? true : false;
+            const inputs = document.querySelectorAll('#modal-new-recording input, #modal-new-recording select');
+            inputs.forEach(el => el.disabled = false);
 
-                    renderInfoBar(tabId);
+            const statusEl = document.getElementById('rec-modal-status');
+            if (statusEl) statusEl.remove();
 
-                    if (detail.path) {
-                        // Recording was saved - load it
-                        handleLoadRecording(detail.path, null).then(() => {
-                            window.showAlert({
-                                icon: 'check-circle',
-                                iconColor: 'text-green-500',
-                                title: 'Grabación Guardada',
-                                message: 'La grabación se ha guardado y cargado correctamente.',
-                                confirmText: 'Aceptar',
-                                confirmColor: 'bg-green-600 hover:bg-green-700'
-                            });
-                        });
-                    } else {
-                        // Recording was not saved
-                        const contentContainer = document.getElementById(`af-container-edit-${tabId}`);
-                        if (contentContainer) {
-                            contentContainer.innerHTML = renderEmptyState(tabId);
-                            if (window.lucide) lucide.createIcons();
-                        }
+            // 2. Close Modal
+            closeNewRecordingModal();
 
-                        window.showAlert({
-                            icon: 'info',
-                            iconColor: 'text-blue-500',
-                            title: 'Grabación Descartada',
-                            message: 'La grabación se ha detenido sin guardar.',
-                            confirmText: 'Aceptar',
-                            confirmColor: 'bg-blue-600 hover:bg-blue-700'
-                        });
+            // 3. Handle Saved Recording
+            if (detail.path) {
+                const filename = detail.path.split(/[\\/]/).pop();
+
+                // Add to global recordings immediately
+                const existing = window.projectData.recordings.find(r => r.filename === filename);
+                if (!existing) {
+                    window.projectData.recordings.push({
+                        id: 'rec-' + Date.now(),
+                        filename: filename,
+                        path: detail.path,
+                        created: new Date().toISOString(),
+                        questionCount: detail.questionCount || 0
+                    });
+                }
+
+                // Trigger UI Refresh
+                if (typeof refreshRecordingsList === 'function') {
+                    refreshRecordingsList();
+                }
+
+                // Show Success Alert
+                window.showAlert({
+                    icon: 'check-circle',
+                    iconColor: 'text-green-500',
+                    title: 'Grabación Guardada',
+                    message: `La grabación <b>${filename}</b> se ha registrado correctamente.<br>Ahora puedes insertarla en tus pestañas desde el Gestor.`,
+                    confirmText: 'Abrir Gestor',
+                    confirmColor: 'bg-green-600 hover:bg-green-700',
+                    onConfirm: () => {
+                        openRecordingManager();
                     }
+                });
+
+                // Also open manager automatically if configured or just by default
+                // Let's stick to the Alert confirmation to avoid jarring jumps
+                // openRecordingManager(); 
+            } else {
+                // Recording discarded or error
+                if (tempRecordingConfig.debug_mode) {
+                    console.log('Recording stopped without save.');
                 }
             }
         });

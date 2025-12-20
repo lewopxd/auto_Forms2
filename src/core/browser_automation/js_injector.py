@@ -76,8 +76,7 @@ def set_form_data(driver, data: dict):
         driver: Selenium WebDriver instance
         data: Form data dictionary
     """
-    script = f"window.__msfa_setFormData({json.dumps(data)})"
-    driver.execute_script(script)
+    driver.execute_script("window.__msfa_setFormData(arguments[0])", data)
 
 
 def get_commands(driver) -> list:

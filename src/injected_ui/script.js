@@ -23,6 +23,7 @@
         spinner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`,
         save: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
         analyze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`,
+        stop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>`,
         required: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>`,
         chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>`
     };
@@ -50,7 +51,6 @@
                 border-radius: 12px;
                 box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
                 min-width: 200px;
-                min-height: 48px;
                 width: 400px;
                 max-height: calc(100vh - 40px);
                 overflow: hidden;
@@ -80,38 +80,6 @@
             .header-btn:hover { background: rgba(255,255,255,0.3); }
             .header-btn svg { width: 14px; height: 14px; color: white; }
             
-            .auto-save-toggle {
-                display: flex; align-items: center; gap: 6px;
-                margin-right: 8px; cursor: pointer;
-            }
-            .auto-save-toggle input { display: none; }
-            .toggle-slider {
-                width: 32px; height: 18px;
-                background: rgba(255,255,255,0.3);
-                border-radius: 9px;
-                position: relative;
-                transition: 0.2s;
-            }
-            .toggle-slider::before {
-                content: '';
-                position: absolute;
-                width: 14px; height: 14px;
-                background: white;
-                border-radius: 50%;
-                top: 2px; left: 2px;
-                transition: 0.2s;
-            }
-            .auto-save-toggle input:checked + .toggle-slider {
-                background: #22c55e;
-            }
-            .auto-save-toggle input:checked + .toggle-slider::before {
-                left: 16px;
-            }
-            .toggle-label {
-                font-size: 11px; color: rgba(255,255,255,0.8);
-                font-weight: 500;
-            }
-            
             .body { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
             .body.hidden { display: none; }
             
@@ -134,9 +102,6 @@
                 border-radius: 8px;
             }
             .question-item:hover { background: #f1f5f9; }
-            .question-item.required { border-left: 4px solid #ef4444; }
-            
-            .question-header { display: flex; align-items: flex-start; }
             
             .question-num {
                 width: 26px; height: 26px;
@@ -147,111 +112,7 @@
                 margin-right: 10px; flex-shrink: 0;
             }
             
-            .question-content { flex: 1; min-width: 0; }
             .question-text { font-size: 13px; color: #334155; word-break: break-word; font-weight: 500; }
-            
-            .question-meta {
-                display: flex; align-items: center; gap: 8px;
-                margin-top: 4px; font-size: 11px; color: #64748b;
-            }
-            .question-type {
-                background: #e2e8f0; padding: 2px 8px;
-                border-radius: 4px; color: #475569;
-            }
-            .required-dot { color: #ef4444; }
-            .required-dot svg { width: 10px; height: 10px; }
-            
-            .expand-btn {
-                width: 24px; height: 24px;
-                background: #e2e8f0; border: none; border-radius: 4px;
-                cursor: pointer; display: flex; align-items: center;
-                justify-content: center; flex-shrink: 0;
-                transition: transform 0.2s;
-            }
-            .expand-btn:hover { background: #cbd5e1; }
-            .expand-btn svg { width: 12px; height: 12px; color: #475569; }
-            .expand-btn.expanded { transform: rotate(90deg); }
-            
-            .question-details {
-                display: none;
-                margin-top: 10px; padding: 10px;
-                background: #1e293b; border-radius: 6px;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-size: 11px; color: #94a3b8;
-            }
-            .question-details.visible { display: block; }
-            .question-details code {
-                color: #22c55e; display: block;
-                margin: 3px 0; word-break: break-all;
-            }
-            .question-details .label { color: #64748b; }
-            
-            .options-list {
-                margin-top: 8px; padding-left: 36px;
-                font-size: 12px; color: #475569;
-            }
-            .option-item {
-                padding: 6px 8px; margin: 4px 0;
-                background: white; border: 1px solid #e2e8f0;
-                border-radius: 4px;
-            }
-            .option-item.is-branch {
-                border-left: 3px solid #f59e0b;
-                background: #fffbeb;
-            }
-            .option-item .branch-badge {
-                display: inline-block;
-                background: #f59e0b; color: white;
-                font-size: 9px; font-weight: 600;
-                padding: 1px 5px; border-radius: 3px;
-                margin-left: 6px;
-            }
-            .option-item .branch-reveals {
-                font-size: 10px; color: #92400e;
-                margin-top: 4px;
-            }
-            
-            .info-bar {
-                padding: 12px 16px;
-                background: #f8fafc;
-                border-top: 1px solid #e2e8f0;
-                font-size: 13px; flex-shrink: 0;
-            }
-            
-            .info-row {
-                display: flex; align-items: center;
-                gap: 10px; flex-wrap: wrap;
-            }
-            
-            .info-label { color: #64748b; font-weight: 500; }
-            
-            .badge {
-                display: inline-flex; align-items: center; gap: 4px;
-                padding: 3px 8px; border-radius: 5px;
-                font-size: 12px; font-weight: 600;
-            }
-            .badge.primary { background: #667eea; color: white; }
-            .badge.success { background: #22c55e; color: white; }
-            .badge svg { width: 12px; height: 12px; }
-            
-            .status-bar {
-                padding: 10px 16px;
-                background: #f8fafc;
-                border-top: 1px solid #e2e8f0;
-                display: flex; align-items: center;
-                gap: 8px; flex-shrink: 0;
-            }
-            .status-text { font-size: 12px; color: #475569; font-weight: 500; }
-            .status-saved { font-size: 11px; color: #22c55e; }
-            .view-all-btn {
-                margin-left: auto;
-                width: 28px; height: 28px;
-                background: transparent; border: none;
-                border-radius: 4px; cursor: pointer;
-                display: flex; align-items: center; justify-content: center;
-            }
-            .view-all-btn:hover { background: #e2e8f0; }
-            .view-all-btn svg { width: 16px; height: 16px; color: #64748b; }
             
             .footer {
                 padding: 10px 16px;
@@ -272,94 +133,35 @@
             .btn-primary:hover { background: #5a67d8; }
             .btn-success { background: #22c55e; color: white; }
             .btn-success:hover { background: #16a34a; }
+            .btn-danger { background: #e53e3e; color: white; }
+            .btn-danger:hover { background: #c53030; }
             
-            /* View All Modal */
-            .modal-overlay {
-                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(0,0,0,0.3);
-                display: none; align-items: center; justify-content: center;
-                z-index: 2147483646;
+            /* Stop Confirmation Modal */
+            .confirm-overlay {
+                position: absolute; inset: 0;
+                background: rgba(255,255,255,0.95);
+                display: none; flex-direction: column;
+                align-items: center; justify-content: center;
+                z-index: 10; padding: 20px; text-align: center;
             }
-            .modal-overlay.visible { display: flex; }
-            .modal {
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 20px 50px rgba(0,0,0,0.25);
-                width: 500px; max-width: 90vw;
-                max-height: 80vh;
-                display: flex; flex-direction: column;
-                overflow: hidden;
+            .confirm-overlay.visible { display: flex; }
+            .confirm-title { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+            .confirm-text { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+            .confirm-actions { display: flex; gap: 10px; }
+            .checkbox-label {
+                display: flex; align-items: center; gap: 8px;
+                font-size: 13px; color: #475569; margin-bottom: 20px;
             }
-            .modal-header {
-                padding: 14px 18px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                display: flex; align-items: center;
-                cursor: move;
-            }
-            .modal-title { flex: 1; font-size: 14px; font-weight: 600; color: white; }
-            .modal-close {
-                width: 24px; height: 24px; border: none;
-                background: rgba(255,255,255,0.2); border-radius: 4px;
-                cursor: pointer; display: flex; align-items: center; justify-content: center;
-            }
-            .modal-close:hover { background: rgba(255,255,255,0.3); }
-            .modal-close svg { width: 12px; height: 12px; color: white; }
-            .modal-content {
-                flex: 1; overflow-y: auto; padding: 16px;
-            }
-            .page-section {
-                margin-bottom: 20px;
-            }
-            .page-header {
-                font-size: 12px; font-weight: 600;
-                color: #667eea; margin-bottom: 10px;
-                padding-bottom: 6px;
-                border-bottom: 2px solid #e2e8f0;
-            }
-            .page-question {
-                padding: 8px 10px;
-                background: #f8fafc;
-                border-radius: 6px;
-                margin-bottom: 6px;
-                font-size: 12px;
-            }
-            .page-question-num {
-                display: inline-block;
-                width: 20px; height: 20px;
-                background: #667eea; color: white;
-                border-radius: 4px; text-align: center;
-                line-height: 20px; font-size: 10px;
-                margin-right: 8px;
-            }
-            .page-question-type {
-                float: right;
-                font-size: 10px; color: #94a3b8;
-            }
-            .page-options {
-                margin-top: 6px; padding-left: 28px;
-                display: flex; flex-wrap: wrap; gap: 4px;
-            }
-            .page-option {
-                background: #e2e8f0;
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-size: 10px;
-                color: #475569;
-            }
+
             .hidden { display: none !important; }
         </style>
         
         <div class="panel" id="panel">
             <div class="header" id="header">
                 <span class="header-icon">${ICONS.record}</span>
-                <span class="header-title">Record Mode</span>
-                <label class="auto-save-toggle" title="Auto-save on changes">
-                    <input type="checkbox" id="autoSaveToggle" checked>
-                    <span class="toggle-slider"></span>
-                    <span class="toggle-label">Auto Save</span>
-                </label>
+                <span class="header-title">Form Recording</span>
                 <button class="header-btn" id="collapseBtn" title="Collapse">${ICONS.collapse}</button>
-                <button class="header-btn" id="closeBtn" title="Close">${ICONS.close}</button>
+                <button class="header-btn" id="stopBtnTop" title="Stop Recording">${ICONS.stop}</button>
             </div>
             
             <div class="body" id="body">
@@ -370,41 +172,26 @@
                     </div>
                     <ul class="question-list hidden" id="questionList"></ul>
                 </div>
-                
-                <div class="info-bar hidden" id="infoBar">
-                    <div class="info-row">
-                        <span class="info-label">Page:</span>
-                        <span class="badge primary" id="pageBadge">1/1</span>
-                        <span class="info-label">Found:</span>
-                        <span class="badge success" id="nextBadge" style="display:none">${ICONS.check} Next</span>
-                        <span class="badge success" id="backBadge" style="display:none">${ICONS.check} Back</span>
-                        <span class="badge success" id="submitBadge" style="display:none">${ICONS.check} Submit</span>
+
+                <div class="confirm-overlay" id="confirmOverlay">
+                    <div class="confirm-title">Finalizar Grabación</div>
+                    <div class="confirm-text">Se guardará como: <span id="filenameDisplay" style="font-weight:600">recording.raf</span></div>
+                    
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="closeBrowserCheck" checked>
+                        Cerrar navegador al finalizar
+                    </label>
+                    
+                    <div class="confirm-actions">
+                        <button class="btn btn-primary" id="cancelStopBtn">Cancelar</button>
+                        <button class="btn btn-danger" id="confirmStopBtn">Finalizar</button>
                     </div>
-                </div>
-                
-                <div class="status-bar hidden" id="statusBar">
-                    <span class="status-text" id="statusText">0 questions</span>
-                    <span class="status-saved" id="statusSaved"></span>
-                    <button class="view-all-btn" id="viewAllBtn" title="View all saved questions">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-                    </button>
                 </div>
                 
                 <div class="footer hidden" id="footer">
                     <button class="btn btn-primary" id="analyzeBtn">${ICONS.analyze} Analyze</button>
-                    <button class="btn btn-success" id="saveBtn">${ICONS.save} Save</button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="modal-overlay" id="modalOverlay">
-            <div class="modal" id="modal">
-                <div class="modal-header" id="modalHeader">
-                    <span class="modal-title">All Saved Questions</span>
-                    <button class="modal-close" id="modalClose">${ICONS.close}</button>
-                </div>
-                <div class="modal-content" id="modalContent">
-                    <p style="color:#64748b; text-align:center; padding:20px;">No saved data yet. Navigate through pages and save to see questions here.</p>
+                    <button class="btn btn-success" id="saveBtn">${ICONS.save} Registrar</button>
+                    <button class="btn btn-danger" id="stopBtn">${ICONS.stop} Detener</button>
                 </div>
             </div>
         </div>
@@ -416,48 +203,40 @@
     const header = shadow.getElementById('header');
     const body = shadow.getElementById('body');
     const collapseBtn = shadow.getElementById('collapseBtn');
-    const infoBar = shadow.getElementById('infoBar');
-    const pageBadge = shadow.getElementById('pageBadge');
-    const nextBadge = shadow.getElementById('nextBadge');
-    const backBadge = shadow.getElementById('backBadge');
-    const submitBadge = shadow.getElementById('submitBadge');
+
+    // UI Elements
     const loading = shadow.getElementById('loading');
     const questionList = shadow.getElementById('questionList');
     const footer = shadow.getElementById('footer');
-    const statusBar = shadow.getElementById('statusBar');
-    const statusText = shadow.getElementById('statusText');
-    const statusSaved = shadow.getElementById('statusSaved');
-    const viewAllBtn = shadow.getElementById('viewAllBtn');
+
+    // Buttons
     const analyzeBtn = shadow.getElementById('analyzeBtn');
     const saveBtn = shadow.getElementById('saveBtn');
-    const autoSaveToggle = shadow.getElementById('autoSaveToggle');
-    const modalOverlay = shadow.getElementById('modalOverlay');
-    const modal = shadow.getElementById('modal');
-    const modalHeader = shadow.getElementById('modalHeader');
-    const modalContent = shadow.getElementById('modalContent');
-    const modalClose = shadow.getElementById('modalClose');
+    const stopBtn = shadow.getElementById('stopBtn');
+    const stopBtnTop = shadow.getElementById('stopBtnTop');
 
-    // Storage for all saved pages
-    let allSavedPages = {}; // { page_1: { questions: [...] }, page_2: {...} }
+    // Confirmation
+    const confirmOverlay = shadow.getElementById('confirmOverlay');
+    const filenameDisplay = shadow.getElementById('filenameDisplay');
+    const closeBrowserCheck = shadow.getElementById('closeBrowserCheck');
+    const cancelStopBtn = shadow.getElementById('cancelStopBtn');
+    const confirmStopBtn = shadow.getElementById('confirmStopBtn');
 
     let formData = null;
-    let branchData = {}; // { questionId: { optionValue: [revealedQuestionIds] } }
+    let hasAnalyzed = false;
     let lastSavedPage = null;
 
-    // Auto-save function
+    // Auto-save function (Always active in memory)
     function triggerAutoSave() {
-        if (!autoSaveToggle.checked || !formData) return;
-
+        if (!formData) return;
         const currentPage = formData.pageInfo?.current;
-        // Avoid saving the same page multiple times in quick succession
         if (currentPage !== lastSavedPage) {
             lastSavedPage = currentPage;
-            statusSaved.textContent = '• Saving...';
             window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
         }
     }
 
-    shadow.getElementById('closeBtn').onclick = () => host.remove();
+    shadow.getElementById('stopBtnTop').onclick = () => showStopConfirm();
 
     let collapsed = false;
     collapseBtn.onclick = () => {
@@ -467,7 +246,7 @@
         collapseBtn.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
     };
 
-    // Drag
+    // Drag Logic
     let dragging = false, ox = 0, oy = 0;
     header.onmousedown = (e) => {
         if (e.target.closest('.header-btn')) return;
@@ -488,210 +267,71 @@
     };
     document.onmouseup = () => dragging = false;
 
-    // Analyze button - queue command for Python
+    // Analyze button
     analyzeBtn.onclick = () => {
         loading.classList.remove('hidden');
         questionList.classList.add('hidden');
-        statusText.textContent = 'Analyzing...';
-        statusSaved.textContent = '';
         window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
     };
 
-    // Save button - queue command with data
+    // Save/Register button
     saveBtn.onclick = () => {
         if (formData) {
-            statusText.textContent = 'Saving...';
             window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
+            // Visual feedback could be added here
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = `${ICONS.check} Registrado`;
+            setTimeout(() => saveBtn.innerHTML = originalText, 1000);
         }
     };
 
-    window.__msfa_onSaved = function () {
-        // Store saved page data
-        if (formData && formData.pageInfo) {
-            const pageKey = 'page_' + formData.pageInfo.current;
-            allSavedPages[pageKey] = {
-                questions: formData.questions,
-                pageInfo: formData.pageInfo
-            };
-        }
+    // Stop Flow
+    stopBtn.onclick = () => showStopConfirm();
 
-        // Show persistent saved indicator
-        if (formData) {
-            statusText.textContent = formData.questions.length + ' questions';
-            statusSaved.textContent = '• Page saved';
-        } else {
-            statusSaved.textContent = '• Saved';
-        }
-    };
-
-    // View All Button - Open Modal
-    viewAllBtn.onclick = () => {
-        renderModal();
-        modalOverlay.classList.add('visible');
-    };
-
-    // Modal Close
-    modalClose.onclick = () => modalOverlay.classList.remove('visible');
-    modalOverlay.onclick = (e) => {
-        if (e.target === modalOverlay) modalOverlay.classList.remove('visible');
-    };
-
-    // Modal Drag
-    let modalDragging = false, mox = 0, moy = 0;
-    modalHeader.onmousedown = (e) => {
-        if (e.target.closest('.modal-close')) return;
-        modalDragging = true;
-        const rect = modal.getBoundingClientRect();
-        mox = e.clientX - rect.left;
-        moy = e.clientY - rect.top;
-        e.preventDefault();
-    };
-    document.addEventListener('mousemove', (e) => {
-        if (!modalDragging) return;
-        modal.style.position = 'fixed';
-        modal.style.left = (e.clientX - mox) + 'px';
-        modal.style.top = (e.clientY - moy) + 'px';
-        modal.style.margin = '0';
-    });
-    document.addEventListener('mouseup', () => modalDragging = false);
-
-    // Render Modal Content
-    function renderModal() {
-        const pages = Object.keys(allSavedPages).sort((a, b) => {
-            const numA = parseInt(a.replace('page_', ''));
-            const numB = parseInt(b.replace('page_', ''));
-            return numA - numB;
-        });
-
-        if (pages.length === 0) {
-            modalContent.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">No saved data yet. Navigate through pages and save to see questions here.</p>';
-            return;
-        }
-
-        const totalPages = formData?.pageInfo?.total || pages.length;
-
-        let html = '';
-        pages.forEach(pageKey => {
-            const pageData = allSavedPages[pageKey];
-            const pageNum = pageKey.replace('page_', '');
-
-            html += `<div class="page-section">
-                <div class="page-header">Page ${pageNum} of ${totalPages}</div>`;
-
-            pageData.questions.forEach(q => {
-                let optionsHtml = '';
-                if (q.options && q.options.length > 0) {
-                    optionsHtml = '<div class="page-options">' +
-                        q.options.map((o, i) => `<span class="page-option">${i + 1}. ${o.text}</span>`).join('') +
-                        '</div>';
-                }
-
-                html += `<div class="page-question">
-                    <span class="page-question-num">${q.num}</span>
-                    ${q.text || 'Untitled'}
-                    <span class="page-question-type">${q.type}</span>
-                    ${optionsHtml}
-                </div>`;
-            });
-
-            html += '</div>';
-        });
-
-        modalContent.innerHTML = html;
+    function showStopConfirm() {
+        // Try to get filename from meta if available, else default
+        filenameDisplay.textContent = window.__msfa_filename || 'formulario_auto.raf';
+        confirmOverlay.classList.add('visible');
     }
+
+    cancelStopBtn.onclick = () => confirmOverlay.classList.remove('visible');
+
+    confirmStopBtn.onclick = () => {
+        confirmOverlay.classList.remove('visible');
+        window.__msfa_commands.push({
+            type: 'stop',
+            save: true,
+            close_browser: closeBrowserCheck.checked
+        });
+    };
 
     // API
     window.__msfa_setFormData = function (data) {
-        // Merge branch data into incoming data
-        if (typeof branchData !== 'undefined') {
-            data.questions.forEach(q => {
-                if (q.questionId && branchData[q.questionId] && q.options) {
-                    q.options.forEach(opt => {
-                        const optValue = opt.text || opt.value;
-                        if (branchData[q.questionId][optValue]) {
-                            opt.isBranch = true;
-                            opt.reveals = branchData[q.questionId][optValue];
-                        }
-                    });
-                }
-            });
-        }
-
         formData = data;
+        hasAnalyzed = true;
+
+        // Update Analyze Button Text
+        analyzeBtn.innerHTML = `${ICONS.analyze} Re-Analyze`;
+
         loading.classList.add('hidden');
         questionList.classList.remove('hidden');
-        infoBar.classList.remove('hidden');
         footer.classList.remove('hidden');
-
-        pageBadge.textContent = data.pageInfo.current + '/' + data.pageInfo.total;
-
-        nextBadge.style.display = data.hasNext ? 'inline-flex' : 'none';
-        backBadge.style.display = data.hasBack ? 'inline-flex' : 'none';
-        submitBadge.style.display = data.hasSubmit ? 'inline-flex' : 'none';
 
         questionList.innerHTML = '';
         data.questions.forEach((q, idx) => {
             const li = document.createElement('li');
-            li.className = 'question-item' + (q.required ? ' required' : '');
-
-            let detailsHtml = '<div class="question-details" id="details-' + idx + '">';
-            if (q.selenium) {
-                detailsHtml += '<span class="label">Action:</span><code>' + q.selenium.action + '</code>';
-                detailsHtml += '<span class="label">Selector:</span><code>' + (q.selenium.fullSelector || q.selenium.selector || 'N/A') + '</code>';
-            }
-            if (q.questionId) {
-                detailsHtml += '<span class="label">Question ID:</span><code>' + q.questionId + '</code>';
-            }
-            detailsHtml += '</div>';
-
-            let optionsHtml = '';
-            if (q.options && q.options.length > 0) {
-                optionsHtml = '<div class="options-list">' +
-                    q.options.map((o, oi) => {
-                        const isBranch = o.isBranch || false;
-                        const reveals = o.reveals || [];
-                        return `<div class="option-item${isBranch ? ' is-branch' : ''}">
-                            <strong>${oi + 1}.</strong> ${o.text}
-                            ${isBranch ? '<span class="branch-badge">BRANCH</span>' : ''}
-                            ${reveals.length > 0 ? '<div class="branch-reveals">Reveals: ' + reveals.length + ' question(s)</div>' : ''}
-                        </div>`;
-                    }).join('') +
-                    '</div>';
-            }
+            li.className = 'question-item';
 
             li.innerHTML = `
-                <div class="question-header">
+                <div style="display:flex; align-items:center">
                     <span class="question-num">${q.num}</span>
-                    <div class="question-content">
-                        <div class="question-text">${q.text || 'Untitled'}</div>
-                        <div class="question-meta">
-                            <span class="question-type">${q.type}</span>
-                            ${q.required ? '<span class="required-dot">' + ICONS.required + '</span>' : ''}
-                        </div>
-                    </div>
-                    <button class="expand-btn" title="Show Selenium details">${ICONS.chevron}</button>
+                    <span class="question-text">${q.text || 'Untitled'}</span>
                 </div>
-                ${detailsHtml}
-                ${optionsHtml}
             `;
-
-            li.querySelector('.expand-btn').onclick = (e) => {
-                e.stopPropagation();
-                const btn = e.currentTarget;
-                const details = li.querySelector('.question-details');
-                btn.classList.toggle('expanded');
-                details.classList.toggle('visible');
-            };
-
             questionList.appendChild(li);
         });
 
-
-        statusBar.classList.remove('hidden');
-        statusText.textContent = data.questions.length + ' questions';
-        statusSaved.textContent = '';
-
-        // Auto-save if enabled
+        // Trigger auto-save to memory
         triggerAutoSave();
     };
 
