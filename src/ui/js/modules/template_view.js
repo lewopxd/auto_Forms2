@@ -1381,6 +1381,11 @@ const TemplateViewModule = (function () {
 
         // Restore each tab based on type
         tabs.forEach(tabData => {
+            // Reset runtime-only states (recording requires active Selenium session)
+            tabData.isRecording = false;
+            tabData.recordingInfo = null;
+            tabData.isLoadingRecording = false;
+
             if (tabData.type === 'form') {
                 createFormTab(tabData);
             } else if (tabData.type === 'autoform') {

@@ -1561,17 +1561,29 @@ const AutoFormViewModule = (function () {
             console.log('[AutoForm] start_recording result:', result);
 
             if (result.success && result.connected) {
-                // Connection successful - close modals and update state
-                const newModal = document.getElementById('modal-new-recording');
-                if (window.ModalManager) window.ModalManager.closeModal(newModal);
-                else newModal?.classList.remove('open');
+                // Connection successful
 
-                const managerModal = document.getElementById('modal-recording-manager');
-                if (window.ModalManager && managerModal) {
-                    window.ModalManager.closeModal(managerModal);
-                    managerModal.style.display = 'none';
-                } else if (managerModal) {
-                    managerModal.classList.remove('open');
+                // If NOT in debug mode, close modals
+                if (!tempRecordingConfig.debug_mode) {
+                    const newModal = document.getElementById('modal-new-recording');
+                    if (window.ModalManager) window.ModalManager.closeModal(newModal);
+                    else newModal?.classList.remove('open');
+
+                    const managerModal = document.getElementById('modal-recording-manager');
+                    if (window.ModalManager && managerModal) {
+                        window.ModalManager.closeModal(managerModal);
+                        managerModal.style.display = 'none';
+                    } else if (managerModal) {
+                        managerModal.classList.remove('open');
+                    }
+                } else {
+                    // In debug mode: keep modal open, add log entry
+                    const console_el = document.getElementById('debug-console');
+                    if (console_el) {
+                        const now = new Date().toLocaleTimeString('es-CO', { hour12: false });
+                        console_el.value += `\n[${now}] ✓ Conexión establecida con Selenium`;
+                        console_el.scrollTop = console_el.scrollHeight;
+                    }
                 }
 
                 // Set Recording State
@@ -1602,6 +1614,11 @@ const AutoFormViewModule = (function () {
                     if (contentContainer) {
                         contentContainer.innerHTML = renderEmptyState(tabId);
                         if (window.lucide) lucide.createIcons();
+                    }
+
+                    // Activate the tab that launched the recording
+                    if (window.switchTab) {
+                        window.switchTab(tabId);
                     }
                 }
             } else {
