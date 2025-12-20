@@ -57,6 +57,8 @@ class BrowserConfig:
     window_width_max: int = 1400       # Random window width range (max)
     window_height_min: int = 800       # Random window height range (min)
     window_height_max: int = 1000      # Random window height range (max)
+    window_position_x: int = 0         # Window X position (0 = left edge)
+    window_position_y: int = 0         # Window Y position (0 = top edge)
     
     # --- Anti-Detection (Enabled by default) ---
     anti_detection_enabled: bool = True       # Base anti-automation flags
@@ -274,13 +276,18 @@ def build_chrome_options(config: BrowserConfig, browser_path: str = None) -> 'uc
     if config.incognito:
         add_arg("--incognito")
     
-    # --- 6. Window size ---
+    # --- 6. Window size & position ---
     if config.start_maximized:
+        # Maximized mode: no need for position, browser will auto-maximize
         add_arg("--start-maximized")
-    elif config.randomize_window_size:
-        width = random.randint(config.window_width_min, config.window_width_max)
-        height = random.randint(config.window_height_min, config.window_height_max)
-        add_arg(f"--window-size={width},{height}")
+    else:
+        # Not maximized: apply position first, then size
+        add_arg(f"--window-position={config.window_position_x},{config.window_position_y}")
+        
+        if config.randomize_window_size:
+            width = random.randint(config.window_width_min, config.window_width_max)
+            height = random.randint(config.window_height_min, config.window_height_max)
+            add_arg(f"--window-size={width},{height}")
     
     # --- 7. Apply preferences ---
     prefs = profile_data.get("prefs", {})

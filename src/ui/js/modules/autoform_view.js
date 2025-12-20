@@ -950,6 +950,8 @@ const AutoFormViewModule = (function () {
         window_width_max: 1400,
         window_height_min: 800,
         window_height_max: 1000,
+        window_position_x: 0,
+        window_position_y: 0,
 
         // Timeouts
         page_load_timeout: 30,
@@ -984,6 +986,8 @@ const AutoFormViewModule = (function () {
             window_width_max: 1400,
             window_height_min: 800,
             window_height_max: 1000,
+            window_position_x: 0,
+            window_position_y: 0,
             page_load_timeout: 30,
             element_wait_timeout: 10,
             implicit_wait: 5,
@@ -1045,6 +1049,8 @@ const AutoFormViewModule = (function () {
             tempRecordingConfig.window_width_max = parseInt(document.getElementById('adv-wmax').value) || 1400;
             tempRecordingConfig.window_height_min = parseInt(document.getElementById('adv-hmin').value) || 800;
             tempRecordingConfig.window_height_max = parseInt(document.getElementById('adv-hmax').value) || 1000;
+            tempRecordingConfig.window_position_x = parseInt(document.getElementById('adv-pos-x').value) || 0;
+            tempRecordingConfig.window_position_y = parseInt(document.getElementById('adv-pos-y').value) || 0;
 
             // Timeouts
             tempRecordingConfig.page_load_timeout = parseInt(document.getElementById('adv-pageload').value) || 30;
@@ -1169,6 +1175,16 @@ const AutoFormViewModule = (function () {
                                     <div class="af-config-row flex-col items-start gap-1">
                                         <span class="text-xs text-gray-500">Alto Máx</span>
                                         <input type="number" id="adv-hmax" class="af-config-input w-full" value="${c.window_height_max}">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 mt-2">
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Posición X</span>
+                                        <input type="number" id="adv-pos-x" class="af-config-input w-full" value="${c.window_position_x}">
+                                    </div>
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Posición Y</span>
+                                        <input type="number" id="adv-pos-y" class="af-config-input w-full" value="${c.window_position_y}">
                                     </div>
                                 </div>
                             </div>
