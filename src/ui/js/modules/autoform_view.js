@@ -2007,8 +2007,94 @@ const AutoFormViewModule = (function () {
                 const backdropId = `af-backdrop-${tabId}-${pKey}-${qKey}`;
                 const actionClass = isSelect ? 'select' : 'fill';
                 const isLongText = q.config?.textType === 'long';
+                const isMapped = q.config?.mapping?.enabled;
+                if (isMapped) {
+                    // MAPPED MODE: Show Table of Rules
+                    const placeholder = q.config.mapping.placeholder || '{Columna}';
+                    const mapProps = q.config.mapping.map || {};
+                    const entries = Object.entries(mapProps);
+                    const defaultVal = q.config.mapping.defaultValue || '—';
 
-                if (isLongText) {
+                    let rowsHtml = '';
+                    const maxRows = 5;
+                    entries.slice(0, maxRows).forEach(([k, v]) => {
+                        rowsHtml += `
+                            <tr>
+                                <td style="padding: 4px 8px; border-bottom: 1px dashed #bfdbfe; color: #374151;">${escHtml(k)}</td>
+                                <td style="padding: 4px 8px; border-bottom: 1px dashed #bfdbfe; color: #1e40af; font-weight: 500;">${escHtml(v)}</td>
+                            </tr>
+                        `;
+                    });
+                    if (entries.length > maxRows) {
+                        rowsHtml += `<tr><td colspan="2" style="text-align:center; padding:4px; color:#9ca3af; font-style:italic; font-size:10px;">+ ${entries.length - maxRows} más...</td></tr>`;
+                    }
+                    if (entries.length === 0) {
+                        rowsHtml += `<tr><td colspan="2" style="text-align:center; padding:8px; color:#9ca3af;">Sin reglas definidas</td></tr>`;
+                    }
+
+                    // Chip style mimicking .af-mapped-chip but Blue
+                    const chipStyle = `
+                        display: inline-flex;
+                        align-items: center;
+                        background-color: #eff6ff;
+                        border: 1px solid #bfdbfe;
+                        color: #1e3a8a;
+                        border-radius: 4px;
+                        padding: 1px 6px;
+                        font-family: inherit;
+                        font-weight: 500;
+                    `;
+
+                    bodyHtml += `
+                        <div class="af-mapped-table-container" style="
+                            padding: 12px;
+                            background: white;
+                            border: 1px solid #e5e7eb;
+                            border-radius: 8px;
+                            font-size: 11px;
+                            color: #4b5563;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                        ">
+                            <!-- Main Header -->
+                            <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px; color:#2563eb; font-weight:600; width:100%; justify-content:center;">
+                                <i data-lucide="arrow-right-left" style="width:14px;height:14px"></i>
+                                <span>Mapeo Activo</span>
+                            </div>
+
+                            <!-- Table Wrapper -->
+                            <div style="
+                                background: white;
+                                border: 1px solid #e2e8f0;
+                                border-radius: 6px;
+                                overflow: hidden;
+                                max-width: 100%;
+                                display: inline-block;
+                            ">
+                                <table style="width: auto; border-collapse: collapse; min-width: 200px;">
+                                    <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                        <tr>
+                                            <th style="padding: 6px 12px; text-align: left; color: #475569; font-weight: 600;">
+                                                <span style="${chipStyle}">${escHtml(placeholder)}</span>
+                                            </th>
+                                            <th style="padding: 6px 12px; text-align: left; color: #475569; font-weight: 600;">VALOR</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody style="background: white;">
+                                        ${rowsHtml}
+                                    </tbody>
+                                    <tfoot style="border-top: 2px solid #e2e8f0; background: #f8fafc;">
+                                        <tr>
+                                            <td style="padding: 4px 8px; font-style: italic; color: #64748b;">(Default/Error)</td>
+                                            <td style="padding: 4px 8px; color: #1e40af; font-weight: 600;">${escHtml(defaultVal)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                } else if (isLongText) {
                     // Long text - use textarea
                     bodyHtml += `
                         <div class="af-smart-textarea-container" data-action-type="${actionClass}">
@@ -2050,6 +2136,9 @@ const AutoFormViewModule = (function () {
                     <span class="af-mapped-chip">${escHtml(placeholder)}</span>
                 </div>
             `;
+        } else if (!isSelect && q.config?.mapping?.enabled) {
+            // For Text, we already show the big block in body, so maybe no footer needed?
+            // Or show error if missing placeholder
         } else {
             bodyHtml += `
                 <div class="af-error-msg" style="display:none;align-items:center;color:#ef4444;font-size:11px;gap:4px;">
@@ -2071,6 +2160,7 @@ const AutoFormViewModule = (function () {
             const settingsBtn = card.querySelector(`#af-btn-cfg-${tabId}-${pKey}-${qKey}`);
             if (settingsBtn) {
                 settingsBtn.onclick = (e) => {
+                    console.log('Config button clicked for:', qKey);
                     e.stopPropagation();
                     const ctx = { options: q.options || [] };
                     ActionConfigModal.open(q, action, ctx, (newConfig) => {
@@ -2598,33 +2688,72 @@ const AutoFormViewModule = (function () {
     function resolveValueWithMappings(question, selectedData) {
         const action = question.selenium?.action || 'fill';
         const isSelect = action === 'select' || question.type === 'choice';
+        const isFill = action === 'fill' || question.type === 'text' || question.type === 'number';
 
-        if (isSelect && question.config?.mapping?.enabled && question.config?.mapping?.placeholder) {
-            // Get the column name from placeholder (remove { and })
+        // Check if mapping is enabled
+        if (question.config?.mapping?.enabled && question.config?.mapping?.placeholder) {
+            // Get the column name
             const placeholder = question.config.mapping.placeholder;
             const columnName = placeholder.replace(/^\{|\}$/g, '').trim();
 
-            // Get the current row's value for this column
+            // Get the current row's value
             const columnValue = selectedData?.[columnName] ?? selectedData?.[columnName.toLowerCase()];
+            console.log(`[Mapping] Q: "${question.text}" | Col: "${columnName}" | ExcelVal: "${columnValue}"`);
+            const map = question.config.mapping.map || {};
 
-            if (columnValue && question.config.mapping.map) {
-                // Find which option has this column value mapped to it
-                // The map is: { "Option A": "ExcelValue1", "Option B": "ExcelValue2" }
-                for (const [optionValue, mappedExcelValue] of Object.entries(question.config.mapping.map)) {
-                    if (mappedExcelValue === columnValue || String(mappedExcelValue) === String(columnValue)) {
-                        return optionValue;
+            if (isSelect) {
+                if (columnValue) {
+                    // Reverse Lookup for Select: map is { "Option": "ExcelValue" }
+                    for (const [optionValue, mappedExcelValue] of Object.entries(map)) {
+                        if (mappedExcelValue === columnValue || String(mappedExcelValue) === String(columnValue)) {
+                            return optionValue;
+                        }
+                    }
+                    if (question.config.mapping.defaultValue) {
+                        return question.config.mapping.defaultValue;
                     }
                 }
+                return null;
 
-                // No direct mapping found, check if there's a default value
-                if (question.config.mapping.defaultValue) {
-                    return question.config.mapping.defaultValue;
+            } else if (isFill) {
+                // Direct Lookup for Text: map is { "ExcelValue": "OutputText" }
+                let mappedText = null;
+
+                // Try safe string comparison
+                // We stringify both to ensure "1" matches 1, etc.
+                const colStr = (columnValue !== undefined && columnValue !== null) ? String(columnValue).trim() : '';
+
+                // First try exact key match (fastest)
+                if (map[colStr] !== undefined) {
+                    mappedText = map[colStr];
+                } else {
+                    // Try to find if any key matches the column string
+                    // This handles potential whitespace diffs if key wasn't trimmed
+                    const foundKey = Object.keys(map).find(k => String(k).trim() === colStr);
+                    if (foundKey) mappedText = map[foundKey];
                 }
+
+                console.log(`[Mapping] Lookup Key: "${colStr}" | Match: "${mappedText}"`);
+
+                if (mappedText !== null) {
+                    return resolveAllPlaceholders(mappedText, selectedData);
+                }
+
+                // If no match, try default value
+                if (question.config.mapping.defaultValue) {
+                    return resolveAllPlaceholders(question.config.mapping.defaultValue, selectedData);
+                }
+
+                // If mapping enabled but no match found:
+                // Return null to indicate "no value derived from mapping"?
+                // Or fallback to original? 
+                // In Select we returned null. But Select has "specific options".
+                // In Text, maybe we want to keep the "Original Template" if mapping fails?
+                // Let's decide to fall back to original response if mapping yields nothing.
             }
-            return null; // No matching mapping found
         }
 
-        // For fill actions, resolve placeholders in response
+        // Standard behavior (no mapping or fallback)
         return resolveAllPlaceholders(question.response || '', selectedData);
     }
 
@@ -2715,11 +2844,31 @@ const AutoFormViewModule = (function () {
             }
         } else {
             // Fill action - show the response with chips for placeholders
-            const originalText = question.response || '';
+            const isMapped = question.config?.mapping?.enabled;
+            let originalText = question.response || '';
+
+            // If mapped, use the resolved value (Effective Preview)
+            // Note: resolvedValue has placeholders expanded, so processTextWithChips won't show concept chips, 
+            // but will show the actual concept text. This is desired for "Preview".
+            if (isMapped && resolvedValue !== null && resolvedValue !== undefined) {
+                originalText = resolvedValue;
+            }
+
             const answerClass = isLongText ? 'afv-answer paragraph' : 'afv-answer';
-            // Use processTextWithChips to render placeholders as colored chips
+            // Use processTextWithChips to render placeholders (if any remain) as colored chips
             const chipHtml = processTextWithChips(originalText, selectedData);
             answerHtml = `<div class="${answerClass}">${chipHtml}</div>`;
+
+            // Add mapping chip if mapping is enabled
+            if (isMapped && question.config?.mapping?.placeholder) {
+                const placeholder = question.config.mapping.placeholder;
+                mappingChipHtml = `
+                    <div class="afv-mapping-indicator">
+                        <span style="color:#9ca3af;font-size:11px;">Mapeado:</span>
+                        <span class="af-mapped-chip">${escHtml(placeholder)}</span>
+                    </div>
+                `;
+            }
         }
 
         row.innerHTML = `

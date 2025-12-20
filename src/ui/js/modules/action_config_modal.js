@@ -2,7 +2,7 @@
  * Action Config Modal Module
  * Handles the configuration settings for AutoForm Action Cards.
  */
-const ActionConfigModal = (function () {
+window.ActionConfigModal = (function () {
     'use strict';
 
     let currentCardData = null;
@@ -271,8 +271,8 @@ const ActionConfigModal = (function () {
             // Generic fallback
         }
 
-        // 3. MAPPING (For SELECT mainly)
-        if (type === 'select') {
+        // 3. MAPPING (For SELECT & TEXT)
+        if (type === 'select' || type === 'fill' || type === 'text' || type === 'number') {
             const mapEnabled = config.mapping?.enabled || false;
             html += `
                 <div class="af-config-section">
@@ -318,21 +318,20 @@ const ActionConfigModal = (function () {
                                     <i data-lucide="info" style="width:14px;height:14px;color:#9ca3af;"></i>
                                 </span>
                             </div>
-                            <select id="cfg-map-default" 
-                                    style="width:100%;max-width:180px;border:1px solid #d1d5db;border-radius:3px;padding:2px 4px;font-size:11px;outline:none;background:white;">
-                                <option value="">-- Ninguno --</option>
-                                ${(ctx?.options || []).map(opt => {
-                const val = opt.value || opt.text;
-                const isSelected = config.mapping?.defaultValue === val;
-                return `<option value="${escHtml(val)}" ${isSelected ? 'selected' : ''}>${escHtml(opt.text)}</option>`;
-            }).join('')}
-                            </select>
+                            ${renderDefaultInput(type, config, ctx)}
                         </div>
                     </div>
                 </div>
             `;
             setTimeout(() => {
-                renderMappingRows(config.mapping?.map || {}, ctx?.options || []);
+                if (type === 'select') {
+                    renderMappingRows(config.mapping?.map || {}, ctx?.options || []);
+                } else {
+                    // For Text, we wait until column data is loaded or show saved map if exists
+                    // Actually, we can only render rows if we know the unique values from the column
+                    // So initially it's empty until loadDataIntoMapping is triggered
+                    document.getElementById('af-map-rows').innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af;font-size:11px">Seleccione una columna para ver sus valores únicos...</div>';
+                }
 
                 // Auto-load data if there's a saved placeholder
                 const savedPlaceholder = config.mapping?.placeholder || '';
@@ -365,121 +364,146 @@ const ActionConfigModal = (function () {
         if (window.lucide) lucide.createIcons();
 
         // Initialize Smart Input
-        if (type === 'select') {
-            setupSmartInput('cfg-map-col', 'cfg-map-backdrop');
+        if (type === 'select' || type === 'fill' || type === 'text' || type === 'number') {
+            setupSmartInput('cfg-map-col', 'cfg-map-backdrop', true); // True = Trigger column analysis
+            if (type === 'fill' || type === 'text' || type === 'number') {
+                // Default input is also smart text for these types
+                setupSmartInput('cfg-map-default', 'cfg-map-default-bd', false);
+            }
         }
-    }
 
-    // Debounce timer and last valid column
-    let analyzeDebounceTimer = null;
-    let lastValidColumn = null;
+        // Debounce timer and last valid column
+        let analyzeDebounceTimer = null;
+        let lastValidColumn = null;
 
-    function setupSmartInput(inputId, backdropId) {
-        const input = document.getElementById(inputId);
-        const backdrop = document.getElementById(backdropId);
-        if (!input || !backdrop) return;
+        function setupSmartInput(inputId, backdropId, triggerAnalysis = false) {
+            const input = document.getElementById(inputId);
+            const backdrop = document.getElementById(backdropId);
+            if (!input || !backdrop) return;
+            attachSmartInputBehavior(input, backdrop, triggerAnalysis);
+        }
 
-        const update = () => {
-            const text = input.value;
-            let html = '';
-            let lastIndex = 0;
-            const regex = /\{([^{}]+)\}/g;
-            let match;
-            let foundValidColumn = null;
+        /**
+         * Reusable logic for attaching smart chips behavior to any input
+         */
+        function attachSmartInputBehavior(input, backdrop, triggerAnalysis = false) {
+            const update = () => {
+                const text = input.value;
+                let html = '';
+                let lastIndex = 0;
+                // Combined regex for {Column} and [[Concept]]
+                const regex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+                let match;
+                let foundValidColumn = null;
 
-            // Validation Data
-            const headers = window.globalHeaders || [];
+                // Validation Data
+                const headers = window.globalHeaders || [];
+                const conceptTitles = (window.projectData?.tabs || [])
+                    .filter(t => t.type === 'concept' || (!t.type && t.content !== undefined))
+                    .map(t => t.title?.toLowerCase().trim())
+                    .filter(Boolean);
 
-            while ((match = regex.exec(text)) !== null) {
-                html += escHtml(text.substring(lastIndex, match.index));
+                while ((match = regex.exec(text)) !== null) {
+                    // Text before match
+                    html += escHtml(text.substring(lastIndex, match.index));
 
-                const val = match[1];
-                const cleanVal = val.trim();
-                const isValid = headers.includes(cleanVal);
+                    let content = '';
+                    let isValid = false;
+                    let isConcept = false;
 
-                // Determine Class & Icon
-                const chipClass = isValid ? 'valid' : 'invalid';
-                const iconHtml = isValid
-                    ? ''
-                    : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+                    if (match[1] !== undefined) {
+                        // {Column}
+                        content = match[1];
+                        const cleanVal = content.trim();
+                        isValid = headers.includes(cleanVal);
+                        if (isValid && cleanVal) foundValidColumn = cleanVal;
+                    } else if (match[2] !== undefined) {
+                        // [[Concept]]
+                        content = match[2];
+                        const cleanVal = content.toLowerCase().trim();
+                        isValid = conceptTitles.includes(cleanVal);
+                        isConcept = true;
+                    }
 
-                html += `<span class="ac-smart-chip ${chipClass}">{${escHtml(val)}}${iconHtml}</span>`;
+                    // Determine Class & Icon
+                    let chipClass = isValid ? 'valid' : 'invalid';
+                    if (isConcept && isValid) chipClass = 'valid-concept'; // Ensure you have CSS for this!
 
-                // Track valid column
-                if (isValid && cleanVal) {
-                    foundValidColumn = cleanVal;
+                    const iconHtml = isValid
+                        ? ''
+                        : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+
+                    const wrapper = isConcept ? `[[${escHtml(content)}]]` : `{${escHtml(content)}}`;
+                    html += `<span class="ac-smart-chip ${chipClass}">${wrapper}${iconHtml}</span>`;
+
+                    lastIndex = regex.lastIndex;
                 }
+                // Text after match
+                html += escHtml(text.substring(lastIndex));
 
-                lastIndex = regex.lastIndex;
-            }
-            html += escHtml(text.substring(lastIndex));
+                backdrop.innerHTML = html;
+                if (window.lucide) lucide.createIcons();
 
-            backdrop.innerHTML = html;
-            if (window.lucide) lucide.createIcons();
+                // Logic specific to the Main Column Input (analysis trigger)
+                if (triggerAnalysis) {
+                    // Show/hide reload button based on validity
+                    const reloadBtn = document.getElementById('cfg-reload-btn');
+                    if (reloadBtn) {
+                        reloadBtn.style.display = foundValidColumn ? 'flex' : 'none';
+                    }
 
-            // Show/hide reload button based on validity
-            const reloadBtn = document.getElementById('cfg-reload-btn');
-            if (reloadBtn) {
-                reloadBtn.style.display = foundValidColumn ? 'flex' : 'none';
-            }
+                    // Debounced column analysis
+                    if (foundValidColumn && foundValidColumn !== lastValidColumn) {
+                        lastValidColumn = foundValidColumn;
+                        if (analyzeDebounceTimer) clearTimeout(analyzeDebounceTimer);
+                        analyzeDebounceTimer = setTimeout(() => {
+                            loadDataIntoMapping(foundValidColumn);
+                        }, 300);
+                    } else if (!foundValidColumn) {
+                        lastValidColumn = null;
+                        columnUniqueValues = [];
+                        updateMappingSelects();
+                    }
+                }
+            };
 
-            // Debounced column analysis
-            if (foundValidColumn && foundValidColumn !== lastValidColumn) {
-                lastValidColumn = foundValidColumn;
-
-                // Clear previous timer
-                if (analyzeDebounceTimer) clearTimeout(analyzeDebounceTimer);
-
-                // Debounce: wait 300ms before loading data
-                analyzeDebounceTimer = setTimeout(() => {
-                    loadDataIntoMapping(foundValidColumn);
-                }, 300);
-            } else if (!foundValidColumn) {
-                lastValidColumn = null;
-                columnUniqueValues = [];
-                // Update selects to show empty state
-                updateMappingSelects();
-            }
-        };
-
-        input.oninput = update;
-        input.onscroll = () => { backdrop.scrollLeft = input.scrollLeft; };
-
-        // Initial call
-        update();
-    }
-
-    function toggleFillOpts(val) {
-        const d = document.getElementById('cfg-fill-opts');
-        if (d) d.style.display = val === 'native' ? 'flex' : 'none'; // Updated to flex
-    }
-
-    // New Helper for Mutual Exclusive Timing
-    function toggleTimingMode(isRandom) {
-        const fixedOpts = document.getElementById('cfg-fixed-opts');
-        const rndOpts = document.getElementById('cfg-rnd-opts');
-        if (fixedOpts) fixedOpts.style.display = isRandom ? 'none' : 'flex';
-        if (rndOpts) rndOpts.style.display = isRandom ? 'flex' : 'none';
-    }
-
-    // Store unique column values for dropdowns
-    let columnUniqueValues = [];
-
-    /**
-     * Render mapping rows structure (called once when modal opens)
-     * Creates disabled selects that will be populated later
-     */
-    function renderMappingRows(currentMap, options) {
-        const container = document.getElementById('af-map-rows');
-        if (!container) return;
-        if (!options || options.length === 0) {
-            container.innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af;font-size:11px">No hay opciones</div>';
-            return;
+            input.oninput = update;
+            input.onscroll = () => { backdrop.scrollLeft = input.scrollLeft; };
+            // Initial call
+            update();
         }
 
-        container.innerHTML = options.map(opt => {
-            const key = opt.value || opt.text;
-            return `
+        function toggleFillOpts(val) {
+            const d = document.getElementById('cfg-fill-opts');
+            if (d) d.style.display = val === 'native' ? 'flex' : 'none'; // Updated to flex
+        }
+
+        // New Helper for Mutual Exclusive Timing
+        function toggleTimingMode(isRandom) {
+            const fixedOpts = document.getElementById('cfg-fixed-opts');
+            const rndOpts = document.getElementById('cfg-rnd-opts');
+            if (fixedOpts) fixedOpts.style.display = isRandom ? 'none' : 'flex';
+            if (rndOpts) rndOpts.style.display = isRandom ? 'flex' : 'none';
+        }
+
+        // Store unique column values for dropdowns
+        let columnUniqueValues = [];
+
+        /**
+         * Render mapping rows structure (called once when modal opens)
+         * Creates disabled selects that will be populated later
+         */
+        function renderMappingRows(currentMap, options) {
+            const container = document.getElementById('af-map-rows');
+            if (!container) return;
+            if (!options || options.length === 0) {
+                container.innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af;font-size:11px">No hay opciones</div>';
+                return;
+            }
+
+            container.innerHTML = options.map(opt => {
+                const key = opt.value || opt.text;
+                return `
                 <div class="af-map-row">
                     <div class="af-map-cell left" title="${escHtml(opt.text)}">
                         <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">${escHtml(opt.text)}</div>
@@ -493,224 +517,310 @@ const ActionConfigModal = (function () {
                     </div>
                 </div>
             `;
-        }).join('');
-    }
-
-    /**
-     * Update existing selects with new options (doesn't re-render the structure)
-     */
-    function updateMappingSelects() {
-        const selects = document.querySelectorAll('.af-map-select');
-        const config = currentCardData?.config || {};
-        const currentMap = config.mapping?.map || {};
-
-        selects.forEach(sel => {
-            const key = sel.dataset.optionKey;
-            const mappedVal = currentMap[key] || '';
-
-            if (columnUniqueValues.length > 0) {
-                sel.innerHTML = '<option value="">-- Seleccionar --</option>' +
-                    columnUniqueValues.map(v =>
-                        `<option value="${escHtml(v)}" ${v === mappedVal ? 'selected' : ''}>${escHtml(v)}</option>`
-                    ).join('');
-                sel.disabled = false;
-                sel.style.background = 'white';
-            } else {
-                sel.innerHTML = '<option value="">Sin datos...</option>';
-                sel.disabled = true;
-                sel.style.background = '#f3f4f6';
-            }
-        });
-    }
-
-    /**
-     * Main function to load column data into mapping dropdowns
-     * 1. Show spinner, disable button
-     * 2. Extract unique values from Excel column
-     * 3. Update selects with new options
-     * 4. Restore button
-     */
-    function loadDataIntoMapping(columnName) {
-        const reloadBtn = document.getElementById('cfg-reload-btn');
-
-        // 1. Show spinner, disable button
-        if (reloadBtn) {
-            reloadBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:14px;height:14px"></i>';
-            reloadBtn.disabled = true;
-            if (window.lucide) lucide.createIcons();
+            }).join('');
         }
 
-        // 2. Disable all selects during loading
-        document.querySelectorAll('.af-map-select').forEach(sel => {
-            sel.disabled = true;
-        });
+        /**
+         * Update existing selects with new options (doesn't re-render the structure)
+         */
+        function updateMappingSelects() {
+            const selects = document.querySelectorAll('.af-map-select');
+            const config = currentCardData?.config || {};
+            const currentMap = config.mapping?.map || {};
 
-        // Small delay to ensure spinner renders
-        setTimeout(() => {
-            try {
-                // 3. Get Excel data
-                const headers = window.globalHeaders || [];
-                const data = window.globalExcelData || [];
+            selects.forEach(sel => {
+                const key = sel.dataset.optionKey;
+                const mappedVal = currentMap[key] || '';
 
-                // Find column index
-                const colIndex = headers.indexOf(columnName);
-                if (colIndex === -1) {
-                    console.warn('[loadDataIntoMapping] Column not found:', columnName);
-                    columnUniqueValues = [];
+                if (columnUniqueValues.length > 0) {
+                    sel.innerHTML = '<option value="">-- Seleccionar --</option>' +
+                        columnUniqueValues.map(v =>
+                            `<option value="${escHtml(v)}" ${v === mappedVal ? 'selected' : ''}>${escHtml(v)}</option>`
+                        ).join('');
+                    sel.disabled = false;
+                    sel.style.background = 'white';
                 } else {
-                    // Extract unique values efficiently using Set
-                    const uniqueSet = new Set();
-                    for (let i = 0; i < data.length; i++) {
-                        const val = data[i][colIndex];
-                        if (val !== null && val !== undefined && val !== '') {
-                            uniqueSet.add(String(val));
+                    sel.innerHTML = '<option value="">Sin datos...</option>';
+                    sel.disabled = true;
+                    sel.style.background = '#f3f4f6';
+                }
+            });
+        }
+
+        /**
+         * Main function to load column data into mapping dropdowns
+         * 1. Show spinner, disable button
+         * 2. Extract unique values from Excel column
+         * 3. Update selects with new options
+         * 4. Restore button
+         */
+        function loadDataIntoMapping(columnName) {
+            const reloadBtn = document.getElementById('cfg-reload-btn');
+
+            // 1. Show spinner, disable button
+            if (reloadBtn) {
+                reloadBtn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" style="width:14px;height:14px"></i>';
+                reloadBtn.disabled = true;
+                if (window.lucide) lucide.createIcons();
+            }
+
+            // 2. Disable all selects during loading
+            document.querySelectorAll('.af-map-select').forEach(sel => {
+                sel.disabled = true;
+            });
+
+            // Small delay to ensure spinner renders
+            setTimeout(() => {
+                try {
+                    // 3. Get Excel data
+                    const headers = window.globalHeaders || [];
+                    const data = window.globalExcelData || [];
+
+                    // Find column index
+                    const colIndex = headers.indexOf(columnName);
+                    if (colIndex === -1) {
+                        console.warn('[loadDataIntoMapping] Column not found:', columnName);
+                        columnUniqueValues = [];
+                    } else {
+                        // Extract unique values efficiently using Set
+                        const uniqueSet = new Set();
+                        for (let i = 0; i < data.length; i++) {
+                            const val = data[i][colIndex];
+                            if (val !== null && val !== undefined && val !== '') {
+                                uniqueSet.add(String(val));
+                            }
+                        }
+                        columnUniqueValues = Array.from(uniqueSet).sort();
+                        console.log(`[loadDataIntoMapping] Found ${columnUniqueValues.length} unique values in "${columnName}"`);
+                    }
+
+                    // 4. Update UI based on type
+                    if (currentActionType === 'select') {
+                        updateMappingSelects();
+                    } else {
+                        renderTextRawMappings(columnUniqueValues);
+                    }
+
+                } catch (err) {
+                    console.error('[loadDataIntoMapping] Error:', err);
+                    columnUniqueValues = [];
+                } finally {
+                    // 5. Restore button
+                    if (reloadBtn) {
+                        reloadBtn.innerHTML = '<i data-lucide="refresh-cw" style="width:14px;height:14px"></i>';
+                        reloadBtn.disabled = false;
+                        if (window.lucide) lucide.createIcons();
+                    }
+                }
+            }, 50);
+        }
+
+        /**
+         * Renders mapping rows for TEXT type (Left: Excel Value -> Right: Text Input)
+         */
+        function renderTextRawMappings(values) {
+            const container = document.getElementById('af-map-rows');
+            if (!container) return;
+
+            const config = currentCardData?.config || {};
+            const currentMap = config.mapping?.map || {};
+
+            if (values.length === 0) {
+                container.innerHTML = '<div style="padding:10px;text-align:center;color:#9ca3af;font-size:11px">No se encontraron valores únicos</div>';
+                return;
+            }
+
+            container.innerHTML = values.map((val, idx) => {
+                const mappedVal = currentMap[val] || '';
+                const inputId = `af-map-inp-${idx}`;
+                const backdropId = `af-map-bd-${idx}`;
+
+                return `
+                <div class="af-map-row">
+                    <div class="af-map-cell left" title="${escHtml(val)}">
+                        <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px">${escHtml(val)}</div>
+                    </div>
+                    <div class="af-map-cell right">
+                        <div class="ac-smart-container" style="width:100%;">
+                            <div id="${backdropId}" class="ac-smart-backdrop" style="padding:2px 4px;font-size:11px;"></div>
+                            <input type="text" id="${inputId}" class="af-map-text-input ac-smart-input" 
+                                   data-source-val="${escHtml(val)}"
+                                   value="${escHtml(mappedVal)}"
+                                   placeholder="Escribir texto o [[Concepto]]"
+                                   style="width:100%;border:none;background:transparent;padding:2px 4px;font-size:11px;outline:none;">
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            // Initialize Smart Behavior for all new inputs
+            values.forEach((_, idx) => {
+                setupSmartInput(`af-map-inp-${idx}`, `af-map-bd-${idx}`, false);
+            });
+        }
+
+        /**
+         * Called when reload button is clicked
+         */
+        function loadExcelValues() {
+            const colInput = document.getElementById('cfg-map-col');
+            if (!colInput) return;
+
+            // Extract column name from {ColumnName} format
+            const match = colInput.value.match(/\{([^{}]+)\}/);
+            if (!match) {
+                alert('Ingrese una columna válida en formato {Columna}');
+                return;
+            }
+
+            const columnName = match[1].trim();
+            loadDataIntoMapping(columnName);
+        }
+
+        function handleSave() {
+            if (!currentCardData) return;
+            try {
+                const getVal = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
+                const getCheck = (id, def) => { const el = document.getElementById(id); return el ? el.checked : def; };
+                const newConfig = {
+                    timing: {
+                        preDelay: parseInt(getVal('cfg-preDelay', '0')),
+                        randomize: getCheck('cfg-rndDelay', false),
+                        minDelay: parseInt(getVal('cfg-minDelay', '0')),
+                        maxDelay: parseInt(getVal('cfg-maxDelay', '100'))
+                    },
+                    strategy: { type: getVal('cfg-strat-type', 'native') },
+                    validation: { verifyContent: getCheck('cfg-verify', false) }
+                };
+                const typeSpeed = document.getElementById('cfg-typeSpeed');
+                if (typeSpeed) newConfig.strategy.typingSpeed = parseInt(typeSpeed.value);
+
+
+
+                // Text type (short/long) for Fill actions - hidden input
+                const textTypeEl = document.getElementById('cfg-text-type');
+                if (textTypeEl) newConfig.textType = textTypeEl.value || 'short';
+
+                const mapCheck = document.getElementById('cfg-map-enable');
+                if (mapCheck) {
+                    newConfig.mapping = {
+                        enabled: mapCheck.checked,
+                        placeholder: getVal('cfg-map-col', ''),
+                        defaultValue: getVal('cfg-map-default', ''),
+                        map: {}
+                    };
+                    if (mapCheck.checked) {
+                        if (currentActionType === 'select') {
+                            document.querySelectorAll('.af-map-select[data-option-key]').forEach(sel => {
+                                const key = sel.dataset.optionKey;
+                                const val = sel.value.trim();
+                                if (key && val) newConfig.mapping.map[key] = val;
+                            });
+                        } else {
+                            // For Text: Key is source-val (Excel), Value is input value
+                            document.querySelectorAll('.af-map-text-input[data-source-val]').forEach(inp => {
+                                const source = inp.dataset.sourceVal;
+                                const val = inp.value; // Don't trim to allow spaces if needed, but usually trim is better. Let's keep it raw or trim? Trim is safer.
+                                // Actually, keep raw might be needed for some formats, but trim is standard.
+                                if (source && val) newConfig.mapping.map[source] = val.trim();
+                            });
                         }
                     }
-                    columnUniqueValues = Array.from(uniqueSet).sort();
-                    console.log(`[loadDataIntoMapping] Found ${columnUniqueValues.length} unique values in "${columnName}"`);
                 }
 
-                // 4. Update selects with loaded values
-                updateMappingSelects();
+                // Determine if config differs from default
+                newConfig.isCustomized = isConfigCustomized(newConfig, currentActionType);
 
-            } catch (err) {
-                console.error('[loadDataIntoMapping] Error:', err);
-                columnUniqueValues = [];
-            } finally {
-                // 5. Restore button
-                if (reloadBtn) {
-                    reloadBtn.innerHTML = '<i data-lucide="refresh-cw" style="width:14px;height:14px"></i>';
-                    reloadBtn.disabled = false;
-                    if (window.lucide) lucide.createIcons();
-                }
-            }
-        }, 50);
-    }
-
-    /**
-     * Called when reload button is clicked
-     */
-    function loadExcelValues() {
-        const colInput = document.getElementById('cfg-map-col');
-        if (!colInput) return;
-
-        // Extract column name from {ColumnName} format
-        const match = colInput.value.match(/\{([^{}]+)\}/);
-        if (!match) {
-            alert('Ingrese una columna válida en formato {Columna}');
-            return;
+                if (onSaveCallback) onSaveCallback(newConfig);
+                close();
+            } catch (e) { console.error(e); close(); }
         }
 
-        const columnName = match[1].trim();
-        loadDataIntoMapping(columnName);
-    }
+        function resetToDefault() {
+            const d = getDefaultConfig(currentActionType);
 
-    function handleSave() {
-        if (!currentCardData) return;
-        try {
-            const getVal = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
-            const getCheck = (id, def) => { const el = document.getElementById(id); return el ? el.checked : def; };
-            const newConfig = {
-                timing: {
-                    preDelay: parseInt(getVal('cfg-preDelay', '0')),
-                    randomize: getCheck('cfg-rndDelay', false),
-                    minDelay: parseInt(getVal('cfg-minDelay', '0')),
-                    maxDelay: parseInt(getVal('cfg-maxDelay', '100'))
-                },
-                strategy: { type: getVal('cfg-strat-type', 'native') },
-                validation: { verifyContent: getCheck('cfg-verify', false) }
-            };
-            const typeSpeed = document.getElementById('cfg-typeSpeed');
-            if (typeSpeed) newConfig.strategy.typingSpeed = parseInt(typeSpeed.value);
+            // Reset timing
+            const preDelay = document.getElementById('cfg-preDelay');
+            if (preDelay) preDelay.value = d.timing?.preDelay || 0;
 
+            const rndDelay = document.getElementById('cfg-rndDelay');
+            if (rndDelay) rndDelay.checked = d.timing?.randomize || false;
 
+            const minDelay = document.getElementById('cfg-minDelay');
+            if (minDelay) minDelay.value = d.timing?.minDelay || 0;
 
-            // Text type (short/long) for Fill actions - hidden input
+            const maxDelay = document.getElementById('cfg-maxDelay');
+            if (maxDelay) maxDelay.value = d.timing?.maxDelay || 100;
+
+            toggleTimingMode(d.timing?.randomize || false);
+
+            // Reset strategy
+            const stratEl = document.getElementById('cfg-strat-type');
+            if (stratEl) stratEl.value = d.strategy?.type || 'native';
+
+            const speedEl = document.getElementById('cfg-typeSpeed');
+            if (speedEl) speedEl.value = d.strategy?.typingSpeed || 50;
+
+            toggleFillOpts(d.strategy?.type || 'native');
+
+            // Reset validation
+            const verifyEl = document.getElementById('cfg-verify');
+            if (verifyEl) verifyEl.checked = d.validation?.verifyContent || false;
+
+            // Reset text type
             const textTypeEl = document.getElementById('cfg-text-type');
-            if (textTypeEl) newConfig.textType = textTypeEl.value || 'short';
+            if (textTypeEl) textTypeEl.value = d.textType || 'short';
+            document.querySelectorAll('.af-text-type-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.value === (d.textType || 'short'));
+            });
 
-            const mapCheck = document.getElementById('cfg-map-enable');
-            if (mapCheck) {
-                newConfig.mapping = {
-                    enabled: mapCheck.checked,
-                    placeholder: getVal('cfg-map-col', ''),
-                    defaultValue: getVal('cfg-map-default', ''),
-                    map: {}
-                };
-                if (mapCheck.checked) {
-                    document.querySelectorAll('.af-map-select[data-option-key]').forEach(sel => {
-                        const key = sel.dataset.optionKey;
-                        const val = sel.value.trim();
-                        if (key && val) newConfig.mapping.map[key] = val;
-                    });
-                }
+            // Reset mapping
+            const mapEl = document.getElementById('cfg-map-enable');
+            if (mapEl) {
+                mapEl.checked = d.mapping?.enabled || false;
+                const mapArea = document.getElementById('cfg-map-area');
+                if (mapArea) mapArea.style.display = mapEl.checked ? 'block' : 'none';
             }
-
-            // Determine if config differs from default
-            newConfig.isCustomized = isConfigCustomized(newConfig, currentActionType);
-
-            if (onSaveCallback) onSaveCallback(newConfig);
-            close();
-        } catch (e) { console.error(e); close(); }
-    }
-
-    function resetToDefault() {
-        const d = getDefaultConfig(currentActionType);
-
-        // Reset timing
-        const preDelay = document.getElementById('cfg-preDelay');
-        if (preDelay) preDelay.value = d.timing?.preDelay || 0;
-
-        const rndDelay = document.getElementById('cfg-rndDelay');
-        if (rndDelay) rndDelay.checked = d.timing?.randomize || false;
-
-        const minDelay = document.getElementById('cfg-minDelay');
-        if (minDelay) minDelay.value = d.timing?.minDelay || 0;
-
-        const maxDelay = document.getElementById('cfg-maxDelay');
-        if (maxDelay) maxDelay.value = d.timing?.maxDelay || 100;
-
-        toggleTimingMode(d.timing?.randomize || false);
-
-        // Reset strategy
-        const stratEl = document.getElementById('cfg-strat-type');
-        if (stratEl) stratEl.value = d.strategy?.type || 'native';
-
-        const speedEl = document.getElementById('cfg-typeSpeed');
-        if (speedEl) speedEl.value = d.strategy?.typingSpeed || 50;
-
-        toggleFillOpts(d.strategy?.type || 'native');
-
-        // Reset validation
-        const verifyEl = document.getElementById('cfg-verify');
-        if (verifyEl) verifyEl.checked = d.validation?.verifyContent || false;
-
-        // Reset text type
-        const textTypeEl = document.getElementById('cfg-text-type');
-        if (textTypeEl) textTypeEl.value = d.textType || 'short';
-        document.querySelectorAll('.af-text-type-option').forEach(opt => {
-            opt.classList.toggle('active', opt.dataset.value === (d.textType || 'short'));
-        });
-
-        // Reset mapping
-        const mapEl = document.getElementById('cfg-map-enable');
-        if (mapEl) {
-            mapEl.checked = d.mapping?.enabled || false;
-            const mapArea = document.getElementById('cfg-map-area');
-            if (mapArea) mapArea.style.display = mapEl.checked ? 'block' : 'none';
         }
-    }
 
-    function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-    return {
-        open,
-        close,
-        toggleFillOpts,
-        toggleTimingMode,
-        loadExcelValues,
-        resetToDefault
-    };
-})();
-window.ActionConfigModal = ActionConfigModal;
+        return {
+            open,
+            close,
+            toggleFillOpts,
+            toggleTimingMode,
+            loadExcelValues,
+            resetToDefault
+        };
+
+        function renderDefaultInput(type, config, ctx) {
+            if (type === 'select') {
+                return `
+                    <select id="cfg-map-default" 
+                            style="width:100%;max-width:180px;border:1px solid #d1d5db;border-radius:3px;padding:2px 4px;font-size:11px;outline:none;background:white;">
+                        <option value="">-- Ninguno --</option>
+                        ${(ctx?.options || []).map(opt => {
+                    const val = opt.value || opt.text;
+                    const isSelected = config.mapping?.defaultValue === val;
+                    return `<option value="${escHtml(val)}" ${isSelected ? 'selected' : ''}>${escHtml(opt.text)}</option>`;
+                }).join('')}
+                    </select>
+                `;
+            } else {
+                // Smart Input for Text Default
+                const val = config.mapping?.defaultValue || '';
+                return `
+                    <div class="ac-smart-container" style="width:100%;max-width:200px;">
+                        <div id="cfg-map-default-bd" class="ac-smart-backdrop" style="padding:2px 4px;font-size:11px;"></div>
+                        <input type="text" id="cfg-map-default" class="ac-smart-input" 
+                               value="${escHtml(val)}" 
+                               placeholder="Texto o [[Concepto]]"
+                               style="width:100%;border:none;background:transparent;padding:2px 4px;font-size:11px;outline:none;">
+                    </div>
+                `;
+            }
+        }
+    }) ();
 

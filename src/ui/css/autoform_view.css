@@ -1401,6 +1401,16 @@
     /* Orange-700 */
 }
 
+/* Valid Concept: Cyan, distinct from columns */
+.ac-smart-chip.valid-concept {
+    background-color: #e0f2fe;
+    /* Cyan-100 */
+    border: 1px solid #7dd3fc;
+    /* Cyan-300 */
+    color: #0369a1;
+    /* Cyan-700 */
+}
+
 /* =========================================
    SPINNER ANIMATION
    ========================================= */
