@@ -12,6 +12,7 @@
     window.projectData = {
         tabs: [],
         excel: null,
+        recordings: [],  // Global recordings pool (not per-tab)
         defaultActionSettings: {
             fill: {
                 timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
@@ -204,6 +205,7 @@
             excel: excel,
             forms: window.projectData?.forms || [],
             tabs: window.projectData?.tabs || [],
+            recordings: window.projectData?.recordings || [],  // Global recordings
             ui: {
                 splitterPosition: getSplitterPosition(),
                 activeTab: getActiveTabId()
@@ -351,6 +353,7 @@
         window.projectData.tabs = data.tabs || [];
         window.projectData.forms = data.forms || [];
         window.projectData.excel = data.excel || null;
+        window.projectData.recordings = data.recordings || [];  // Restore global recordings
 
         // Restore UI state
         if (data.ui?.splitterPosition) {

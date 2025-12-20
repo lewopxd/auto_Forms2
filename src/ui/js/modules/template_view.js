@@ -456,8 +456,8 @@ const TemplateViewModule = (function () {
                 id: tabId,
                 title: tabTitle,
                 type: 'autoform',
-                recordings: [],           // Array of { id, name, path, data, cards }
-                activeRecordingId: null,  // ID of currently active recording
+                cards: [],                  // Cards derived from a recording (belong to this tab)
+                loadedRecordingId: null,    // Reference to global recording used to generate cards
                 uiState: { mode: 'edit' }
             });
             window.triggerAutoSave();

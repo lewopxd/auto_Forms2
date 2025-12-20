@@ -1,7 +1,6 @@
 /**
  * Record Mode UI - Clean Design with Command Queue
  * Uses global variable for Python communication instead of console.log
- * Adapted for AutoForms2 with Stop Recording functionality
  */
 
 (function () {
@@ -25,9 +24,7 @@
         save: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`,
         analyze: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`,
         required: `<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>`,
-        chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>`,
-        stop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`,
-        square: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`
+        chevron: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>`
     };
 
     const host = document.createElement('div');
@@ -275,62 +272,80 @@
             .btn-primary:hover { background: #5a67d8; }
             .btn-success { background: #22c55e; color: white; }
             .btn-success:hover { background: #16a34a; }
-            .btn-danger { background: #ef4444; color: white; }
-            .btn-danger:hover { background: #dc2626; }
             
-            /* Stop Confirmation Modal */
-            .stop-modal-overlay {
+            /* View All Modal */
+            .modal-overlay {
                 position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(0,0,0,0.4);
+                background: rgba(0,0,0,0.3);
                 display: none; align-items: center; justify-content: center;
-                z-index: 2147483647;
+                z-index: 2147483646;
             }
-            .stop-modal-overlay.visible { display: flex; }
-            .stop-modal {
+            .modal-overlay.visible { display: flex; }
+            .modal {
                 background: white;
                 border-radius: 12px;
                 box-shadow: 0 20px 50px rgba(0,0,0,0.25);
-                width: 340px; max-width: 90vw;
+                width: 500px; max-width: 90vw;
+                max-height: 80vh;
+                display: flex; flex-direction: column;
                 overflow: hidden;
             }
-            .stop-modal-header {
-                padding: 16px 20px;
-                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                color: white;
-                font-size: 15px; font-weight: 600;
+            .modal-header {
+                padding: 14px 18px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                display: flex; align-items: center;
+                cursor: move;
             }
-            .stop-modal-body {
-                padding: 20px;
-                color: #1e293b;
+            .modal-title { flex: 1; font-size: 14px; font-weight: 600; color: white; }
+            .modal-close {
+                width: 24px; height: 24px; border: none;
+                background: rgba(255,255,255,0.2); border-radius: 4px;
+                cursor: pointer; display: flex; align-items: center; justify-content: center;
             }
-            .stop-modal-body p {
-                margin-bottom: 16px;
-                font-size: 14px;
+            .modal-close:hover { background: rgba(255,255,255,0.3); }
+            .modal-close svg { width: 12px; height: 12px; color: white; }
+            .modal-content {
+                flex: 1; overflow-y: auto; padding: 16px;
             }
-            .stop-modal-checkbox {
-                display: flex; align-items: center; gap: 10px;
-                margin-bottom: 16px;
+            .page-section {
+                margin-bottom: 20px;
             }
-            .stop-modal-checkbox input {
-                width: 18px; height: 18px;
-                accent-color: #22c55e;
+            .page-header {
+                font-size: 12px; font-weight: 600;
+                color: #667eea; margin-bottom: 10px;
+                padding-bottom: 6px;
+                border-bottom: 2px solid #e2e8f0;
             }
-            .stop-modal-checkbox label {
-                font-size: 13px; font-weight: 500;
-                color: #334155;
-            }
-            .stop-modal-footer {
-                padding: 12px 20px;
+            .page-question {
+                padding: 8px 10px;
                 background: #f8fafc;
-                display: flex; justify-content: flex-end; gap: 10px;
+                border-radius: 6px;
+                margin-bottom: 6px;
+                font-size: 12px;
             }
-            .btn-ghost {
-                background: transparent; color: #64748b;
-                padding: 8px 14px; border: none; border-radius: 6px;
-                font-size: 13px; font-weight: 500; cursor: pointer;
+            .page-question-num {
+                display: inline-block;
+                width: 20px; height: 20px;
+                background: #667eea; color: white;
+                border-radius: 4px; text-align: center;
+                line-height: 20px; font-size: 10px;
+                margin-right: 8px;
             }
-            .btn-ghost:hover { background: #e2e8f0; color: #1e293b; }
-
+            .page-question-type {
+                float: right;
+                font-size: 10px; color: #94a3b8;
+            }
+            .page-options {
+                margin-top: 6px; padding-left: 28px;
+                display: flex; flex-wrap: wrap; gap: 4px;
+            }
+            .page-option {
+                background: #e2e8f0;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                color: #475569;
+            }
             .hidden { display: none !important; }
         </style>
         
@@ -344,6 +359,7 @@
                     <span class="toggle-label">Auto Save</span>
                 </label>
                 <button class="header-btn" id="collapseBtn" title="Collapse">${ICONS.collapse}</button>
+                <button class="header-btn" id="closeBtn" title="Close">${ICONS.close}</button>
             </div>
             
             <div class="body" id="body">
@@ -375,27 +391,20 @@
                 </div>
                 
                 <div class="footer hidden" id="footer">
-                    <button class="btn btn-danger" id="stopBtn">${ICONS.stop} Detener</button>
                     <button class="btn btn-primary" id="analyzeBtn">${ICONS.analyze} Analyze</button>
                     <button class="btn btn-success" id="saveBtn">${ICONS.save} Save</button>
                 </div>
             </div>
         </div>
         
-        <!-- Stop Confirmation Modal -->
-        <div class="stop-modal-overlay" id="stopModalOverlay">
-            <div class="stop-modal">
-                <div class="stop-modal-header">Detener Grabación</div>
-                <div class="stop-modal-body">
-                    <p>¿Estás seguro de que deseas detener la grabación?</p>
-                    <div class="stop-modal-checkbox">
-                        <input type="checkbox" id="saveBeforeStopCheck" checked>
-                        <label for="saveBeforeStopCheck">Guardar grabación antes de cerrar</label>
-                    </div>
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal" id="modal">
+                <div class="modal-header" id="modalHeader">
+                    <span class="modal-title">All Saved Questions</span>
+                    <button class="modal-close" id="modalClose">${ICONS.close}</button>
                 </div>
-                <div class="stop-modal-footer">
-                    <button class="btn-ghost" id="stopCancelBtn">Cancelar</button>
-                    <button class="btn btn-danger" id="stopConfirmBtn">${ICONS.check} Confirmar</button>
+                <div class="modal-content" id="modalContent">
+                    <p style="color:#64748b; text-align:center; padding:20px;">No saved data yet. Navigate through pages and save to see questions here.</p>
                 </div>
             </div>
         </div>
@@ -421,19 +430,18 @@
     const viewAllBtn = shadow.getElementById('viewAllBtn');
     const analyzeBtn = shadow.getElementById('analyzeBtn');
     const saveBtn = shadow.getElementById('saveBtn');
-    const stopBtn = shadow.getElementById('stopBtn');
     const autoSaveToggle = shadow.getElementById('autoSaveToggle');
-
-    // Stop modal elements
-    const stopModalOverlay = shadow.getElementById('stopModalOverlay');
-    const stopCancelBtn = shadow.getElementById('stopCancelBtn');
-    const stopConfirmBtn = shadow.getElementById('stopConfirmBtn');
-    const saveBeforeStopCheck = shadow.getElementById('saveBeforeStopCheck');
+    const modalOverlay = shadow.getElementById('modalOverlay');
+    const modal = shadow.getElementById('modal');
+    const modalHeader = shadow.getElementById('modalHeader');
+    const modalContent = shadow.getElementById('modalContent');
+    const modalClose = shadow.getElementById('modalClose');
 
     // Storage for all saved pages
-    let allSavedPages = {};
+    let allSavedPages = {}; // { page_1: { questions: [...] }, page_2: {...} }
+
     let formData = null;
-    let branchData = {};
+    let branchData = {}; // { questionId: { optionValue: [revealedQuestionIds] } }
     let lastSavedPage = null;
 
     // Auto-save function
@@ -441,6 +449,7 @@
         if (!autoSaveToggle.checked || !formData) return;
 
         const currentPage = formData.pageInfo?.current;
+        // Avoid saving the same page multiple times in quick succession
         if (currentPage !== lastSavedPage) {
             lastSavedPage = currentPage;
             statusSaved.textContent = '• Saving...';
@@ -448,7 +457,8 @@
         }
     }
 
-    // Collapse toggle
+    shadow.getElementById('closeBtn').onclick = () => host.remove();
+
     let collapsed = false;
     collapseBtn.onclick = () => {
         collapsed = !collapsed;
@@ -457,7 +467,7 @@
         collapseBtn.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
     };
 
-    // Drag functionality
+    // Drag
     let dragging = false, ox = 0, oy = 0;
     header.onmousedown = (e) => {
         if (e.target.closest('.header-btn')) return;
@@ -478,7 +488,7 @@
     };
     document.onmouseup = () => dragging = false;
 
-    // Analyze button
+    // Analyze button - queue command for Python
     analyzeBtn.onclick = () => {
         loading.classList.remove('hidden');
         questionList.classList.add('hidden');
@@ -487,7 +497,7 @@
         window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
     };
 
-    // Save button
+    // Save button - queue command with data
     saveBtn.onclick = () => {
         if (formData) {
             statusText.textContent = 'Saving...';
@@ -495,41 +505,8 @@
         }
     };
 
-    // Stop button - show confirmation modal
-    stopBtn.onclick = () => {
-        stopModalOverlay.classList.add('visible');
-    };
-
-    // Stop modal - cancel
-    stopCancelBtn.onclick = () => {
-        stopModalOverlay.classList.remove('visible');
-    };
-
-    // Stop modal - confirm
-    stopConfirmBtn.onclick = () => {
-        const shouldSave = saveBeforeStopCheck.checked;
-        stopModalOverlay.classList.remove('visible');
-
-        // Show closing state
-        statusText.textContent = shouldSave ? 'Guardando y cerrando...' : 'Cerrando...';
-
-        // Send stop command
-        window.__msfa_commands.push({
-            type: 'stop',
-            save: shouldSave,
-            time: Date.now()
-        });
-    };
-
-    // Click outside modal to close
-    stopModalOverlay.onclick = (e) => {
-        if (e.target === stopModalOverlay) {
-            stopModalOverlay.classList.remove('visible');
-        }
-    };
-
-    // On saved callback
     window.__msfa_onSaved = function () {
+        // Store saved page data
         if (formData && formData.pageInfo) {
             const pageKey = 'page_' + formData.pageInfo.current;
             allSavedPages[pageKey] = {
@@ -538,6 +515,7 @@
             };
         }
 
+        // Show persistent saved indicator
         if (formData) {
             statusText.textContent = formData.questions.length + ' questions';
             statusSaved.textContent = '• Page saved';
@@ -546,15 +524,85 @@
         }
     };
 
-    // View All Button
+    // View All Button - Open Modal
     viewAllBtn.onclick = () => {
-        // Could implement a modal to view all pages
-        console.log('[MSFA] All saved pages:', allSavedPages);
+        renderModal();
+        modalOverlay.classList.add('visible');
     };
 
-    // Set form data API
+    // Modal Close
+    modalClose.onclick = () => modalOverlay.classList.remove('visible');
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) modalOverlay.classList.remove('visible');
+    };
+
+    // Modal Drag
+    let modalDragging = false, mox = 0, moy = 0;
+    modalHeader.onmousedown = (e) => {
+        if (e.target.closest('.modal-close')) return;
+        modalDragging = true;
+        const rect = modal.getBoundingClientRect();
+        mox = e.clientX - rect.left;
+        moy = e.clientY - rect.top;
+        e.preventDefault();
+    };
+    document.addEventListener('mousemove', (e) => {
+        if (!modalDragging) return;
+        modal.style.position = 'fixed';
+        modal.style.left = (e.clientX - mox) + 'px';
+        modal.style.top = (e.clientY - moy) + 'px';
+        modal.style.margin = '0';
+    });
+    document.addEventListener('mouseup', () => modalDragging = false);
+
+    // Render Modal Content
+    function renderModal() {
+        const pages = Object.keys(allSavedPages).sort((a, b) => {
+            const numA = parseInt(a.replace('page_', ''));
+            const numB = parseInt(b.replace('page_', ''));
+            return numA - numB;
+        });
+
+        if (pages.length === 0) {
+            modalContent.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">No saved data yet. Navigate through pages and save to see questions here.</p>';
+            return;
+        }
+
+        const totalPages = formData?.pageInfo?.total || pages.length;
+
+        let html = '';
+        pages.forEach(pageKey => {
+            const pageData = allSavedPages[pageKey];
+            const pageNum = pageKey.replace('page_', '');
+
+            html += `<div class="page-section">
+                <div class="page-header">Page ${pageNum} of ${totalPages}</div>`;
+
+            pageData.questions.forEach(q => {
+                let optionsHtml = '';
+                if (q.options && q.options.length > 0) {
+                    optionsHtml = '<div class="page-options">' +
+                        q.options.map((o, i) => `<span class="page-option">${i + 1}. ${o.text}</span>`).join('') +
+                        '</div>';
+                }
+
+                html += `<div class="page-question">
+                    <span class="page-question-num">${q.num}</span>
+                    ${q.text || 'Untitled'}
+                    <span class="page-question-type">${q.type}</span>
+                    ${optionsHtml}
+                </div>`;
+            });
+
+            html += '</div>';
+        });
+
+        modalContent.innerHTML = html;
+    }
+
+    // API
     window.__msfa_setFormData = function (data) {
-        // Merge branch data
+        // Merge branch data into incoming data
         if (typeof branchData !== 'undefined') {
             data.questions.forEach(q => {
                 if (q.questionId && branchData[q.questionId] && q.options) {
@@ -638,33 +686,37 @@
             questionList.appendChild(li);
         });
 
+
         statusBar.classList.remove('hidden');
         statusText.textContent = data.questions.length + ' questions';
         statusSaved.textContent = '';
 
-        // Auto-save
+        // Auto-save if enabled
         triggerAutoSave();
     };
 
     window.__msfa_setQuestions = window.__msfa_setFormData;
 
-    // Auto-analyze on page navigation
+    // Auto-analyze when Next/Back buttons are clicked (using event delegation)
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-automation-id="nextButton"], [data-automation-id="backButton"]');
         if (!btn) return;
 
+        // Show spinner immediately
         loading.classList.remove('hidden');
         questionList.classList.add('hidden');
         statusText.textContent = 'Page changing...';
         statusSaved.textContent = '';
 
+        // Wait for page transition then analyze
         setTimeout(() => {
             statusText.textContent = 'Analyzing...';
             window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
         }, 1500);
     }, true);
 
-    // Branch detection
+    // Branch detection - track current questions and detect new ones after radio selection
+
     function getCurrentQuestionIds() {
         const ids = [];
         document.querySelectorAll('[data-automation-id="questionItem"]').forEach(item => {
@@ -677,29 +729,38 @@
         return ids;
     }
 
+    // Listen for radio button clicks to detect branches
     document.addEventListener('click', (e) => {
         const radio = e.target.closest('[data-automation-id="radio"], [data-automation-id="choiceItem"]');
         if (!radio) return;
 
+        // Get the value of the clicked option
         const valueSpan = radio.closest('[data-automation-id="choiceItem"]')?.querySelector('[data-automation-value]');
         const optionValue = valueSpan ? valueSpan.getAttribute('data-automation-value') : null;
 
+        // Get parent question ID
         const questionItem = radio.closest('[data-automation-id="questionItem"]');
         const questionIdEl = questionItem?.querySelector('[id^="QuestionId_"]');
         const questionId = questionIdEl ? questionIdEl.id.replace('QuestionId_', '') : null;
 
         if (!optionValue || !questionId) return;
 
+        // Store current question IDs before the DOM updates
         const questionsBefore = getCurrentQuestionIds();
 
+        // Wait for MS Forms to potentially reveal new questions
         setTimeout(() => {
             const questionsAfter = getCurrentQuestionIds();
+
+            // Find newly revealed questions
             const revealed = questionsAfter.filter(id => !questionsBefore.includes(id));
 
             if (revealed.length > 0) {
+                // This option triggers a branch!
                 if (!branchData[questionId]) branchData[questionId] = {};
                 branchData[questionId][optionValue] = revealed;
 
+                // Update formData
                 if (formData && formData.questions) {
                     formData.questions.forEach(q => {
                         if (q.questionId === questionId && q.options) {
@@ -713,19 +774,23 @@
                     });
                 }
 
+                // Show notification
                 statusSaved.textContent = `• Branch +${revealed.length} questions`;
 
+                // Force save with updated branch data
                 if (autoSaveToggle.checked && formData) {
-                    lastSavedPage = null;
+                    lastSavedPage = null; // Reset to force save
                 }
 
+                // Request re-analysis to update UI (which will trigger auto-save)
                 setTimeout(() => {
                     window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
                 }, 500);
             }
-        }, 800);
+        }, 800); // Wait for MS Forms to update DOM
     }, true);
 
+    // Expose branch data for saving
     window.__msfa_getBranchData = () => branchData;
 
     console.log('[MSFA] Record Mode UI ready');

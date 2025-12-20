@@ -55,45 +55,83 @@ const AutoFormViewModule = (function () {
         const tabData = window.findTab ? window.findTab(tabId) : null;
         const tabTitle = tabData?.title || 'AutoForm';
 
-        // === MIGRATION: Convert old format (recordFile) to new format (recordings[]) ===
-        if (tabData && tabData.recordFile && !tabData.recordings) {
-            console.log('[AutoForm] Migrating from old format to recordings[]');
+        // === MIGRATION: Convert old format to new global recordings + tab.cards ===
+        if (tabData && tabData.recordFile && !tabData.cards) {
+            console.log('[AutoForm] Migrating from old recordFile format to global recordings + tab.cards');
             const recId = 'rec-' + Date.now();
-            tabData.recordings = [{
-                id: recId,
-                name: tabData.recordFile.name,
-                path: tabData.recordFile.path,
-                data: tabData.recordFile.data,
-                cards: tabData.cards || []
-            }];
-            tabData.activeRecordingId = recId;
+
+            // Add to global recordings
+            if (!window.projectData.recordings) window.projectData.recordings = [];
+            const existingGlobal = window.projectData.recordings.find(r => r.path === tabData.recordFile.path);
+            if (!existingGlobal) {
+                window.projectData.recordings.push({
+                    id: recId,
+                    name: tabData.recordFile.name,
+                    path: tabData.recordFile.path,
+                    data: tabData.recordFile.data
+                });
+            }
+
+            // Set tab's cards and reference
+            tabData.cards = tabData.cards || [];
+            tabData.loadedRecordingId = existingGlobal?.id || recId;
             delete tabData.recordFile;
-            delete tabData.cards;
             if (window.triggerAutoSave) window.triggerAutoSave();
         }
 
-        // Ensure recordings array exists
-        if (tabData && !tabData.recordings) {
-            tabData.recordings = [];
-            tabData.activeRecordingId = null;
+        // === MIGRATION: Convert per-tab recordings[] to global ===
+        if (tabData && tabData.recordings && tabData.recordings.length > 0) {
+            console.log('[AutoForm] Migrating per-tab recordings to global');
+            if (!window.projectData.recordings) window.projectData.recordings = [];
+
+            tabData.recordings.forEach(rec => {
+                const existingGlobal = window.projectData.recordings.find(r => r.path === rec.path);
+                if (!existingGlobal) {
+                    window.projectData.recordings.push({
+                        id: rec.id,
+                        name: rec.name,
+                        path: rec.path,
+                        data: rec.data
+                    });
+                }
+            });
+
+            // Keep cards in tab, set reference to last active recording
+            if (tabData.activeRecordingId) {
+                const activeRec = tabData.recordings.find(r => r.id === tabData.activeRecordingId);
+                if (activeRec) {
+                    tabData.cards = activeRec.cards || [];
+                    tabData.loadedRecordingId = activeRec.id;
+                }
+            }
+
+            delete tabData.recordings;
+            delete tabData.activeRecordingId;
+            if (window.triggerAutoSave) window.triggerAutoSave();
         }
 
-        // Get active recording data
+        // Ensure cards array exists
+        if (tabData && !tabData.cards) {
+            tabData.cards = [];
+            tabData.loadedRecordingId = null;
+        }
+
+        // Get loaded recording data from global recordings
         let formData = null;
         let filePath = null;
         let fileName = null;
 
-        if (tabData?.recordings?.length > 0 && tabData.activeRecordingId) {
-            const activeRec = tabData.recordings.find(r => r.id === tabData.activeRecordingId);
-            if (activeRec) {
+        if (tabData?.loadedRecordingId && window.projectData.recordings) {
+            const loadedRec = window.projectData.recordings.find(r => r.id === tabData.loadedRecordingId);
+            if (loadedRec) {
                 // Deep copy the data
-                formData = JSON.parse(JSON.stringify(activeRec.data));
-                filePath = activeRec.path;
-                fileName = activeRec.name;
+                formData = JSON.parse(JSON.stringify(loadedRec.data));
+                filePath = loadedRec.path;
+                fileName = loadedRec.name;
 
-                // Apply saved responses from cards onto formData
-                if (activeRec.cards && formData?.pages) {
-                    activeRec.cards.forEach(card => {
+                // Apply saved responses from tab's cards onto formData
+                if (tabData.cards && formData?.pages) {
+                    tabData.cards.forEach(card => {
                         const page = formData.pages[card.pageKey];
                         if (page?.questions?.[card.questionKey]) {
                             page.questions[card.questionKey].response = card.response;
@@ -277,17 +315,12 @@ const AutoFormViewModule = (function () {
         const tab = window.findTab ? window.findTab(tabId) : null;
         if (!tab) return;
 
-        // Ensure recordings array exists
-        if (!tab.recordings) tab.recordings = [];
+        // Ensure cards array exists
+        if (!tab.cards) tab.cards = [];
 
-        // Find or create the active recording entry
-        if (state.formData && tab.activeRecordingId) {
-            const recIndex = tab.recordings.findIndex(r => r.id === tab.activeRecordingId);
-            if (recIndex >= 0) {
-                // Update existing recording's cards
-                tab.recordings[recIndex].cards = buildCardsArray(state.formData);
-                tab.recordings[recIndex].data = state.formData;
-            }
+        // Sync cards from formData (cards belong to the tab)
+        if (state.formData) {
+            tab.cards = buildCardsArray(state.formData);
         }
 
         // Sync UI state
@@ -621,9 +654,12 @@ const AutoFormViewModule = (function () {
         const listEl = document.getElementById('recordings-list');
         if (!listEl) return;
 
-        // Get current tab's active recording to show indicator
+        // Get current tab's loaded recording to show indicator
         const tab = currentManagerTabId ? window.findTab(currentManagerTabId) : null;
-        const activeRecPath = tab?.recordings?.find(r => r.id === tab.activeRecordingId)?.path;
+        const loadedRec = tab?.loadedRecordingId && window.projectData.recordings
+            ? window.projectData.recordings.find(r => r.id === tab.loadedRecordingId)
+            : null;
+        const activeRecPath = loadedRec?.path;
 
         try {
             const result = await window.bridgePy.send('list_form_records', {});
@@ -740,69 +776,67 @@ const AutoFormViewModule = (function () {
             // Step 2: Save current state before switching
             syncToProjectData(currentManagerTabId);
 
-            // Step 3: Check if recording exists or load new
-            const existingRec = tab.recordings?.find(r => r.path === path);
+            // Ensure global recordings array exists
+            if (!window.projectData.recordings) window.projectData.recordings = [];
 
-            if (existingRec) {
-                // Just switch to existing recording
-                tab.activeRecordingId = existingRec.id;
-            } else {
+            // Step 3: Check if recording exists in global pool or load new
+            let recording = window.projectData.recordings.find(r => r.path === path);
+
+            if (!recording) {
                 // Load new recording from file
                 const result = await window.bridgePy.send('load_form_record', { path });
                 if (!result.success) {
                     throw new Error(result.error || 'Failed to load recording');
                 }
 
-                // Create new recording entry
+                // Add to global recordings pool
                 const newRecId = 'rec-' + Date.now();
                 const fileName = path.split(/[/\\]/).pop();
 
-                if (!tab.recordings) tab.recordings = [];
-                tab.recordings.push({
+                recording = {
                     id: newRecId,
                     name: fileName,
                     path: path,
-                    data: result.data,
-                    cards: buildCardsArray(result.data)
-                });
-
-                tab.activeRecordingId = newRecId;
+                    data: result.data
+                };
+                window.projectData.recordings.push(recording);
             }
 
-            // Step 4: Refresh modal to show new active state
+            // Step 4: Set tab's reference and generate cards
+            tab.loadedRecordingId = recording.id;
+            tab.cards = buildCardsArray(recording.data);
+
+            // Step 5: Refresh modal to show new active state
             await refreshRecordingsList();
 
-            // Step 5: Update internal state from active recording
-            const activeRec = tab.recordings.find(r => r.id === tab.activeRecordingId);
-            if (activeRec) {
-                const state = tabs.get(currentManagerTabId);
-                state.formData = JSON.parse(JSON.stringify(activeRec.data));
-                state.filePath = activeRec.path;
-                state.fileName = activeRec.name;
+            // Step 6: Update internal state from loaded recording
+            const state = tabs.get(currentManagerTabId);
+            state.formData = JSON.parse(JSON.stringify(recording.data));
+            state.filePath = recording.path;
+            state.fileName = recording.name;
 
-                // Apply cards to formData
-                if (activeRec.cards && state.formData?.pages) {
-                    activeRec.cards.forEach(card => {
-                        const page = state.formData.pages[card.pageKey];
-                        if (page?.questions?.[card.questionKey]) {
-                            page.questions[card.questionKey].response = card.response;
-                            page.questions[card.questionKey].selectedOptions = card.selectedOptions;
-                        }
-                    });
-                }
-
-                // Step 6: Update tab UI
-                const rafNameEl = document.getElementById(`af-raf-name-${currentManagerTabId}`);
-                if (rafNameEl) {
-                    rafNameEl.textContent = state.fileName;
-                    rafNameEl.classList.remove('empty');
-                }
-
-                // Step 7: Render the tab with new content
-                renderEdit(currentManagerTabId);
+            // Apply tab's cards to formData
+            if (tab.cards && state.formData?.pages) {
+                tab.cards.forEach(card => {
+                    const page = state.formData.pages[card.pageKey];
+                    if (page?.questions?.[card.questionKey]) {
+                        page.questions[card.questionKey].response = card.response;
+                        page.questions[card.questionKey].selectedOptions = card.selectedOptions;
+                    }
+                });
             }
 
-            // Step 8: Close modal after brief delay to show active state
+            // Step 7: Update tab UI
+            const rafNameEl = document.getElementById(`af-raf-name-${currentManagerTabId}`);
+            if (rafNameEl) {
+                rafNameEl.textContent = state.fileName;
+                rafNameEl.classList.remove('empty');
+            }
+
+            // Step 8: Render the tab with new content
+            renderEdit(currentManagerTabId);
+
+            // Step 9: Close modal after brief delay to show active state
             setTimeout(() => {
                 closeRecordingManager();
                 // Final autosave
