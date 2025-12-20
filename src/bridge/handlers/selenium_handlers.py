@@ -19,6 +19,7 @@ _selenium_import_error = None
 
 try:
     from core.browser_automation.browser_detector import BrowserDetector
+    from core.browser_automation.browser_settings import BrowserConfig, get_available_profiles
     from core.browser_automation.form_storage import (
         get_all_forms, 
         load_form_data_from_path, 
@@ -37,8 +38,10 @@ except ImportError as e:
     print(f"[SeleniumHandler] WARNING: Selenium modules not available: {e}")
     print("[SeleniumHandler] Recording features will be disabled.")
     
-    # Define dummy functions so the code doesn't crash
+    # Define dummy references so the code doesn't crash
     BrowserDetector = None
+    BrowserConfig = None
+    get_available_profiles = None
     get_all_forms = None
     load_form_data_from_path = None
     delete_record = None
@@ -76,7 +79,10 @@ class SeleniumHandler:
         bridge.register_handler("stop_recording", self.handle_stop_recording)
         bridge.register_handler("get_recording_status", self.handle_get_recording_status)
         
-        print("[SeleniumHandler] Handlers registered: detect_browsers, records, recording session")
+        # Browser config handlers
+        bridge.register_handler("get_browser_profiles", self.handle_get_browser_profiles)
+        
+        print("[SeleniumHandler] Handlers registered: browsers, records, recording, profiles")
 
     
     def _check_selenium(self) -> Dict[str, Any] | None:
@@ -252,25 +258,40 @@ class SeleniumHandler:
             return {"success": False, "error": str(e)}
 
     def handle_start_recording(self, content: Dict[str, Any]) -> Dict[str, Any]:
-        """Start a new recording session."""
+        """Start a new recording session with browser configuration."""
         print(f"[SeleniumHandler] start_recording called: {content}")
         try:
             filename = content.get("filename", "recording")
             url = content.get("url", "")
             browser = content.get("browser", "")
             options = content.get("options", {})
+            browser_config = content.get("browser_config", {})
             
             if not url:
                 return {"success": False, "error": "URL is required"}
             
             # Get browser path from detector
             browser_path = None
-            if browser:
+            if browser and self.detector:
                 browsers = self.detector.get_dropdown_choices()
                 for b in browsers:
                     if b.get("name") == browser:
                         browser_path = b.get("path")
                         break
+            
+            # Build BrowserConfig from browser_config dict or legacy options
+            config = None
+            if browser_config and BrowserConfig:
+                # New way: full config dict from UI
+                config = BrowserConfig.from_dict(browser_config)
+                print(f"[SeleniumHandler] Using BrowserConfig: profile={config.efficiency_profile}")
+            elif BrowserConfig:
+                # Legacy fallback: build from options
+                config = BrowserConfig(
+                    incognito=options.get("noCache", False),
+                    page_load_timeout=options.get("timeout", 120)
+                )
+                print(f"[SeleniumHandler] Using legacy options -> BrowserConfig")
             
             # Callbacks for UI notification
             def on_connected():
@@ -300,8 +321,7 @@ class SeleniumHandler:
                 filename=filename,
                 url=url,
                 browser_path=browser_path,
-                incognito=options.get("noCache", False),
-                page_load_timeout=options.get("timeout", 120),
+                config=config,
                 callbacks={
                     "on_connected": on_connected,
                     "on_browser_closed": on_browser_closed,
@@ -315,6 +335,24 @@ class SeleniumHandler:
             print(f"[SeleniumHandler] Error starting recording: {e}")
             import traceback
             traceback.print_exc()
+            return {"success": False, "error": str(e)}
+
+    def handle_get_browser_profiles(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get available browser efficiency profiles for UI display.
+        
+        Returns:
+            Dict with profiles and their descriptions
+        """
+        print("[SeleniumHandler] get_browser_profiles called")
+        try:
+            if not get_available_profiles:
+                return {"success": False, "error": "Browser settings not available"}
+            
+            profiles = get_available_profiles()
+            return {"success": True, "profiles": profiles}
+        except Exception as e:
+            print(f"[SeleniumHandler] Error getting profiles: {e}")
             return {"success": False, "error": str(e)}
 
     def handle_stop_recording(self, content: Dict[str, Any]) -> Dict[str, Any]:

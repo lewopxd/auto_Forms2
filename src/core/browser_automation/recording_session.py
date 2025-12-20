@@ -9,6 +9,7 @@ import threading
 from typing import Optional, Dict, Any, Callable
 
 from .browser_manager import BrowserManager
+from .browser_settings import BrowserConfig
 from . import js_injector
 from .form_analyzer import analyze_form
 from .form_storage import save_recording
@@ -25,8 +26,11 @@ class RecordingSession:
         filename: str,
         url: str,
         browser_path: str = None,
+        config: BrowserConfig = None,
+        # Legacy params (deprecated, use config instead)
         incognito: bool = False,
         page_load_timeout: int = 120,
+        # Callbacks
         on_connected: Callable = None,
         on_browser_closed: Callable = None,
         on_stop_requested: Callable[[bool], None] = None,
@@ -39,18 +43,26 @@ class RecordingSession:
             filename: Name for the recording file (without extension)
             url: Initial URL to navigate to
             browser_path: Path to browser executable
-            incognito: Whether to start in incognito/no-cache mode
-            page_load_timeout: Timeout in seconds for page load (default 120)
+            config: BrowserConfig instance with all browser settings (preferred)
+            incognito: DEPRECATED - Use config.incognito instead
+            page_load_timeout: DEPRECATED - Use config.page_load_timeout instead
             on_connected: Callback when browser is connected and UI injected
             on_browser_closed: Callback when browser is closed externally
-            on_stop_requested: Callback when stop is requested from injected UI (save: bool)
+            on_stop_requested: Callback when stop is requested from injected UI
             on_data_update: Callback when form data is updated
         """
         self.filename = filename
         self.url = url
         self.browser_path = browser_path
-        self.incognito = incognito
-        self.page_load_timeout = page_load_timeout
+        
+        # Use provided config or create default from legacy params
+        if config is not None:
+            self.config = config
+        else:
+            self.config = BrowserConfig(
+                incognito=incognito,
+                page_load_timeout=page_load_timeout
+            )
         
         # Callbacks
         self.on_connected = on_connected
@@ -79,11 +91,10 @@ class RecordingSession:
         try:
             print(f"[RecordingSession] Starting session for {self.filename}")
             
-            # Initialize browser
+            # Initialize browser with config
             self.browser = BrowserManager(
                 browser_path=self.browser_path,
-                incognito=self.incognito,
-                page_load_timeout=self.page_load_timeout
+                config=self.config
             )
             
             # Set callback for external close
@@ -282,6 +293,8 @@ def start_new_session(
     filename: str,
     url: str,
     browser_path: str = None,
+    config: BrowserConfig = None,
+    # Legacy params (deprecated)
     incognito: bool = False,
     page_load_timeout: int = 120,
     callbacks: dict = None
@@ -293,8 +306,9 @@ def start_new_session(
         filename: Recording filename
         url: Initial URL
         browser_path: Browser executable path
-        incognito: Whether to use incognito mode
-        page_load_timeout: Timeout in seconds for page load (default 120)
+        config: BrowserConfig instance (preferred over legacy params)
+        incognito: DEPRECATED - Use config.incognito instead
+        page_load_timeout: DEPRECATED - Use config.page_load_timeout instead
         callbacks: Dict of callback functions
         
     Returns:
@@ -308,10 +322,12 @@ def start_new_session(
     
     callbacks = callbacks or {}
     
+    # Create session with config or legacy params
     session = RecordingSession(
         filename=filename,
         url=url,
         browser_path=browser_path,
+        config=config,
         incognito=incognito,
         page_load_timeout=page_load_timeout,
         on_connected=callbacks.get("on_connected"),

@@ -1,10 +1,10 @@
 """
-Browser Manager with anti-detection capabilities.
-Uses undetected-chromedriver to bypass bot detection.
-Adapted from last_projects/auto_Forms_prevTest/core/browser_manager.py
+Browser Manager - Anti-detection Chromium Automation.
 
-NOTE: Selenium imports are OPTIONAL. If not available, this module
-will load but methods will return errors gracefully.
+Manages browser lifecycle using undetected-chromedriver for stealth.
+Configuration is centralized in browser_settings.py.
+
+NOTE: Selenium imports are OPTIONAL. If not available, methods return errors gracefully.
 """
 import os
 import random
@@ -12,14 +12,16 @@ import time
 import threading
 from typing import Optional, Callable
 
-# === OPTIONAL IMPORTS ===
-# undetected-chromedriver
+# --- Local imports ---
+from .browser_settings import BrowserConfig, build_chrome_options
+
+# --- Optional: undetected-chromedriver ---
 try:
     import undetected_chromedriver as uc
 except ImportError:
     uc = None
 
-# selenium.webdriver - wrapped in try/except to prevent crash if not installed
+# --- Optional: Selenium WebDriver ---
 SELENIUM_WEBDRIVER_AVAILABLE = False
 try:
     from selenium.webdriver.support.ui import WebDriverWait
@@ -29,27 +31,11 @@ try:
     SELENIUM_WEBDRIVER_AVAILABLE = True
 except ImportError as e:
     print(f"[BrowserManager] WARNING: selenium.webdriver not available: {e}")
-    # Define dummy classes so code doesn't crash at definition time
     WebDriverWait = None
     EC = None
     By = None
     TimeoutException = Exception
     WebDriverException = Exception
-
-
-# Default browser settings
-BROWSER_SETTINGS = {
-    "headless": False,
-    "window_width_range": (1200, 1400),
-    "window_height_range": (800, 1000),
-    "disable_gpu": False,
-}
-
-TIMEOUTS = {
-    "page_load": 30,
-    "element_wait": 10,
-    "login_wait": 300,
-}
 
 
 class BrowserManager:
@@ -58,29 +44,41 @@ class BrowserManager:
     Uses undetected-chromedriver for stealth browsing.
     """
     
-    def __init__(self, browser_path: str = None, incognito: bool = False, page_load_timeout: int = 120):
+    def __init__(
+        self,
+        browser_path: str = None,
+        config: BrowserConfig = None,
+        # Legacy params (deprecated, use config instead)
+        incognito: bool = False,
+        page_load_timeout: int = 120
+    ):
         """
         Initialize the browser manager.
         
         Args:
             browser_path: Path to browser executable
-            incognito: Whether to start in incognito mode
-            page_load_timeout: Timeout in seconds for page load (default 120)
+            config: BrowserConfig instance with all settings (preferred)
+            incognito: DEPRECATED - Use config.incognito instead
+            page_load_timeout: DEPRECATED - Use config.page_load_timeout instead
         """
         self.browser_path = browser_path
-        self.incognito = incognito
-        self.page_load_timeout = page_load_timeout
+        
+        # Use provided config or create default, applying legacy params
+        if config is not None:
+            self.config = config
+        else:
+            # Backwards compatibility: create config from legacy params
+            self.config = BrowserConfig(
+                incognito=incognito,
+                page_load_timeout=page_load_timeout
+            )
+        
+        # Driver state
         self.driver = None
         self._is_initialized = False
         self._on_close_callback: Optional[Callable] = None
         self._monitor_thread: Optional[threading.Thread] = None
         self._should_monitor = False
-    
-    def _get_random_window_size(self) -> tuple:
-        """Generate random but realistic window dimensions."""
-        width = random.randint(*BROWSER_SETTINGS["window_width_range"])
-        height = random.randint(*BROWSER_SETTINGS["window_height_range"])
-        return width, height
     
     def _find_brave_path(self) -> str:
         """Find Brave browser executable path."""
@@ -137,47 +135,24 @@ class BrowserManager:
         return None
     
     def _get_chrome_options(self) -> 'uc.ChromeOptions':
-        """Configure Chrome options for maximum stealth."""
-        options = uc.ChromeOptions()
+        """
+        Build Chrome options using centralized configuration.
         
-        # Set browser binary path
+        Delegates to build_chrome_options() from browser_settings module.
+        """
         browser_path = self._get_browser_binary()
-        if browser_path:
-            options.binary_location = browser_path
-        
-        # Anti-detection arguments
-        options.add_argument("--disable-blink-features=AutomationControlled")
-        options.add_argument("--disable-infobars")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--no-first-run")
-        options.add_argument("--no-service-autorun")
-        options.add_argument("--password-store=basic")
-        
-        # Incognito mode for no cache
-        if self.incognito:
-            options.add_argument("--incognito")
-        
-        # Disable automation extension indicators
-        options.add_argument("--disable-extensions")
-        
-        # Random window size for fingerprint variation
-        width, height = self._get_random_window_size()
-        options.add_argument(f"--window-size={width},{height}")
-        
-        # Disable GPU if configured
-        if BROWSER_SETTINGS.get("disable_gpu", False):
-            options.add_argument("--disable-gpu")
-        
-        return options
+        return build_chrome_options(self.config, browser_path)
     
     def initialize(self) -> bool:
         """
         Initialize the browser with anti-detection measures.
         
+        Uses configuration from self.config (BrowserConfig instance).
+        
         Returns:
             True if initialization successful, False otherwise
         """
-        # Check selenium availability first
+        # Check dependencies
         if not SELENIUM_WEBDRIVER_AVAILABLE:
             print("[BrowserManager] Error: selenium.webdriver not available")
             return False
@@ -187,23 +162,22 @@ class BrowserManager:
             return False
         
         try:
-            print("[BrowserManager] Initializing stealth browser...")
+            print(f"[BrowserManager] Initializing browser (profile: {self.config.efficiency_profile})...")
             
             options = self._get_chrome_options()
             
-            # Create undetected Chrome driver
+            # Launch browser with undetected-chromedriver
             self.driver = uc.Chrome(
                 options=options,
-                headless=BROWSER_SETTINGS.get("headless", False),
+                headless=self.config.headless,
                 use_subprocess=True,
             )
             
-            # Set page load timeout (configurable by user)
-            self.driver.set_page_load_timeout(self.page_load_timeout)
-            print(f"[BrowserManager] Page load timeout set to {self.page_load_timeout}s")
+            # Apply timeouts from config
+            self.driver.set_page_load_timeout(self.config.page_load_timeout)
+            self.driver.implicitly_wait(self.config.implicit_wait)
             
-            # Implicit wait for elements
-            self.driver.implicitly_wait(5)
+            print(f"[BrowserManager] Timeouts: page_load={self.config.page_load_timeout}s, implicit={self.config.implicit_wait}s")
             
             self._is_initialized = True
             print("[BrowserManager] Browser initialized successfully!")
