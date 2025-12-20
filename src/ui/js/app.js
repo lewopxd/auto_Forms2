@@ -428,13 +428,19 @@
     // === MODAL FUNCTIONS ===
 
     window.closeModals = function () {
-        document.querySelectorAll('.modal-overlay').forEach(m => {
-            m.classList.remove('open');
+        // Updated selector for unified architecture
+        document.querySelectorAll('.af-modal-overlay, .modal-overlay').forEach(m => {
+            if (window.ModalManager) {
+                window.ModalManager.closeModal(m);
+            } else {
+                m.classList.remove('open');
+                m.style.display = 'none';
+            }
         });
     };
 
     // Click outside modal to close
-    document.querySelectorAll('.modal-overlay').forEach(modal => {
+    document.querySelectorAll('.af-modal-overlay, .modal-overlay').forEach(modal => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 window.closeModals();
@@ -454,10 +460,20 @@
     if (addTabBtn) {
         addTabBtn.addEventListener('click', () => {
             const modal = document.getElementById('modal-tab-type');
-            if (modal) {
+            if (modal && window.ModalManager) {
+                // Use ModalManager for stacking
+                const win = modal.querySelector('.af-modal-window');
+                const header = modal.querySelector('.af-window-header');
+
+                // Ensure draggable
+                // Note: makeDraggable handles registration internally
+                window.ModalManager.makeDraggable(win, header);
+
+                window.ModalManager.openModal(modal);
+            } else if (modal) {
                 modal.classList.add('open');
-                if (window.lucide) lucide.createIcons();
             }
+            if (window.lucide) lucide.createIcons();
         });
     }
 
