@@ -360,7 +360,7 @@
                         <div class="af-map-container">
                             <div class="af-map-header">
                                 <div class="af-map-col">Opción</div>
-                                <div class="af-map-col">Excel</div>
+                                <div class="af-map-col">Valor</div>
                             </div>
                             <div class="af-map-body" id="af-map-rows"></div>
                         </div>
