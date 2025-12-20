@@ -919,8 +919,264 @@ const AutoFormViewModule = (function () {
     }
 
     // ============================================================
-    // 1.7 NEW RECORDING MODAL
+    // 1.7 NEW RECORDING & ADVANCED CONFIG MODALS
     // ============================================================
+
+    // Temporary state for recording configuration
+    let tempRecordingConfig = {
+        // Defaults matching BrowserConfig in browser_settings.py
+        efficiency_profile: "efficiency",
+
+        // Resources & Performance
+        gpu_enabled: true,
+        images_enabled: true,
+        animations_enabled: true,
+        extensions_enabled: false,
+        cold_start_optimization: true,
+        headless: false,
+
+        // Anti-Detection / Mocking
+        incognito: false,
+        anti_detection_enabled: true,
+        mock_webdriver: true,
+        exclude_automation_switches: true,
+        disable_webrtc_leak: true,
+        spoof_plugins: true,
+        randomize_window_size: true,
+
+        // Timeouts
+        page_load_timeout: 30,
+        element_wait_timeout: 10,
+        implicit_wait: 5
+    };
+
+    /**
+     * Resets config to default values
+     */
+    function resetRecordingConfig() {
+        tempRecordingConfig = {
+            efficiency_profile: "efficiency",
+            gpu_enabled: true,
+            images_enabled: true,
+            animations_enabled: true,
+            extensions_enabled: false,
+            cold_start_optimization: true,
+            headless: false,
+            incognito: false,
+            anti_detection_enabled: true,
+            mock_webdriver: true,
+            exclude_automation_switches: true,
+            disable_webrtc_leak: true,
+            spoof_plugins: true,
+            randomize_window_size: true,
+            page_load_timeout: 30,
+            element_wait_timeout: 10,
+            implicit_wait: 5
+        };
+    }
+
+    /**
+     * Opens the Advanced Configuration Modal
+     */
+    function openAdvancedConfigModal() {
+        // Hide New Recording Modal if open
+        const newRecModal = document.getElementById('modal-new-recording');
+        if (newRecModal) newRecModal.style.display = 'none';
+
+        let modal = document.getElementById('modal-advanced-config');
+        if (modal) modal.remove();
+
+        modal = createAdvancedConfigModal();
+        document.body.appendChild(modal);
+
+        if (window.ModalManager) {
+            window.ModalManager.openModal(modal);
+        } else {
+            modal.classList.add('open');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function closeAdvancedConfigModal(save = false) {
+        const modal = document.getElementById('modal-advanced-config');
+
+        if (save) {
+            // Harvest values from UI
+            // Efficiency
+            tempRecordingConfig.efficiency_profile = document.getElementById('adv-efficiency').value;
+
+            // Performance
+            tempRecordingConfig.gpu_enabled = document.getElementById('adv-gpu').checked;
+            tempRecordingConfig.images_enabled = document.getElementById('adv-images').checked;
+            tempRecordingConfig.headless = document.getElementById('adv-headless').checked;
+            tempRecordingConfig.animations_enabled = document.getElementById('adv-animations').checked;
+            tempRecordingConfig.cold_start_optimization = document.getElementById('adv-coldstart').checked;
+
+            // Anti-Detection
+            tempRecordingConfig.incognito = document.getElementById('adv-incognito').checked;
+            tempRecordingConfig.anti_detection_enabled = document.getElementById('adv-antidetect').checked;
+            tempRecordingConfig.mock_webdriver = document.getElementById('adv-webdriver').checked;
+            tempRecordingConfig.randomize_window_size = document.getElementById('adv-randomsize').checked;
+            tempRecordingConfig.disable_webrtc_leak = document.getElementById('adv-webrtc').checked;
+            tempRecordingConfig.spoof_plugins = document.getElementById('adv-spoof').checked;
+
+            // Timeouts
+            tempRecordingConfig.page_load_timeout = parseInt(document.getElementById('adv-pageload').value) || 30;
+            tempRecordingConfig.element_wait_timeout = parseInt(document.getElementById('adv-elemwait').value) || 10;
+        }
+
+        if (window.ModalManager) {
+            window.ModalManager.closeModal(modal);
+        } else {
+            if (modal) modal.classList.remove('open');
+        }
+
+        // Re-open New Recording Modal
+        const newRecModal = document.getElementById('modal-new-recording');
+        if (newRecModal) {
+            newRecModal.style.display = 'flex'; // Ensure visible before animation
+            // No need to call openModal again as it's already "open", just hidden
+            // But if we want to be safe and ensure stacking:
+            if (window.ModalManager) window.ModalManager.bringToFront(newRecModal);
+        }
+    }
+
+    function createAdvancedConfigModal() {
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'modal-advanced-config';
+        modalOverlay.className = 'af-modal-overlay';
+        modalOverlay.style.zIndex = '10005'; // Higher than new recording
+
+        const c = tempRecordingConfig; // Short alias for template
+
+        modalOverlay.innerHTML = `
+            <div class="af-modal-window accent-blue" style="width: 700px; max-height: 85vh;">
+                <div class="af-window-header">
+                    <div class="af-window-title">
+                        <i data-lucide="settings-2" class="w-5 h-5 text-blue-500"></i>
+                        <span>Configuración Avanzada</span>
+                    </div>
+                </div>
+
+                <div class="af-window-body" style="padding: 0; display:flex; flex-direction:column; overflow:hidden;">
+                    <div class="flex-1 overflow-y-auto p-5 space-y-6">
+                        
+                        <!-- SECTION 1: EFFICIENCY -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="zap" class="w-4 h-4 text-orange-500"></i> Perfil de Eficiencia
+                            </h3>
+                            <div class="af-config-row">
+                                <select id="adv-efficiency" class="af-config-select" style="width:100%">
+                                    <option value="normal" ${c.efficiency_profile === 'normal' ? 'selected' : ''}>Normal - Máxima compatibilidad (Carga todo)</option>
+                                    <option value="balanced" ${c.efficiency_profile === 'balanced' ? 'selected' : ''}>Balanced - Optimización moderada</option>
+                                    <option value="efficiency" ${c.efficiency_profile === 'efficiency' ? 'selected' : ''}>Efficiency - (Recomendado) Rápido pero visual</option>
+                                    <option value="extreme" ${c.efficiency_profile === 'extreme' ? 'selected' : ''}>Extreme - Máxima velocidad (Sin imágenes/GPU)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 2: ANTI-DETECTION -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="shield" class="w-4 h-4 text-green-500"></i> Anti-Detection & Mocking
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <label class="af-checkbox-row" title="Usar modo incógnito (sin caché/historial)">
+                                    <input type="checkbox" id="adv-incognito" ${c.incognito ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Incógnito / Sin Caché</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Activa flags base anti-automatización">
+                                    <input type="checkbox" id="adv-antidetect" ${c.anti_detection_enabled ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Anti-Detection Base</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Ocultar propiedad navigator.webdriver">
+                                    <input type="checkbox" id="adv-webdriver" ${c.mock_webdriver ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Ocultar WebDriver</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Aleatorizar tamaño de ventana para evitar huella digital">
+                                    <input type="checkbox" id="adv-randomsize" ${c.randomize_window_size ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Aleatorizar Tamaño Ventana</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Prevenir fuga de IP real vía WebRTC">
+                                    <input type="checkbox" id="adv-webrtc" ${c.disable_webrtc_leak ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Prevenir Fuga WebRTC</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Simular plugins instalados">
+                                    <input type="checkbox" id="adv-spoof" ${c.spoof_plugins ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Spoof Plugins</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 3: PERFORMANCE -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="cpu" class="w-4 h-4 text-purple-500"></i> Recursos y Rendimiento
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <label class="af-checkbox-row" title="Ejecutar sin ventana visible (Rápido)">
+                                    <input type="checkbox" id="adv-headless" ${c.headless ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Headless (Sin UI)</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Usar aceleración gráfica">
+                                    <input type="checkbox" id="adv-gpu" ${c.gpu_enabled ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Aceleración GPU</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Cargar imágenes">
+                                    <input type="checkbox" id="adv-images" ${c.images_enabled ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Cargar Imágenes</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Permitir animaciones CSS">
+                                    <input type="checkbox" id="adv-animations" ${c.animations_enabled ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Animaciones CSS</span>
+                                </label>
+                                <label class="af-checkbox-row" title="Optimizar inicio saltando diálogos">
+                                    <input type="checkbox" id="adv-coldstart" ${c.cold_start_optimization ? 'checked' : ''} class="af-checkbox-blue">
+                                    <span>Cold Start Opt.</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 4: TIMEOUTS -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="timer" class="w-4 h-4 text-gray-500"></i> Tiempos (Segundos)
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="af-config-row flex-col items-start gap-1">
+                                    <span class="text-xs font-medium text-gray-600">Carga de Página</span>
+                                    <input type="number" id="adv-pageload" class="af-config-input w-full" value="${c.page_load_timeout}">
+                                </div>
+                                <div class="af-config-row flex-col items-start gap-1">
+                                    <span class="text-xs font-medium text-gray-600">Espera Elemento</span>
+                                    <input type="number" id="adv-elemwait" class="af-config-input w-full" value="${c.element_wait_timeout}">
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="af-window-footer">
+                    <button class="af-btn-ghost" onclick="AutoFormViewModule.closeAdvancedConfigModal(false)">
+                        Cancelar
+                    </button>
+                    <button class="af-btn-primary bg-blue-600 hover:bg-blue-700 border-none text-white" onclick="AutoFormViewModule.closeAdvancedConfigModal(true)">
+                        Guardar Configuración
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Make Draggable
+        const win = modalOverlay.querySelector('.af-modal-window');
+        const header = modalOverlay.querySelector('.af-window-header');
+        if (window.ModalManager) window.ModalManager.makeDraggable(win, header);
+
+        return modalOverlay;
+    }
 
     function openNewRecordingModal() {
         // Hide manager modal if open
@@ -1005,28 +1261,13 @@ const AutoFormViewModule = (function () {
                         </div>
                     </div>
 
-                    <!-- Timeout -->
-                    <div class="af-config-section">
-                        <div class="af-config-sec-title">Tiempo de Espera</div>
-                        <div class="af-config-row" style="gap: 8px; align-items: center;">
-                            <input type="number" id="new-rec-timeout" class="af-config-input" style="width: 80px; text-align: center;" value="120" min="30" max="600">
-                            <span class="text-xs text-gray-500">segundos (máx espera para abrir navegador)</span>
-                        </div>
-                    </div>
-
-                    <!-- Options -->
-                    <div class="af-config-section">
-                        <div class="af-config-sec-title">Opciones</div>
-                        <div class="af-config-row" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-                            <label class="af-checkbox-row">
-                                <input type="checkbox" id="new-rec-nocache" class="af-checkbox-orange">
-                                <span>Iniciar sin Caché (Incógnito)</span>
-                            </label>
-                            <label class="af-checkbox-row">
-                                <input type="checkbox" id="new-rec-login" class="af-checkbox-orange">
-                                <span>Modo con Login (Permitir Interacción)</span>
-                            </label>
-                        </div>
+                    <!-- Advanced Options Link -->
+                    <div class="mt-4 flex justify-between items-center px-1">
+                        <button onclick="AutoFormViewModule.openAdvancedConfigModal()" 
+                                class="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1">
+                            <i data-lucide="settings-2" class="w-4 h-4"></i>
+                            Opciones Avanzadas
+                        </button>
                     </div>
                 </div>
                 
@@ -1138,9 +1379,6 @@ const AutoFormViewModule = (function () {
         const filenameEl = document.getElementById('new-rec-filename');
         const urlEl = document.getElementById('new-rec-url');
         const browserEl = document.getElementById('new-rec-browser');
-        const timeoutEl = document.getElementById('new-rec-timeout');
-        const noCacheEl = document.getElementById('new-rec-nocache');
-        const loginEl = document.getElementById('new-rec-login');
         const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
 
         if (!filenameEl || !urlEl || !browserEl) return;
@@ -1148,21 +1386,18 @@ const AutoFormViewModule = (function () {
         const filename = filenameEl.value.trim() || `recording_${Date.now()}`;
         const url = urlEl.value.trim();
         const browser = browserEl.value;
-        const timeout = parseInt(timeoutEl?.value) || 120;
-        const noCache = noCacheEl?.checked || false;
-        const withLogin = loginEl?.checked || false;
 
         if (!url) {
-            alert('Por favor ingresa una URL válida');
+            window.showAlert({ icon: 'alert-triangle', title: 'URL Requerida', message: 'Por favor ingresa una URL válida.', confirmColor: 'bg-orange-500' });
             return;
         }
 
         if (!browser) {
-            alert('Por favor selecciona un navegador');
+            window.showAlert({ icon: 'alert-triangle', title: 'Navegador Requerido', message: 'Por favor selecciona un navegador.', confirmColor: 'bg-orange-500' });
             return;
         }
 
-        console.log('[AutoForm] Starting Recording:', { filename, url, browser, timeout, noCache, withLogin });
+        console.log('[AutoForm] Starting Recording:', { filename, url, browser, config: tempRecordingConfig });
 
         // Show spinner on button (keep modal open until connected)
         const originalBtnHtml = startBtn?.innerHTML || '';
@@ -1181,11 +1416,7 @@ const AutoFormViewModule = (function () {
                 filename: filename,
                 url: url,
                 browser: browser,
-                options: {
-                    timeout: timeout,
-                    noCache: noCache,
-                    withLogin: withLogin
-                }
+                browser_config: tempRecordingConfig
             });
 
             console.log('[AutoForm] start_recording result:', result);
@@ -2466,6 +2697,9 @@ const AutoFormViewModule = (function () {
         exportRecording,
         deleteRecording,
         importExternalRecording,
+        // Advanced Config
+        openAdvancedConfigModal,
+        closeAdvancedConfigModal,
         // New Recording Modal
         openNewRecordingModal,
         closeNewRecordingModal,

@@ -283,8 +283,11 @@ class SeleniumHandler:
             config = None
             if browser_config and BrowserConfig:
                 # New way: full config dict from UI
-                config = BrowserConfig.from_dict(browser_config)
-                print(f"[SeleniumHandler] Using BrowserConfig: profile={config.efficiency_profile}")
+                try:
+                    config = BrowserConfig.from_dict(browser_config)
+                    print(f"[SeleniumHandler] Using BrowserConfig: profile={config.efficiency_profile}")
+                except Exception as e:
+                    print(f"[SeleniumHandler] Error creating BrowserConfig: {e}")
             elif BrowserConfig:
                 # Legacy fallback: build from options
                 config = BrowserConfig(
