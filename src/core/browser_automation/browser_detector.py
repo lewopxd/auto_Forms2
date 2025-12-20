@@ -2,10 +2,14 @@
 Browser Detector Module - Silent Detection
 Detects installed Chromium-based browsers WITHOUT opening any windows.
 Adapted for auto_Forms2 integration.
+
+Configuration is loaded from browsers_config.json for easy customization.
 """
 import os
 import subprocess
 import re
+import json
+from pathlib import Path
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -20,41 +24,37 @@ class BrowserInfo:
     is_valid: bool = False
 
 
-# Browser search paths for Windows
-BROWSER_PATHS: Dict[str, Dict] = {
-    "brave": {
-        "display_name": "Brave",
-        "paths": [
-            r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe",
-            r"%PROGRAMFILES%\BraveSoftware\Brave-Browser\Application\brave.exe",
-            r"%PROGRAMFILES(X86)%\BraveSoftware\Brave-Browser\Application\brave.exe",
-        ],
-    },
-    "chrome": {
-        "display_name": "Google Chrome",
-        "paths": [
-            r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe",
-            r"%PROGRAMFILES%\Google\Chrome\Application\chrome.exe",
-            r"%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe",
-        ],
-    },
-    "edge": {
-        "display_name": "Microsoft Edge",
-        "paths": [
-            r"%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe",
-            r"%PROGRAMFILES%\Microsoft\Edge\Application\msedge.exe",
-            r"%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe",
-        ],
-    },
-}
+def load_browser_config() -> Dict:
+    """Load browser configuration from JSON file."""
+    config_path = Path(__file__).parent / "browsers_config.json"
+    
+    if not config_path.exists():
+        print(f"[BrowserDetector] WARNING: Config file not found: {config_path}")
+        return {"browsers": {}}
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[BrowserDetector] ERROR loading config: {e}")
+        return {"browsers": {}}
 
-# User data directories for each browser (Windows)
-# Used to open URLs in existing browser tabs instead of new windows
-BROWSER_USER_DATA_DIRS: Dict[str, str] = {
-    "brave": r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data",
-    "chrome": r"%LOCALAPPDATA%\Google\Chrome\User Data",
-    "edge": r"%LOCALAPPDATA%\Microsoft\Edge\User Data",
-}
+
+# Load configuration from JSON
+_CONFIG = load_browser_config()
+
+# Browser paths loaded from JSON
+BROWSER_PATHS: Dict[str, Dict] = {}
+BROWSER_USER_DATA_DIRS: Dict[str, str] = {}
+
+# Parse config into the expected format
+for browser_name, browser_data in _CONFIG.get("browsers", {}).items():
+    BROWSER_PATHS[browser_name] = {
+        "display_name": browser_data.get("display_name", browser_name),
+        "paths": browser_data.get("paths", []),
+    }
+    if "user_data_dir" in browser_data:
+        BROWSER_USER_DATA_DIRS[browser_name] = browser_data["user_data_dir"]
 
 
 def get_browser_user_data_dir(browser_name: str) -> Optional[str]:
@@ -158,3 +158,23 @@ class BrowserDetector:
                 "version": b.version
             })
         return choices
+    
+    def reload_config(self) -> None:
+        """Reload configuration from JSON file and clear cache."""
+        global _CONFIG, BROWSER_PATHS, BROWSER_USER_DATA_DIRS
+        
+        _CONFIG = load_browser_config()
+        BROWSER_PATHS.clear()
+        BROWSER_USER_DATA_DIRS.clear()
+        
+        for browser_name, browser_data in _CONFIG.get("browsers", {}).items():
+            BROWSER_PATHS[browser_name] = {
+                "display_name": browser_data.get("display_name", browser_name),
+                "paths": browser_data.get("paths", []),
+            }
+            if "user_data_dir" in browser_data:
+                BROWSER_USER_DATA_DIRS[browser_name] = browser_data["user_data_dir"]
+        
+        # Clear browser cache
+        self._cache.clear()
+        print("[BrowserDetector] Configuration reloaded")

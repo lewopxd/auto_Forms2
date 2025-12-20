@@ -1,0 +1,49 @@
+{
+    "_comment": "Configuración de rutas de navegadores compatibles con Selenium",
+    "_version": "1.0.0",
+    "browsers": {
+        "brave": {
+            "display_name": "Brave",
+            "paths": [
+                "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+                "%PROGRAMFILES%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+                "%PROGRAMFILES(X86)%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe"
+            ],
+            "user_data_dir": "%LOCALAPPDATA%\\BraveSoftware\\Brave-Browser\\User Data"
+        },
+        "chrome": {
+            "display_name": "Google Chrome",
+            "paths": [
+                "%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe",
+                "%PROGRAMFILES%\\Google\\Chrome\\Application\\chrome.exe",
+                "%PROGRAMFILES(X86)%\\Google\\Chrome\\Application\\chrome.exe"
+            ],
+            "user_data_dir": "%LOCALAPPDATA%\\Google\\Chrome\\User Data"
+        },
+        "edge": {
+            "display_name": "Microsoft Edge",
+            "paths": [
+                "%PROGRAMFILES(X86)%\\Microsoft\\Edge\\Application\\msedge.exe",
+                "%PROGRAMFILES%\\Microsoft\\Edge\\Application\\msedge.exe",
+                "%LOCALAPPDATA%\\Microsoft\\Edge\\Application\\msedge.exe"
+            ],
+            "user_data_dir": "%LOCALAPPDATA%\\Microsoft\\Edge\\User Data"
+        },
+        "firefox": {
+            "display_name": "Mozilla Firefox",
+            "paths": [
+                "%PROGRAMFILES%\\Mozilla Firefox\\firefox.exe",
+                "%PROGRAMFILES(X86)%\\Mozilla Firefox\\firefox.exe",
+                "%LOCALAPPDATA%\\Mozilla Firefox\\firefox.exe"
+            ],
+            "user_data_dir": "%APPDATA%\\Mozilla\\Firefox\\Profiles"
+        },
+        "ungoogled_chromium": {
+            "display_name": "Ungoogled Chromium",
+            "paths": [
+                "%LOCALAPPDATA%\\Chromium\\Application\\chrome.exe"
+            ],
+            "user_data_dir": "%LOCALAPPDATA%\\Chromium\\User Data"
+        }
+    }
+}
