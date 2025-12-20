@@ -944,10 +944,20 @@ const AutoFormViewModule = (function () {
         spoof_plugins: true,
         randomize_window_size: true,
 
+        // Window Size
+        start_maximized: false,
+        window_width_min: 1200,
+        window_width_max: 1400,
+        window_height_min: 800,
+        window_height_max: 1000,
+
         // Timeouts
         page_load_timeout: 30,
         element_wait_timeout: 10,
-        implicit_wait: 5
+        implicit_wait: 5,
+
+        // Debug
+        debug_mode: false
     };
 
     /**
@@ -969,9 +979,15 @@ const AutoFormViewModule = (function () {
             disable_webrtc_leak: true,
             spoof_plugins: true,
             randomize_window_size: true,
+            start_maximized: false,
+            window_width_min: 1200,
+            window_width_max: 1400,
+            window_height_min: 800,
+            window_height_max: 1000,
             page_load_timeout: 30,
             element_wait_timeout: 10,
-            implicit_wait: 5
+            implicit_wait: 5,
+            debug_mode: false
         };
     }
 
@@ -1021,9 +1037,21 @@ const AutoFormViewModule = (function () {
             tempRecordingConfig.disable_webrtc_leak = document.getElementById('adv-webrtc').checked;
             tempRecordingConfig.spoof_plugins = document.getElementById('adv-spoof').checked;
 
+            // Window Size (from select dropdown)
+            const windowMode = document.getElementById('adv-window-mode').value;
+            tempRecordingConfig.start_maximized = (windowMode === 'maximized');
+            tempRecordingConfig.randomize_window_size = (windowMode === 'random');
+            tempRecordingConfig.window_width_min = parseInt(document.getElementById('adv-wmin').value) || 1200;
+            tempRecordingConfig.window_width_max = parseInt(document.getElementById('adv-wmax').value) || 1400;
+            tempRecordingConfig.window_height_min = parseInt(document.getElementById('adv-hmin').value) || 800;
+            tempRecordingConfig.window_height_max = parseInt(document.getElementById('adv-hmax').value) || 1000;
+
             // Timeouts
             tempRecordingConfig.page_load_timeout = parseInt(document.getElementById('adv-pageload').value) || 30;
             tempRecordingConfig.element_wait_timeout = parseInt(document.getElementById('adv-elemwait').value) || 10;
+
+            // Debug
+            tempRecordingConfig.debug_mode = document.getElementById('adv-debug').checked;
         }
 
         if (window.ModalManager) {
@@ -1110,7 +1138,54 @@ const AutoFormViewModule = (function () {
                             </div>
                         </div>
 
-                        <!-- SECTION 3: PERFORMANCE -->
+                        <!-- SECTION 3: WINDOW SIZE -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="maximize-2" class="w-4 h-4 text-indigo-500"></i> Tamaño de Ventana
+                            </h3>
+                            <div class="space-y-3">
+                                <div class="af-config-row">
+                                    <select id="adv-window-mode" class="af-config-select w-full" onchange="
+                                        const opts = document.getElementById('adv-window-size-opts');
+                                        opts.style.display = this.value === 'random' ? 'grid' : 'none';
+                                    ">
+                                        <option value="maximized" ${c.start_maximized ? 'selected' : ''}>Pantalla Completa (Maximizado)</option>
+                                        <option value="random" ${!c.start_maximized && c.randomize_window_size ? 'selected' : ''}>Tamaño Aleatorio (Anti-Fingerprint)</option>
+                                    </select>
+                                </div>
+                                <div id="adv-window-size-opts" class="grid grid-cols-2 gap-3" style="${c.start_maximized || !c.randomize_window_size ? 'display:none' : ''}">
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Ancho Mín</span>
+                                        <input type="number" id="adv-wmin" class="af-config-input w-full" value="${c.window_width_min}">
+                                    </div>
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Ancho Máx</span>
+                                        <input type="number" id="adv-wmax" class="af-config-input w-full" value="${c.window_width_max}">
+                                    </div>
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Alto Mín</span>
+                                        <input type="number" id="adv-hmin" class="af-config-input w-full" value="${c.window_height_min}">
+                                    </div>
+                                    <div class="af-config-row flex-col items-start gap-1">
+                                        <span class="text-xs text-gray-500">Alto Máx</span>
+                                        <input type="number" id="adv-hmax" class="af-config-input w-full" value="${c.window_height_max}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 6: DEBUG MODE -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
+                                <i data-lucide="terminal" class="w-4 h-4 text-gray-500"></i> Desarrollo
+                            </h3>
+                            <label class="af-checkbox-row" title="Mostrar logs detallados del proceso de grabación">
+                                <input type="checkbox" id="adv-debug" ${c.debug_mode ? 'checked' : ''} class="af-checkbox-blue">
+                                <span>Modo Debug (Ver logs)</span>
+                            </label>
+                        </div>
+
+                        <!-- SECTION 4: PERFORMANCE -->
                         <div class="space-y-3">
                             <h3 class="text-sm font-bold text-gray-700 flex items-center gap-2 border-b pb-1">
                                 <i data-lucide="cpu" class="w-4 h-4 text-purple-500"></i> Recursos y Rendimiento
@@ -1148,10 +1223,12 @@ const AutoFormViewModule = (function () {
                                 <div class="af-config-row flex-col items-start gap-1">
                                     <span class="text-xs font-medium text-gray-600">Carga de Página</span>
                                     <input type="number" id="adv-pageload" class="af-config-input w-full" value="${c.page_load_timeout}">
+                                    <span class="text-xs text-gray-400">Máx. espera para que cargue la página completa</span>
                                 </div>
                                 <div class="af-config-row flex-col items-start gap-1">
                                     <span class="text-xs font-medium text-gray-600">Espera Elemento</span>
                                     <input type="number" id="adv-elemwait" class="af-config-input w-full" value="${c.element_wait_timeout}">
+                                    <span class="text-xs text-gray-400">Máx. espera para encontrar un elemento específico</span>
                                 </div>
                             </div>
                         </div>
@@ -1230,44 +1307,65 @@ const AutoFormViewModule = (function () {
                     </div>
                 </div>
                 
-                <div class="af-window-body">
-                    <!-- Filename -->
-                    <div class="af-config-section">
-                        <div class="af-config-sec-title">Nombre del Archivo</div>
-                        <div class="af-config-row">
-                            <input type="text" id="new-rec-filename" class="af-config-input" style="flex:1" placeholder="mi_grabacion">
-                            <span class="text-xs text-gray-500 ml-1">.raf</span>
-                        </div>
-                    </div>
-
-                    <!-- URL -->
-                    <div class="af-config-section">
-                        <div class="af-config-sec-title">URL Inicial</div>
-                        <div class="af-config-row">
-                            <input type="url" id="new-rec-url" class="af-config-input" style="flex:1" placeholder="https://ejemplo.com">
-                        </div>
-                    </div>
-
-                    <!-- Browser -->
-                    <div class="af-config-section">
-                        <div class="af-config-sec-title">Navegador</div>
-                        <div class="af-config-row" style="gap: 8px; align-items: center;">
-                            <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled>
-                                <option value="">Cargando navegadores...</option>
-                            </select>
-                            <div id="new-rec-browser-spinner" class="af-browser-spinner">
-                                <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                <div class="af-window-body" style="padding: 0; overflow: hidden;">
+                    <!-- NORMAL VIEW -->
+                    <div id="new-rec-normal" class="p-5 space-y-4">
+                        <!-- Filename -->
+                        <div class="af-config-section">
+                            <div class="af-config-sec-title">Nombre del Archivo</div>
+                            <div class="af-config-row">
+                                <input type="text" id="new-rec-filename" class="af-config-input" style="flex:1" placeholder="mi_grabacion">
+                                <span class="text-xs text-gray-500 ml-1">.raf</span>
                             </div>
                         </div>
+
+                        <!-- URL -->
+                        <div class="af-config-section">
+                            <div class="af-config-sec-title">URL Inicial</div>
+                            <div class="af-config-row">
+                                <input type="url" id="new-rec-url" class="af-config-input" style="flex:1" placeholder="https://ejemplo.com">
+                            </div>
+                        </div>
+
+                        <!-- Browser -->
+                        <div class="af-config-section">
+                            <div class="af-config-sec-title">Navegador</div>
+                            <div class="af-config-row" style="gap: 8px; align-items: center;">
+                                <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled>
+                                    <option value="">Cargando navegadores...</option>
+                                </select>
+                                <div id="new-rec-browser-spinner" class="af-browser-spinner">
+                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Options Link -->
+                        <div class="mt-4 flex justify-between items-center px-1">
+                            <button onclick="AutoFormViewModule.openAdvancedConfigModal()" 
+                                    class="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1">
+                                <i data-lucide="settings-2" class="w-4 h-4"></i>
+                                Opciones Avanzadas
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- Advanced Options Link -->
-                    <div class="mt-4 flex justify-between items-center px-1">
-                        <button onclick="AutoFormViewModule.openAdvancedConfigModal()" 
-                                class="text-sm text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1">
-                            <i data-lucide="settings-2" class="w-4 h-4"></i>
-                            Opciones Avanzadas
-                        </button>
+                    <!-- DEBUG VIEW (Hidden by default) -->
+                    <div id="new-rec-debug" class="flex flex-col h-full" style="display: none;">
+                        <!-- Fixed Info Header -->
+                        <div class="px-4 py-3 bg-gray-800 text-white border-b border-gray-700">
+                            <div class="flex items-center gap-3 text-xs">
+                                <span class="flex items-center gap-1"><i data-lucide="globe" class="w-3 h-3 text-blue-400"></i> <span id="debug-url" class="text-gray-300">-</span></span>
+                                <span class="flex items-center gap-1"><i data-lucide="chrome" class="w-3 h-3 text-green-400"></i> <span id="debug-browser" class="text-gray-300">-</span></span>
+                            </div>
+                        </div>
+                        <!-- Console Log Area -->
+                        <div class="flex-1 bg-gray-900 p-3 overflow-hidden">
+                            <textarea id="debug-console" readonly 
+                                class="w-full h-full bg-transparent text-green-400 text-xs font-mono resize-none border-none outline-none"
+                                style="min-height: 200px;"
+                                placeholder="[Log del proceso de apertura...]">[00:00:00] Modo Debug activado. Esperando inicio de grabación...</textarea>
+                        </div>
                     </div>
                 </div>
                 
@@ -1359,6 +1457,36 @@ const AutoFormViewModule = (function () {
         }
     }
 
+    /**
+     * Toggle between normal and debug views in New Recording modal
+     */
+    function toggleDebugMode(enabled) {
+        const normalView = document.getElementById('new-rec-normal');
+        const debugView = document.getElementById('new-rec-debug');
+
+        if (enabled) {
+            // Switch to debug view
+            if (normalView) normalView.style.display = 'none';
+            if (debugView) debugView.style.display = 'flex';
+
+            // Update debug info from current form values
+            const url = document.getElementById('new-rec-url')?.value || '-';
+            const browserSelect = document.getElementById('new-rec-browser');
+            const browser = browserSelect?.options[browserSelect.selectedIndex]?.text || '-';
+
+            const debugUrl = document.getElementById('debug-url');
+            const debugBrowser = document.getElementById('debug-browser');
+            if (debugUrl) debugUrl.textContent = url || '-';
+            if (debugBrowser) debugBrowser.textContent = browser || '-';
+
+            if (window.lucide) lucide.createIcons();
+        } else {
+            // Switch to normal view
+            if (normalView) normalView.style.display = 'block';
+            if (debugView) debugView.style.display = 'none';
+        }
+    }
+
     function closeNewRecordingModal() {
         const modal = document.getElementById('modal-new-recording');
         if (window.ModalManager) {
@@ -1405,6 +1533,17 @@ const AutoFormViewModule = (function () {
             startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Conectando...';
             startBtn.disabled = true;
             if (window.lucide) lucide.createIcons();
+        }
+
+        // If debug mode is enabled, switch to debug view
+        if (tempRecordingConfig.debug_mode) {
+            toggleDebugMode(true);
+            // Add initial log entry
+            const console_el = document.getElementById('debug-console');
+            if (console_el) {
+                const now = new Date().toLocaleTimeString('es-CO', { hour12: false });
+                console_el.value = `[${now}] Iniciando grabación...\n[${now}] URL: ${url}\n[${now}] Browser: ${browser}\n[${now}] Conectando con Selenium...`;
+            }
         }
 
         // Store tabId for event handlers
@@ -2705,6 +2844,7 @@ const AutoFormViewModule = (function () {
         closeNewRecordingModal,
         startNewRecording,
         stopRecording,
+        toggleDebugMode,
         // Events
         initRecordingEvents
     };

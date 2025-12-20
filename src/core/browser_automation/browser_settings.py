@@ -52,6 +52,7 @@ class BrowserConfig:
     # --- Session & Appearance ---
     headless: bool = False             # Run without visible window
     incognito: bool = False            # Use incognito/private mode
+    start_maximized: bool = False      # Start browser maximized (overrides random size)
     window_width_min: int = 1200       # Random window width range (min)
     window_width_max: int = 1400       # Random window width range (max)
     window_height_min: int = 800       # Random window height range (min)
@@ -273,8 +274,10 @@ def build_chrome_options(config: BrowserConfig, browser_path: str = None) -> 'uc
     if config.incognito:
         add_arg("--incognito")
     
-    # --- 6. Window size (randomized for anti-fingerprinting) ---
-    if config.randomize_window_size:
+    # --- 6. Window size ---
+    if config.start_maximized:
+        add_arg("--start-maximized")
+    elif config.randomize_window_size:
         width = random.randint(config.window_width_min, config.window_width_max)
         height = random.randint(config.window_height_min, config.window_height_max)
         add_arg(f"--window-size={width},{height}")
