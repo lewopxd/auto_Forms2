@@ -160,16 +160,8 @@ class RecordingSession:
         
         if save and self.all_pages_data:
             try:
-                # Build final recording data
-                recording_data = {
-                    "url": self.url,
-                    "filename": self.filename,
-                    "pages": self.all_pages_data,
-                    "recorded_at": time.strftime("%Y-%m-%d %H:%M:%S")
-                }
-                
                 # Save to file
-                saved_path = save_recording(self.filename, recording_data)
+                saved_path = self._save_to_disk()
                 print(f"[RecordingSession] Saved to: {saved_path}")
                 
             except Exception as e:
@@ -266,11 +258,25 @@ class RecordingSession:
             "navigation": data.get("navigation", {})
         }
         
-        print(f"[RecordingSession] Saved page data: {page_key}")
+        print(f"[RecordingSession] Saved page data to memory: {page_key}")
         
         # Notify UI that save was successful
         if self.browser and self.browser.is_browser_alive():
             js_injector.notify_saved(self.browser.get_driver())
+
+    def _save_to_disk(self) -> Optional[str]:
+        """Helper to save current recording state to disk."""
+        if not self.all_pages_data:
+            return None
+            
+        recording_data = {
+            "url": self.url,
+            "filename": self.filename,
+            "pages": self.all_pages_data,
+            "recorded_at": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        return save_recording(self.filename, recording_data)
 
 
 # Global session instance (singleton for now)
