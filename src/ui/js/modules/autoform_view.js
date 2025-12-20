@@ -779,8 +779,16 @@ const AutoFormViewModule = (function () {
             // Ensure global recordings array exists
             if (!window.projectData.recordings) window.projectData.recordings = [];
 
-            // Step 3: Check if recording exists in global pool or load new
-            let recording = window.projectData.recordings.find(r => r.path === path);
+            // Helper: normalize path for comparison (handle backslash/forwardslash differences)
+            const normalizePath = (p) => p ? p.replace(/\\/g, '/').toLowerCase() : '';
+            const normalizedPath = normalizePath(path);
+            const searchFilename = path.split(/[/\\]/).pop().toLowerCase();
+
+            // Step 3: Check if recording exists in global pool (by normalized path or filename)
+            let recording = window.projectData.recordings.find(r =>
+                normalizePath(r.path) === normalizedPath ||
+                (r.filename && r.filename.toLowerCase() === searchFilename)
+            );
 
             if (!recording) {
                 // Load new recording from file
@@ -796,10 +804,19 @@ const AutoFormViewModule = (function () {
                 recording = {
                     id: newRecId,
                     name: fileName,
+                    filename: fileName,
                     path: path,
                     data: result.data
                 };
                 window.projectData.recordings.push(recording);
+            } else if (!recording.data) {
+                // Recording exists but data not loaded yet (e.g., newly recorded)
+                const result = await window.bridgePy.send('load_form_record', { path: recording.path });
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load recording data');
+                }
+                recording.data = result.data;
+                recording.name = recording.name || recording.filename;
             }
 
             // Step 4: Set tab's reference and generate cards
@@ -1624,8 +1641,9 @@ const AutoFormViewModule = (function () {
 
                 if (startBtn) {
                     startBtn.disabled = false;
-                    startBtn.className = 'af-btn-danger w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700';
-                    startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i> Detener Grabación';
+                    // Keep same class structure as original, just change color via style
+                    startBtn.style.background = '#ef4444';
+                    startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4" style="fill: currentColor;"></i> Detener Grabación';
 
                     // Add status text above button
                     let statusEl = document.getElementById('rec-modal-status');
@@ -1644,21 +1662,39 @@ const AutoFormViewModule = (function () {
                         e.preventDefault();
                         e.stopPropagation();
 
-                        if (!confirm('¿Detener grabación y guardar?')) return;
+                        // Use app's modal system instead of native confirm
+                        window.showAlert({
+                            icon: 'alert-triangle',
+                            iconColor: 'text-orange-500',
+                            title: '¿Detener Grabación?',
+                            message: 'Se guardará la grabación con los datos recopilados hasta ahora.',
+                            confirmText: 'Guardar y Detener',
+                            confirmColor: 'bg-orange-600 hover:bg-orange-700',
+                            cancelText: 'Cancelar',
+                            onConfirm: async () => {
+                                startBtn.disabled = true;
+                                startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...';
+                                if (window.lucide) lucide.createIcons();
 
-                        startBtn.disabled = true;
-                        startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...';
-
-                        try {
-                            // Send stop command to backend
-                            // We use the same bridge logic. Assuming backend has a handler or we use generic command
-                            await window.bridgePy.send('stop_recording', { save: true });
-                        } catch (err) {
-                            console.error('Stop failed:', err);
-                            alert('Error al detener: ' + err.message);
-                            startBtn.disabled = false;
-                            startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i> Detener Grabación';
-                        }
+                                try {
+                                    // Send stop command to backend (always save, always close browser for now from this modal)
+                                    await window.bridgePy.send('stop_recording', { save: true, close_browser: true });
+                                } catch (err) {
+                                    console.error('Stop failed:', err);
+                                    window.showAlert({
+                                        icon: 'x-circle',
+                                        iconColor: 'text-red-500',
+                                        title: 'Error',
+                                        message: 'Error al detener: ' + err.message,
+                                        confirmText: 'Cerrar',
+                                        confirmColor: 'bg-gray-600 hover:bg-gray-700'
+                                    });
+                                    startBtn.disabled = false;
+                                    startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4" style="fill: currentColor;"></i> Detener Grabación';
+                                    if (window.lucide) lucide.createIcons();
+                                }
+                            }
+                        });
                     };
                 }
 
@@ -2825,11 +2861,11 @@ const AutoFormViewModule = (function () {
             console.log('[AutoForm] Browser closed externally event received');
 
             // Reset Start Modal State
-            const startBtn = document.querySelector('#modal-new-recording .af-btn-danger'); // Red button
+            const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
             if (startBtn) {
                 // Reset to initial state
                 startBtn.disabled = false;
-                startBtn.className = 'af-btn-primary w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700';
+                startBtn.style.background = '#f97316'; // Orange
                 startBtn.innerHTML = 'Iniciar Grabación';
                 startBtn.onclick = () => startNewRecording(); // Restore original handler
             }
@@ -2852,10 +2888,10 @@ const AutoFormViewModule = (function () {
             const detail = e.detail || {};
 
             // 1. Reset "New Recording" Modal UI (if open)
-            const startBtn = document.querySelector('#modal-new-recording .af-btn-danger');
+            const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
             if (startBtn) {
                 startBtn.disabled = false;
-                startBtn.className = 'af-btn-primary w-full py-2 rounded text-white font-medium transition-colors flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700';
+                startBtn.style.background = '#f97316'; // Orange
                 startBtn.innerHTML = 'Iniciar Grabación';
                 startBtn.onclick = () => startNewRecording(); // Restore handler
             }
@@ -2873,39 +2909,69 @@ const AutoFormViewModule = (function () {
             if (detail.path) {
                 const filename = detail.path.split(/[\\/]/).pop();
 
-                // Add to global recordings immediately
+                // Add to global recordings immediately with pending flag
                 const existing = window.projectData.recordings.find(r => r.filename === filename);
+                const newRecId = 'rec-' + Date.now();
                 if (!existing) {
                     window.projectData.recordings.push({
-                        id: 'rec-' + Date.now(),
+                        id: newRecId,
                         filename: filename,
                         path: detail.path,
                         created: new Date().toISOString(),
-                        questionCount: detail.questionCount || 0
+                        questionCount: detail.questionCount || 0,
+                        pending: true // Mark as pending until file is ready
                     });
                 }
 
-                // Trigger UI Refresh
-                if (typeof refreshRecordingsList === 'function') {
-                    refreshRecordingsList();
-                }
+                // Wait 1 second for file write to complete before opening Manager
+                setTimeout(() => {
+                    // Remove pending flag
+                    const rec = window.projectData.recordings.find(r => r.id === newRecId);
+                    if (rec) rec.pending = false;
 
-                // Show Success Alert
-                window.showAlert({
-                    icon: 'check-circle',
-                    iconColor: 'text-green-500',
-                    title: 'Grabación Guardada',
-                    message: `La grabación <b>${filename}</b> se ha registrado correctamente.<br>Ahora puedes insertarla en tus pestañas desde el Gestor.`,
-                    confirmText: 'Abrir Gestor',
-                    confirmColor: 'bg-green-600 hover:bg-green-700',
-                    onConfirm: () => {
-                        openRecordingManager();
-                    }
-                });
+                    // Open Recording Manager
+                    openRecordingManager();
 
-                // Also open manager automatically if configured or just by default
-                // Let's stick to the Alert confirmation to avoid jarring jumps
-                // openRecordingManager(); 
+                    // Wait for modal to render, then add notification and highlight
+                    setTimeout(() => {
+                        // Add notification card at top of manager
+                        const managerBody = document.querySelector('#modal-recording-manager .af-window-body');
+                        if (managerBody) {
+                            const notification = document.createElement('div');
+                            notification.className = 'recording-success-notification';
+                            notification.style.cssText = 'background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 10px 14px; margin: 12px; display: flex; align-items: center; gap: 10px;';
+                            notification.innerHTML = `
+                                <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                                <span style="color: #166534; font-size: 13px; font-weight: 500;">Grabación <b>${filename}</b> guardada exitosamente</span>
+                                <button onclick="this.parentElement.remove()" style="margin-left: auto; background: none; border: none; cursor: pointer; color: #166534; opacity: 0.7;">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            `;
+                            managerBody.insertBefore(notification, managerBody.firstChild);
+                            if (window.lucide) lucide.createIcons();
+
+                            // Auto-remove after 5 seconds
+                            setTimeout(() => notification.remove(), 5000);
+                        }
+
+                        // Highlight new recording row with pulsing effect
+                        const rows = document.querySelectorAll('#recording-list-body tr');
+                        rows.forEach(row => {
+                            const filenameCell = row.querySelector('td:first-child');
+                            if (filenameCell && filenameCell.textContent.includes(filename.replace('.raf', ''))) {
+                                row.style.background = 'rgba(34, 197, 94, 0.15)';
+                                row.style.animation = 'pulse 1s ease-in-out 3';
+
+                                // Also highlight the import button
+                                const importBtn = row.querySelector('button');
+                                if (importBtn) {
+                                    importBtn.style.animation = 'pulse 0.8s ease-in-out infinite';
+                                    importBtn.style.boxShadow = '0 0 8px rgba(34, 197, 94, 0.5)';
+                                }
+                            }
+                        });
+                    }, 300);
+                }, 1000); // 1 second delay for file write
             } else {
                 // Recording discarded or error
                 if (tempRecordingConfig.debug_mode) {

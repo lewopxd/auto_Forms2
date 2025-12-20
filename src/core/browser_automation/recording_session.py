@@ -274,8 +274,16 @@ class RecordingSession:
         page_info = data.get("pageInfo", {})
         page_key = f"page_{page_info.get('current', 1)}"
         
+        # Convert questions array to object format { "q1": {...}, "q2": {...} }
+        questions_array = data.get("questions", [])
+        questions_obj = {}
+        for q in questions_array:
+            # Use 'num' property as the key (e.g., "1" -> "q1")
+            q_num = q.get("num", str(len(questions_obj) + 1))
+            questions_obj[f"q{q_num}"] = q
+        
         self.all_pages_data[page_key] = {
-            "questions": data.get("questions", []),
+            "questions": questions_obj,
             "pageInfo": page_info,
             "navigation": data.get("navigation", {})
         }

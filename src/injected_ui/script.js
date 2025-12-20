@@ -133,8 +133,8 @@
             .btn-primary:hover { background: #5a67d8; }
             .btn-success { background: #22c55e; color: white; }
             .btn-success:hover { background: #16a34a; }
-            .btn-danger { background: #e53e3e; color: white; }
-            .btn-danger:hover { background: #c53030; }
+            .btn-danger { background: #ef4444; color: white; }
+            .btn-danger:hover { background: #dc2626; }
             
             /* Stop Confirmation Modal */
             .confirm-overlay {
@@ -153,6 +153,121 @@
                 font-size: 13px; color: #475569; margin-bottom: 20px;
             }
 
+            /* Info Bar & Status Bar (Restored) */
+            .info-bar {
+                padding: 10px 16px;
+                background: #f8fafc;
+                border-top: 1px solid #e2e8f0;
+                font-size: 12px; flex-shrink: 0;
+            }
+            .info-row {
+                display: flex; align-items: center;
+                gap: 8px; flex-wrap: wrap;
+            }
+            .info-label { color: #64748b; font-weight: 600; margin-right: 4px; }
+            
+            .badge {
+                display: inline-flex; align-items: center; gap: 4px;
+                padding: 2px 8px; border-radius: 4px;
+                font-size: 11px; font-weight: 600;
+            }
+            .badge.primary { background: #667eea; color: white; }
+            .badge.success { background: #22c55e; color: white; }
+            .badge svg { width: 10px; height: 10px; }
+
+            .status-bar {
+                padding: 6px 16px;
+                background: #fff;
+                border-top: 1px solid #e2e8f0;
+                display: flex; align-items: center; justify-content: space-between;
+                flex-shrink: 0; min-height: 28px;
+            }
+            .status-text { font-size: 11px; color: #64748b; }
+            .status-saved { font-size: 11px; color: #22c55e; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+            
+            /* View All Button */
+            .view-all-btn {
+                margin-left: auto;
+                width: 28px; height: 28px;
+                background: transparent; border: none;
+                border-radius: 4px; cursor: pointer;
+                display: flex; align-items: center; justify-content: center;
+            }
+            .view-all-btn:hover { background: #e2e8f0; }
+            .view-all-btn svg { width: 16px; height: 16px; color: #64748b; }
+            
+            /* View All Modal */
+            .modal-overlay {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.3);
+                display: none; align-items: center; justify-content: center;
+                z-index: 2147483646;
+            }
+            .modal-overlay.visible { display: flex; }
+            .modal {
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+                width: 500px; max-width: 90vw;
+                max-height: 80vh;
+                display: flex; flex-direction: column;
+                overflow: hidden;
+            }
+            .modal-header {
+                padding: 14px 18px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                display: flex; align-items: center;
+                cursor: move;
+            }
+            .modal-title { flex: 1; font-size: 14px; font-weight: 600; color: white; }
+            .modal-close {
+                width: 24px; height: 24px; border: none;
+                background: rgba(255,255,255,0.2); border-radius: 4px;
+                cursor: pointer; display: flex; align-items: center; justify-content: center;
+            }
+            .modal-close:hover { background: rgba(255,255,255,0.3); }
+            .modal-close svg { width: 12px; height: 12px; color: white; }
+            .modal-content {
+                flex: 1; overflow-y: auto; padding: 16px;
+            }
+            .page-section { margin-bottom: 20px; }
+            .page-header {
+                font-size: 12px; font-weight: 600;
+                color: #667eea; margin-bottom: 10px;
+                padding-bottom: 6px;
+                border-bottom: 2px solid #e2e8f0;
+            }
+            .page-question {
+                padding: 8px 10px;
+                background: #f8fafc;
+                border-radius: 6px;
+                margin-bottom: 6px;
+                font-size: 12px;
+            }
+            .page-question-num {
+                display: inline-block;
+                width: 20px; height: 20px;
+                background: #667eea; color: white;
+                border-radius: 4px; text-align: center;
+                line-height: 20px; font-size: 10px;
+                margin-right: 8px;
+            }
+            .page-question-type {
+                float: right;
+                font-size: 10px; color: #94a3b8;
+            }
+            .page-options {
+                margin-top: 6px; padding-left: 28px;
+                display: flex; flex-wrap: wrap; gap: 4px;
+            }
+            .page-option {
+                background: #e2e8f0;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                color: #475569;
+            }
+            
             .hidden { display: none !important; }
         </style>
         
@@ -173,6 +288,28 @@
                     <ul class="question-list hidden" id="questionList"></ul>
                 </div>
 
+                <div class="info-bar hidden" id="infoBar">
+                    <div class="info-row">
+                        <span class="info-label">Página:</span>
+                        <span class="badge primary" id="pageBadge">1/?</span>
+                        
+                        <div style="flex:1"></div>
+                        
+                        <span class="info-label">Acciones:</span>
+                        <span class="badge success" id="nextBadge" style="display:none">${ICONS.check} Next</span>
+                        <span class="badge success" id="backBadge" style="display:none">${ICONS.check} Back</span>
+                        <span class="badge success" id="submitBadge" style="display:none">${ICONS.check} Submit</span>
+                    </div>
+                </div>
+
+                <div class="status-bar hidden" id="statusBar">
+                    <span class="status-text" id="statusText">Ready</span>
+                    <span class="status-saved" id="statusSaved"></span>
+                    <button class="view-all-btn" id="viewAllBtn" title="Ver todo lo grabado">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                </div>
+
                 <div class="confirm-overlay" id="confirmOverlay">
                     <div class="confirm-title">Finalizar Grabación</div>
                     <div class="confirm-text">Se guardará como: <span id="filenameDisplay" style="font-weight:600">recording.raf</span></div>
@@ -190,8 +327,19 @@
                 
                 <div class="footer hidden" id="footer">
                     <button class="btn btn-primary" id="analyzeBtn">${ICONS.analyze} Analyze</button>
-                    <button class="btn btn-success" id="saveBtn">${ICONS.save} Registrar</button>
                     <button class="btn btn-danger" id="stopBtn">${ICONS.stop} Detener</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal" id="modal">
+                <div class="modal-header" id="modalHeader">
+                    <span class="modal-title">Todo lo Grabado</span>
+                    <button class="modal-close" id="modalClose">${ICONS.close}</button>
+                </div>
+                <div class="modal-content" id="modalContent">
+                    <p style="color:#64748b; text-align:center; padding:20px;">Aún no hay datos. Navega por las páginas y guarda para ver las preguntas aquí.</p>
                 </div>
             </div>
         </div>
@@ -209,9 +357,26 @@
     const questionList = shadow.getElementById('questionList');
     const footer = shadow.getElementById('footer');
 
+    // New UI Elements (Restored)
+    const infoBar = shadow.getElementById('infoBar');
+    const statusBar = shadow.getElementById('statusBar');
+    const pageBadge = shadow.getElementById('pageBadge');
+    const nextBadge = shadow.getElementById('nextBadge');
+    const backBadge = shadow.getElementById('backBadge');
+    const submitBadge = shadow.getElementById('submitBadge');
+    const statusText = shadow.getElementById('statusText');
+    const statusSaved = shadow.getElementById('statusSaved');
+    const viewAllBtn = shadow.getElementById('viewAllBtn');
+
+    // Modal elements
+    const modalOverlay = shadow.getElementById('modalOverlay');
+    const modalContent = shadow.getElementById('modalContent');
+    const modalClose = shadow.getElementById('modalClose');
+    const modalHeader = shadow.getElementById('modalHeader');
+    const modal = shadow.getElementById('modal');
+
     // Buttons
     const analyzeBtn = shadow.getElementById('analyzeBtn');
-    const saveBtn = shadow.getElementById('saveBtn');
     const stopBtn = shadow.getElementById('stopBtn');
     const stopBtnTop = shadow.getElementById('stopBtnTop');
 
@@ -225,6 +390,8 @@
     let formData = null;
     let hasAnalyzed = false;
     let lastSavedPage = null;
+    let branchData = {};
+    let allSavedPages = {}; // Storage for all saved pages { page_1: { questions: [...] }, page_2: {...} }
 
     // Auto-save function (Always active in memory)
     function triggerAutoSave() {
@@ -232,8 +399,99 @@
         const currentPage = formData.pageInfo?.current;
         if (currentPage !== lastSavedPage) {
             lastSavedPage = currentPage;
+            statusSaved.innerHTML = `${ICONS.spinner} Saving...`;
             window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
+
+            // Store page data for View All
+            if (formData.pageInfo) {
+                const pageKey = 'page_' + formData.pageInfo.current;
+                allSavedPages[pageKey] = {
+                    questions: formData.questions,
+                    pageInfo: formData.pageInfo
+                };
+            }
+
+            // Fake "Saved" state after delay
+            setTimeout(() => {
+                statusSaved.innerHTML = `${ICONS.check} Saved`;
+            }, 800);
         }
+    }
+
+    // View All Button - Open Modal
+    viewAllBtn.onclick = () => {
+        renderModal();
+        modalOverlay.classList.add('visible');
+    };
+
+    // Modal Close
+    modalClose.onclick = () => modalOverlay.classList.remove('visible');
+    modalOverlay.onclick = (e) => {
+        if (e.target === modalOverlay) modalOverlay.classList.remove('visible');
+    };
+
+    // Modal Drag
+    let modalDragging = false, mox = 0, moy = 0;
+    modalHeader.onmousedown = (e) => {
+        if (e.target.closest('.modal-close')) return;
+        modalDragging = true;
+        const rect = modal.getBoundingClientRect();
+        mox = e.clientX - rect.left;
+        moy = e.clientY - rect.top;
+        e.preventDefault();
+    };
+    document.addEventListener('mousemove', (e) => {
+        if (!modalDragging) return;
+        modal.style.position = 'fixed';
+        modal.style.left = (e.clientX - mox) + 'px';
+        modal.style.top = (e.clientY - moy) + 'px';
+        modal.style.margin = '0';
+    });
+    document.addEventListener('mouseup', () => modalDragging = false);
+
+    // Render Modal Content
+    function renderModal() {
+        const pages = Object.keys(allSavedPages).sort((a, b) => {
+            const numA = parseInt(a.replace('page_', ''));
+            const numB = parseInt(b.replace('page_', ''));
+            return numA - numB;
+        });
+
+        if (pages.length === 0) {
+            modalContent.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">Aún no hay datos. Navega por las páginas para ver las preguntas aquí.</p>';
+            return;
+        }
+
+        const totalPages = formData?.pageInfo?.total || pages.length;
+
+        let html = '';
+        pages.forEach(pageKey => {
+            const pageData = allSavedPages[pageKey];
+            const pageNum = pageKey.replace('page_', '');
+
+            html += `<div class="page-section">
+                <div class="page-header">Página ${pageNum} de ${totalPages}</div>`;
+
+            pageData.questions.forEach(q => {
+                let optionsHtml = '';
+                if (q.options && q.options.length > 0) {
+                    optionsHtml = '<div class="page-options">' +
+                        q.options.map((o, i) => `<span class="page-option">${i + 1}. ${o.text || o.value}</span>`).join('') +
+                        '</div>';
+                }
+
+                html += `<div class="page-question">
+                    <span class="page-question-num">${q.num}</span>
+                    ${q.text || 'Sin título'}
+                    <span class="page-question-type">${q.type || ''}</span>
+                    ${optionsHtml}
+                </div>`;
+            });
+
+            html += '</div>';
+        });
+
+        modalContent.innerHTML = html;
     }
 
     shadow.getElementById('stopBtnTop').onclick = () => showStopConfirm();
@@ -271,18 +529,8 @@
     analyzeBtn.onclick = () => {
         loading.classList.remove('hidden');
         questionList.classList.add('hidden');
+        statusText.textContent = 'Analizando formulario...';
         window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
-    };
-
-    // Save/Register button
-    saveBtn.onclick = () => {
-        if (formData) {
-            window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
-            // Visual feedback could be added here
-            const originalText = saveBtn.innerHTML;
-            saveBtn.innerHTML = `${ICONS.check} Registrado`;
-            setTimeout(() => saveBtn.innerHTML = originalText, 1000);
-        }
     };
 
     // Stop Flow
@@ -317,15 +565,51 @@
         questionList.classList.remove('hidden');
         footer.classList.remove('hidden');
 
+        // Update Info Bar (Restored)
+        infoBar.classList.remove('hidden');
+        statusBar.classList.remove('hidden');
+
+        pageBadge.textContent = `${data.pageInfo.current}/${data.pageInfo.total}`;
+        nextBadge.style.display = data.hasNext ? 'inline-flex' : 'none';
+        backBadge.style.display = data.hasBack ? 'inline-flex' : 'none';
+        submitBadge.style.display = data.hasSubmit ? 'inline-flex' : 'none';
+
+        statusText.textContent = `Preguntas: ${data.questions.length}`;
+
         questionList.innerHTML = '';
         data.questions.forEach((q, idx) => {
             const li = document.createElement('li');
             li.className = 'question-item';
 
+            let optionsHtml = '';
+            // Render options and check for branches
+            if (q.options && q.options.length > 0) {
+                optionsHtml = '<div style="margin-top:6px; padding-left:10px; font-size:11px; color:#64748b;">' +
+                    q.options.map((o, oi) => {
+                        const isBranch = o.isBranch || false;
+                        const reveals = o.reveals || [];
+                        const branchBadge = isBranch
+                            ? `<span style="display:inline-block;background:#f59e0b;color:white;font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;margin-left:6px;">BRANCH</span>`
+                            : '';
+
+                        // Only show if it's a branch or has content
+                        return `<div style="margin-bottom:3px; display:flex; flex-direction:column; ${isBranch ? 'border-left:2px solid #f59e0b; padding-left:4px; background:rgba(245, 158, 11, 0.05);' : ''}">
+                            <div style="display:flex; align-items:center">
+                                • ${o.text || o.value} ${branchBadge}
+                            </div>
+                            ${reveals.length > 0 ? `<div style="font-size:10px;color:#d97706;margin-left:8px;">↳ Revela ${reveals.length} preguntas</div>` : ''}
+                        </div>`;
+                    }).join('') +
+                    '</div>';
+            }
+
             li.innerHTML = `
                 <div style="display:flex; align-items:center">
                     <span class="question-num">${q.num}</span>
-                    <span class="question-text">${q.text || 'Untitled'}</span>
+                    <div style="flex:1">
+                        <span class="question-text">${q.text || 'Untitled'}</span>
+                        ${optionsHtml}
+                    </div>
                 </div>
             `;
             questionList.appendChild(li);
@@ -418,7 +702,9 @@
                 statusSaved.textContent = `• Branch +${revealed.length} questions`;
 
                 // Force save with updated branch data
-                if (autoSaveToggle.checked && formData) {
+                // The autoSaveToggle was removed, so this condition needs to be adjusted or removed.
+                // Assuming we always want to save if formData exists and branch data changed.
+                if (formData) {
                     lastSavedPage = null; // Reset to force save
                 }
 
