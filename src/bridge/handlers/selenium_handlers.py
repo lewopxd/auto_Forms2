@@ -32,6 +32,12 @@ try:
         stop_active_session,
         get_active_session
     )
+    from core.browser_automation.profile_utils import (
+        get_chrome_profiles_path,
+        list_chrome_profiles,
+        is_profile_in_use,
+        get_profile_info
+    )
     SELENIUM_AVAILABLE = True
 except ImportError as e:
     _selenium_import_error = str(e)
@@ -50,6 +56,10 @@ except ImportError as e:
     start_new_session = None
     stop_active_session = None
     get_active_session = None
+    get_chrome_profiles_path = None
+    list_chrome_profiles = None
+    is_profile_in_use = None
+    get_profile_info = None
 
 
 class SeleniumHandler:
@@ -81,6 +91,8 @@ class SeleniumHandler:
         
         # Browser config handlers
         bridge.register_handler("get_browser_profiles", self.handle_get_browser_profiles)
+        bridge.register_handler("list_chrome_profiles", self.handle_list_chrome_profiles)
+        bridge.register_handler("check_profile_in_use", self.handle_check_profile_in_use)
         
         print("[SeleniumHandler] Handlers registered: browsers, records, recording, profiles")
 
@@ -387,6 +399,39 @@ class SeleniumHandler:
             return {"success": True, "active": False}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def handle_list_chrome_profiles(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """List available Chrome profiles."""
+        print("[SeleniumHandler] handle_list_chrome_profiles called")
+        
+        err = self._check_selenium()
+        if err:
+            return err
+        
+        try:
+            info = get_profile_info()
+            return {"success": True, **info}
+        except Exception as e:
+            print(f"[SeleniumHandler] Error listing profiles: {e}")
+            return {"success": False, "error": str(e), "profiles": []}
+
+    def handle_check_profile_in_use(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Check if a Chrome profile is currently in use."""
+        print("[SeleniumHandler] handle_check_profile_in_use called")
+        
+        err = self._check_selenium()
+        if err:
+            return err
+        
+        try:
+            path = content.get("path") or get_chrome_profiles_path()
+            name = content.get("name", "Default")
+            
+            in_use = is_profile_in_use(path, name)
+            return {"success": True, "in_use": in_use, "profile": name}
+        except Exception as e:
+            print(f"[SeleniumHandler] Error checking profile: {e}")
+            return {"success": False, "error": str(e), "in_use": False}
 
 
 def register_selenium_handlers(bridge):

@@ -13,6 +13,7 @@ Usage:
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 import random
+import os
 
 try:
     import undetected_chromedriver as uc
@@ -67,6 +68,11 @@ class BrowserConfig:
     exclude_automation_switches: bool = True  # Exclude flags that reveal automation
     disable_webrtc_leak: bool = True          # Prevent IP leak via WebRTC
     spoof_plugins: bool = True                # Spoof plugin/navigator data
+    
+    # --- User Profile (for persistent sessions) ---
+    use_user_profile: bool = False            # Use existing Chrome profile
+    user_profile_path: str = ""               # Path to User Data directory (auto-detect if empty)
+    user_profile_name: str = "Default"        # Profile name (Default, Profile 1, etc.)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary for JSON serialization."""
@@ -275,6 +281,21 @@ def build_chrome_options(config: BrowserConfig, browser_path: str = None) -> 'uc
     # --- 5. Session modes ---
     if config.incognito:
         add_arg("--incognito")
+    
+    # --- 5.5 User profile (for persistent sessions) ---
+    if config.use_user_profile and not config.incognito:
+        # Get profile path (use provided or auto-detect)
+        profile_path = config.user_profile_path
+        if not profile_path:
+            # Auto-detect Chrome profile path
+            local_app_data = os.environ.get('LOCALAPPDATA', '')
+            profile_path = os.path.join(local_app_data, 'Google', 'Chrome', 'User Data')
+        
+        if os.path.exists(profile_path):
+            # Note: Must be added BEFORE other profile-related args
+            add_arg(f'--user-data-dir={profile_path}')
+            add_arg(f'--profile-directory={config.user_profile_name}')
+            print(f"[BrowserSettings] Using Chrome profile: {config.user_profile_name}")
     
     # --- 6. Window size & position ---
     if config.start_maximized:
