@@ -131,6 +131,72 @@
         onSaveCallback = null;
     }
 
+    function showCodeViewer() {
+        if (!currentCardData) return;
+
+        // Create or get the code viewer modal
+        let codeModal = document.getElementById('af-code-viewer-modal');
+        if (!codeModal) {
+            codeModal = document.createElement('div');
+            codeModal.id = 'af-code-viewer-modal';
+            codeModal.className = 'af-modal-overlay';
+            codeModal.innerHTML = `
+                <div class="af-modal-window" style="max-width:600px; min-height:auto;">
+                    <div class="af-window-header" style="padding:10px 16px; border:none; background:#f9fafb;">
+                        <span style="font-size:13px; font-weight:600; color:#374151;">Código JSON</span>
+                        <div class="af-window-close" id="af-code-close-btn" style="cursor:pointer;">
+                            <i data-lucide="x" style="width:18px; height:18px; color:#6b7280;"></i>
+                        </div>
+                    </div>
+                    <div style="padding:16px;">
+                        <textarea id="af-code-textarea" readonly 
+                            style="width:100%; height:300px; font-family:monospace; font-size:11px; 
+                                   border:1px solid #e5e7eb; border-radius:6px; padding:12px; 
+                                   background:#f9fafb; color:#374151; resize:vertical; outline:none;">
+                        </textarea>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(codeModal);
+
+            // Make draggable
+            const win = codeModal.querySelector('.af-modal-window');
+            const header = codeModal.querySelector('.af-window-header');
+            if (window.ModalManager) {
+                window.ModalManager.makeDraggable(win, header);
+            }
+
+            // Close handlers
+            codeModal.querySelector('#af-code-close-btn').onclick = () => {
+                if (window.ModalManager) {
+                    window.ModalManager.closeModal(codeModal);
+                } else {
+                    codeModal.classList.remove('open');
+                    setTimeout(() => codeModal.style.display = 'none', 250);
+                }
+            };
+            codeModal.onmousedown = (e) => {
+                if (e.target === codeModal) {
+                    codeModal.querySelector('#af-code-close-btn').click();
+                }
+            };
+        }
+
+        // Set JSON content
+        const textarea = codeModal.querySelector('#af-code-textarea');
+        textarea.value = JSON.stringify(currentCardData, null, 2);
+
+        // Open modal
+        if (window.ModalManager) {
+            window.ModalManager.openModal(codeModal);
+        } else {
+            codeModal.style.display = 'flex';
+            requestAnimationFrame(() => codeModal.classList.add('open'));
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
     function getOrCreateModal() {
         let el = document.getElementById('af-config-overlay');
         if (!el) {
@@ -154,6 +220,7 @@
                     
                     <div class="af-window-footer">
                         <span class="af-reset-link" id="af-cfg-reset-btn">Restaurar predeterminado</span>
+                        <span class="af-code-link" id="af-cfg-code-btn" style="margin-left:12px; cursor:pointer; color:#6b7280; font-size:11px; text-decoration:underline;">Ver código</span>
                         <div style="flex:1"></div>
                         <button class="af-btn-ghost" onclick="ActionConfigModal.close()">Cancelar</button>
                         <button class="af-btn-primary" id="af-cfg-save-btn">Guardar</button>
@@ -176,6 +243,7 @@
 
             el.querySelector('#af-cfg-save-btn').onclick = handleSave;
             el.querySelector('#af-cfg-reset-btn').onclick = resetToDefault;
+            el.querySelector('#af-cfg-code-btn').onclick = showCodeViewer;
         }
         return el;
     }
