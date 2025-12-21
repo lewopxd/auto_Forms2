@@ -639,6 +639,25 @@
         }, 1500);
     }, true);
 
+    // Auto-analyze when Submit button is clicked (to detect post-submit actions)
+    document.addEventListener('click', (e) => {
+        const submitBtn = e.target.closest('[data-automation-id="submitButton"]');
+        if (!submitBtn) return;
+
+        // Show spinner immediately
+        loading.classList.remove('hidden');
+        questionList.classList.add('hidden');
+        statusText.textContent = 'Enviando formulario...';
+        statusSaved.textContent = '';
+
+        // Wait for form submission and page update, then re-analyze
+        // MS Forms takes a moment to show the post-submit page
+        setTimeout(() => {
+            statusText.textContent = 'Analizando página post-submit...';
+            window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
+        }, 3000); // Longer delay for submit
+    }, true);
+
     // Branch detection - track current questions and detect new ones after radio selection
 
     function getCurrentQuestionIds() {
