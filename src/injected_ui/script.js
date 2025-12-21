@@ -615,6 +615,39 @@
             questionList.appendChild(li);
         });
 
+        // Handle post-submit page (after form submission)
+        if (data.isPostSubmitPage && data.postSubmitActions) {
+            const postSubmitContainer = document.createElement('div');
+            postSubmitContainer.className = 'post-submit-container';
+            postSubmitContainer.style.cssText = 'margin-top:12px; padding:10px; background:linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%); border-radius:8px; border:1px solid #86efac;';
+
+            let actionsHtml = '<div style="font-size:12px; font-weight:600; color:#166534; margin-bottom:8px;">✅ Formulario Enviado</div>';
+            actionsHtml += '<div style="font-size:11px; color:#15803d; margin-bottom:8px;">Acciones disponibles:</div>';
+
+            if (data.postSubmitActions.saveAndEdit) {
+                actionsHtml += `
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:6px; background:white; border-radius:4px; border:1px solid #bbf7d0;">
+                        <span style="color:#16a34a;">💾</span>
+                        <span style="font-size:11px; color:#15803d;">${data.postSubmitActions.saveAndEdit.text}</span>
+                    </div>
+                `;
+            }
+
+            if (data.postSubmitActions.submitAnother) {
+                actionsHtml += `
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:6px; background:white; border-radius:4px; border:1px solid #bbf7d0;">
+                        <span style="color:#16a34a;">🔄</span>
+                        <span style="font-size:11px; color:#15803d;">${data.postSubmitActions.submitAnother.text}</span>
+                    </div>
+                `;
+            }
+
+            postSubmitContainer.innerHTML = actionsHtml;
+            questionList.appendChild(postSubmitContainer);
+
+            statusText.textContent = '✅ Enviado - Post-submit detectado';
+        }
+
         // Trigger auto-save to memory
         triggerAutoSave();
     };
