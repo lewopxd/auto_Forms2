@@ -346,7 +346,9 @@ class RecordingSession:
         self.all_pages_data[page_key] = {
             "questions": questions_obj,
             "pageInfo": page_info,
-            "navigation": data.get("navigation", {})
+            "navigation": data.get("navigation", {}),
+            "isPostSubmitPage": data.get("isPostSubmitPage", False),
+            "postSubmitActions": data.get("postSubmitActions", {})
         }
         
         print(f"[RecordingSession] Saved page data to memory: {page_key}")
