@@ -117,3 +117,68 @@ def is_ui_injected(driver) -> bool:
         return bool(result)
     except Exception:
         return False
+
+
+# ============================================================
+# LOGIN MODE UI FUNCTIONS
+# ============================================================
+
+def get_login_script_path() -> str:
+    """Get path to the login mode script."""
+    return os.path.join(INJECTED_UI_DIR, "login_script.js")
+
+
+def load_login_script() -> str:
+    """Load the login mode script content."""
+    script_path = get_login_script_path()
+    if not os.path.exists(script_path):
+        raise FileNotFoundError(f"Login script not found: {script_path}")
+    
+    with open(script_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
+def inject_login_ui(driver) -> bool:
+    """
+    Inject the login wait UI into current page.
+    
+    Args:
+        driver: Selenium WebDriver instance
+        
+    Returns:
+        True if injection successful, False otherwise
+    """
+    try:
+        script = load_login_script()
+        driver.execute_script(script)
+        print("[JSInjector] Login UI injected successfully")
+        return True
+    except FileNotFoundError as e:
+        print(f"[JSInjector] Login script not found: {e}")
+        return False
+    except Exception as e:
+        print(f"[JSInjector] Login UI injection failed: {e}")
+        return False
+
+
+def is_login_ui_injected(driver) -> bool:
+    """Check if the login UI is already injected."""
+    try:
+        result = driver.execute_script(
+            "return document.getElementById('__msfa_login_root__') !== null;"
+        )
+        return bool(result)
+    except Exception:
+        return False
+
+
+def remove_login_ui(driver) -> bool:
+    """Remove the login UI if it exists."""
+    try:
+        driver.execute_script("""
+            const existing = document.getElementById('__msfa_login_root__');
+            if (existing) existing.remove();
+        """)
+        return True
+    except Exception:
+        return False

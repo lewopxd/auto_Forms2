@@ -1438,6 +1438,17 @@ const AutoFormViewModule = (function () {
                             </div>
                         </div>
 
+                        <!-- Modo Login -->
+                        <div class="af-config-section mt-2">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="new-rec-login-mode" class="af-checkbox-blue">
+                                <span class="text-sm font-medium text-gray-700">Modo Login</span>
+                            </label>
+                            <div class="text-xs text-gray-500 ml-6 mt-1">
+                                Esperar a que inicies sesión antes de analizar
+                            </div>
+                        </div>
+
                         <!-- Advanced Options Link -->
                         <div class="mt-4 flex justify-between items-center px-1">
                             <button onclick="AutoFormViewModule.openAdvancedConfigModal()" 
@@ -1605,6 +1616,7 @@ const AutoFormViewModule = (function () {
         const filenameEl = document.getElementById('new-rec-filename');
         const urlEl = document.getElementById('new-rec-url');
         const browserEl = document.getElementById('new-rec-browser');
+        const loginModeEl = document.getElementById('new-rec-login-mode');
         const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
 
         if (!filenameEl || !urlEl || !browserEl) return;
@@ -1612,6 +1624,7 @@ const AutoFormViewModule = (function () {
         const filename = filenameEl.value.trim() || `recording_${Date.now()}`;
         const url = urlEl.value.trim();
         const browser = browserEl.value;
+        const loginMode = loginModeEl?.checked || false;
 
         if (!url) {
             window.showAlert({ icon: 'alert-triangle', title: 'URL Requerida', message: 'Por favor ingresa una URL válida.', confirmColor: 'bg-orange-500' });
@@ -1623,7 +1636,7 @@ const AutoFormViewModule = (function () {
             return;
         }
 
-        console.log('[AutoForm] Starting Recording:', { filename, url, browser, config: tempRecordingConfig });
+        console.log('[AutoForm] Starting Recording:', { filename, url, browser, loginMode, config: tempRecordingConfig });
 
         // Show spinner on button (keep modal open until connected)
         const originalBtnHtml = startBtn?.innerHTML || '';
@@ -1653,6 +1666,7 @@ const AutoFormViewModule = (function () {
                 filename: filename,
                 url: url,
                 browser: browser,
+                login_mode: loginMode,
                 browser_config: tempRecordingConfig
             });
 

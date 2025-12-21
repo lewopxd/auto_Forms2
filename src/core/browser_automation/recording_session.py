@@ -27,6 +27,8 @@ class RecordingSession:
         url: str,
         browser_path: str = None,
         config: BrowserConfig = None,
+        # Login mode
+        login_mode: bool = False,
         # Legacy params (deprecated, use config instead)
         incognito: bool = False,
         page_load_timeout: int = 120,
@@ -74,12 +76,14 @@ class RecordingSession:
         self.browser: Optional[BrowserManager] = None
         self.is_active = False
         self.is_connected = False
+        self.login_mode = login_mode
         self.form_data: Dict[str, Any] = {}
         self.all_pages_data: Dict[str, Any] = {}
         
         # Command polling
         self._poll_thread: Optional[threading.Thread] = None
         self._should_poll = False
+        self._login_start_time: float = 0
     
     def start(self) -> Dict[str, Any]:
         """
@@ -112,10 +116,17 @@ class RecordingSession:
             # Wait a moment for page to stabilize
             time.sleep(1)
             
-            # Inject UI
-            if not js_injector.inject_ui(self.browser.get_driver()):
-                self.browser.close()
-                return {"success": False, "error": "Failed to inject recording UI"}
+            # Inject appropriate UI based on login_mode
+            if self.login_mode:
+                print("[RecordingSession] Login mode enabled, injecting login UI")
+                if not js_injector.inject_login_ui(self.browser.get_driver()):
+                    self.browser.close()
+                    return {"success": False, "error": "Failed to inject login UI"}
+                self._login_start_time = time.time()
+            else:
+                if not js_injector.inject_ui(self.browser.get_driver()):
+                    self.browser.close()
+                    return {"success": False, "error": "Failed to inject recording UI"}
             
             # Start monitoring
             self.browser.start_close_monitor()
@@ -125,15 +136,16 @@ class RecordingSession:
             self.is_active = True
             self.is_connected = True
             
-            # Trigger initial analysis
-            self._analyze_current_page()
+            # Only analyze if not in login mode
+            if not self.login_mode:
+                self._analyze_current_page()
             
             # Notify connected
             if self.on_connected:
                 self.on_connected()
             
-            print(f"[RecordingSession] Session started successfully")
-            return {"success": True, "connected": True}
+            print(f"[RecordingSession] Session started successfully (login_mode={self.login_mode})")
+            return {"success": True, "connected": True, "login_mode": self.login_mode}
             
         except Exception as e:
             print(f"[RecordingSession] Start failed: {e}")
@@ -206,12 +218,32 @@ class RecordingSession:
                     for cmd in commands:
                         self._handle_command(cmd)
                     
+                    # Login mode: ensure login UI is still present (re-inject if page reloaded)
+                    if self.login_mode:
+                        driver = self.browser.get_driver()
+                        if not js_injector.is_login_ui_injected(driver):
+                            print("[RecordingSession] Login UI not found, re-injecting...")
+                            js_injector.inject_login_ui(driver)
+                        
+                        # Check for 5-minute timeout warning
+                        if self._login_start_time > 0:
+                            elapsed = time.time() - self._login_start_time
+                            if elapsed > 300:  # 5 minutes
+                                try:
+                                    driver.execute_script(
+                                        "if(window.__msfa_showTimeoutWarning) window.__msfa_showTimeoutWarning();"
+                                    )
+                                except:
+                                    pass
+                                self._login_start_time = time.time()  # Reset timer
+                    
                 except Exception as e:
                     print(f"[RecordingSession] Poll error: {e}")
                     import traceback
                     traceback.print_exc()
                 
-                time.sleep(0.5)
+                # Poll interval: 2 seconds for login mode (re-injection), 0.5 for normal
+                time.sleep(2 if self.login_mode else 0.5)
             print("[RecordingSession] Poll loop finished")
         
         self._poll_thread = threading.Thread(target=poll_loop, daemon=True)
@@ -238,6 +270,17 @@ class RecordingSession:
                 self.on_stop_requested(save)
             else:
                 self.stop(save=save)
+        
+        elif cmd_type == "login_done":
+            print("[RecordingSession] Login complete, switching to recording mode")
+            self.login_mode = False
+            driver = self.browser.get_driver()
+            # Remove login UI and inject normal recording UI
+            js_injector.remove_login_ui(driver)
+            if js_injector.reload_ui(driver):
+                self._analyze_current_page()
+            else:
+                print("[RecordingSession] Failed to inject recording UI after login")
     
     def _analyze_current_page(self):
         """Analyze the current page and update injected UI."""
@@ -330,6 +373,7 @@ def start_new_session(
     url: str,
     browser_path: str = None,
     config: BrowserConfig = None,
+    login_mode: bool = False,
     # Legacy params (deprecated)
     incognito: bool = False,
     page_load_timeout: int = 120,
@@ -343,6 +387,7 @@ def start_new_session(
         url: Initial URL
         browser_path: Browser executable path
         config: BrowserConfig instance (preferred over legacy params)
+        login_mode: If True, wait for user login before analyzing
         incognito: DEPRECATED - Use config.incognito instead
         page_load_timeout: DEPRECATED - Use config.page_load_timeout instead
         callbacks: Dict of callback functions
@@ -364,6 +409,7 @@ def start_new_session(
         url=url,
         browser_path=browser_path,
         config=config,
+        login_mode=login_mode,
         incognito=incognito,
         page_load_timeout=page_load_timeout,
         on_connected=callbacks.get("on_connected"),

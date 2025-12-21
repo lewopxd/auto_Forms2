@@ -266,6 +266,7 @@ class SeleniumHandler:
             browser = content.get("browser", "")
             options = content.get("options", {})
             browser_config = content.get("browser_config", {})
+            login_mode = content.get("login_mode", False)
             
             if not url:
                 return {"success": False, "error": "URL is required"}
@@ -320,11 +321,13 @@ class SeleniumHandler:
                         f"window.dispatchEvent(new CustomEvent('recording_stopped', {{detail: {json.dumps(result)}}}));"
                     )
             
+            print(f"[SeleniumHandler] Starting session with login_mode={login_mode}")
             result = start_new_session(
                 filename=filename,
                 url=url,
                 browser_path=browser_path,
                 config=config,
+                login_mode=login_mode,
                 callbacks={
                     "on_connected": on_connected,
                     "on_browser_closed": on_browser_closed,
