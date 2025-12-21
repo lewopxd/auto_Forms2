@@ -16,6 +16,7 @@ def analyze_form(driver) -> Dict[str, Any]:
             hasNextButton: false,
             hasBackButton: false,
             hasSubmitButton: false,
+            isPostSubmitPage: false,
             formTitle: '',
             questions: []
         };
@@ -36,14 +37,33 @@ def analyze_form(driver) -> Dict[str, Any]:
         const backBtn = document.querySelector('[data-automation-id="backButton"]');
         const submitBtn = document.querySelector('[data-automation-id="submitButton"]');
         
+        // Post-submit buttons (appear after form submission)
+        const saveAndEditBtn = document.querySelector('[data-automation-id="saveAndEditButton"]');
+        const submitAnotherBtn = document.querySelector('[data-automation-id="submitAnother"]');
+        
         result.hasNextButton = nextBtn !== null;
         result.hasBackButton = backBtn !== null;
         result.hasSubmitButton = submitBtn !== null;
+        result.isPostSubmitPage = saveAndEditBtn !== null || submitAnotherBtn !== null;
         
         result.navigation = {
             next: nextBtn ? { selector: '[data-automation-id="nextButton"]', text: nextBtn.textContent.trim() } : null,
             back: backBtn ? { selector: '[data-automation-id="backButton"]', text: backBtn.textContent.trim() } : null,
             submit: submitBtn ? { selector: '[data-automation-id="submitButton"]', text: submitBtn.textContent.trim() } : null
+        };
+        
+        // Post-submit actions (click actions after submission)
+        result.postSubmitActions = {
+            saveAndEdit: saveAndEditBtn ? {
+                selector: '[data-automation-id="saveAndEditButton"]',
+                text: saveAndEditBtn.textContent.trim(),
+                action: 'click'
+            } : null,
+            submitAnother: submitAnotherBtn ? {
+                selector: '[data-automation-id="submitAnother"]',
+                text: submitAnotherBtn.textContent.trim() || 'Enviar otra respuesta',
+                action: 'click'
+            } : null
         };
         
         // Form title
@@ -191,5 +211,7 @@ def get_questions_for_ui(driver) -> dict:
         "hasNext": data.get("hasNextButton", False),
         "hasBack": data.get("hasBackButton", False),
         "hasSubmit": data.get("hasSubmitButton", False),
-        "navigation": data.get("navigation", {})
+        "isPostSubmitPage": data.get("isPostSubmitPage", False),
+        "navigation": data.get("navigation", {}),
+        "postSubmitActions": data.get("postSubmitActions", {})
     }
