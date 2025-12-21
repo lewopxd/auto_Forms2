@@ -298,8 +298,10 @@
             controlColumn: getVal('auto-cfg-control-col', '')
         };
 
-        // TODO: Save to projectData or formData
-        console.log('[AutomationConfig] Saved:', newConfig);
+        // Save to AutoFormViewModule
+        if (currentTabId && window.AutoFormViewModule) {
+            window.AutoFormViewModule.updateAutomationConfig(currentTabId, newConfig);
+        }
 
         close();
     }

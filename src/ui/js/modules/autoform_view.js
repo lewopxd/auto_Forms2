@@ -3292,6 +3292,33 @@ const AutoFormViewModule = (function () {
     function getTabData(id) { return tabs.get(id); }
     function restoreTabData() { }
 
+    /**
+     * Update automation config for a tab and trigger autosave
+     * @param {string} tabId - Tab identifier
+     * @param {object} config - Automation configuration object
+     */
+    function updateAutomationConfig(tabId, config) {
+        const state = tabs.get(tabId);
+        if (!state || !state.formData) {
+            console.warn('[AutoFormView] Cannot update automationConfig: no formData for tab', tabId);
+            return;
+        }
+
+        // Store in formData
+        state.formData.automationConfig = config;
+
+        // Sync to projectData
+        syncToProjectData(tabId);
+
+        // Trigger global autosave
+        if (window.triggerAutoSave) {
+            window.triggerAutoSave();
+        }
+
+        console.log('[AutoFormView] Automation config updated for tab', tabId, config);
+    }
+
+
     // ============================================================
     // EVENT LISTENERS FOR BACKEND RECORDING EVENTS
     // ============================================================
@@ -3461,6 +3488,8 @@ const AutoFormViewModule = (function () {
         toggleDebugMode,
         handleProfileCheckbox,
         handleBrowserChange,
+        // Automation Config
+        updateAutomationConfig,
         // Events
         initRecordingEvents
     };
