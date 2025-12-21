@@ -108,17 +108,24 @@ class RecordingSession:
             if not self.browser.initialize():
                 return {"success": False, "error": "Failed to initialize browser"}
             
-            # Navigate to URL
-            if not self.browser.navigate_to(self.url):
-                self.browser.close()
-                return {"success": False, "error": "Failed to navigate to URL"}
+            # Navigate: to MS login first if login_mode, otherwise directly to form URL
+            if self.login_mode:
+                print("[RecordingSession] Login mode: navigating to Microsoft login page")
+                login_url = "https://login.microsoftonline.com/"
+                if not self.browser.navigate_to(login_url):
+                    self.browser.close()
+                    return {"success": False, "error": "Failed to navigate to Microsoft login"}
+            else:
+                if not self.browser.navigate_to(self.url):
+                    self.browser.close()
+                    return {"success": False, "error": "Failed to navigate to URL"}
             
             # Wait a moment for page to stabilize
             time.sleep(1)
             
             # Inject appropriate UI based on login_mode
             if self.login_mode:
-                print("[RecordingSession] Login mode enabled, injecting login UI")
+                print("[RecordingSession] Injecting login UI")
                 if not js_injector.inject_login_ui(self.browser.get_driver()):
                     self.browser.close()
                     return {"success": False, "error": "Failed to inject login UI"}
@@ -272,15 +279,26 @@ class RecordingSession:
                 self.stop(save=save)
         
         elif cmd_type == "login_done":
-            print("[RecordingSession] Login complete, switching to recording mode")
+            print("[RecordingSession] Login complete, navigating to form URL")
             self.login_mode = False
             driver = self.browser.get_driver()
-            # Remove login UI and inject normal recording UI
+            
+            # Remove login UI first
             js_injector.remove_login_ui(driver)
-            if js_injector.reload_ui(driver):
-                self._analyze_current_page()
+            
+            # Navigate to the original form URL
+            print(f"[RecordingSession] Navigating to form: {self.url}")
+            if self.browser.navigate_to(self.url):
+                # Wait for page to load
+                time.sleep(2)
+                
+                # Inject recording UI and analyze
+                if js_injector.inject_ui(driver):
+                    self._analyze_current_page()
+                else:
+                    print("[RecordingSession] Failed to inject recording UI after login")
             else:
-                print("[RecordingSession] Failed to inject recording UI after login")
+                print("[RecordingSession] Failed to navigate to form URL after login")
     
     def _analyze_current_page(self):
         """Analyze the current page and update injected UI."""
