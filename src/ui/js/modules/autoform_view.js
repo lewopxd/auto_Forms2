@@ -2014,6 +2014,7 @@ const AutoFormViewModule = (function () {
 
         sortedPages.forEach((pKey, index) => {
             const page = pages[pKey];
+            const isPostSubmit = page.isPostSubmitPage || pKey === 'page_postSubmit';
             const sectionCard = document.createElement('div');
             sectionCard.className = 'af-section-card';
             sectionCard.style.flexShrink = '0';
@@ -2021,16 +2022,18 @@ const AutoFormViewModule = (function () {
             const pCurrent = page.pageInfo?.current || '?';
             const pTotal = page.pageInfo?.total || '?';
 
-            // Sequential Page Number: index + 1
+            // Sequential Page Number: index + 1, or "Post-Submit" for post-submit page
             const seqPageNum = index + 1;
+            const pageTitle = isPostSubmit ? 'POST-SUBMIT' : `PÁGINA ${seqPageNum}`;
+            const sectionLabel = isPostSubmit ? 'ACCIONES' : `SECCIÓN ${pCurrent}/${pTotal}`;
 
             sectionCard.innerHTML = `
                 <div class="af-section-header">
                     <div style="display:flex;align-items:center;">
-                        <i data-lucide="layers" style="width:16px;color:#f97316;margin-right:8px;"></i>
-                        <span style="font-size:13px;font-weight:700;">PÁGINA ${seqPageNum}</span>
+                        <i data-lucide="${isPostSubmit ? 'check-circle' : 'layers'}" style="width:16px;color:${isPostSubmit ? '#16a34a' : '#f97316'};margin-right:8px;"></i>
+                        <span style="font-size:13px;font-weight:700;">${pageTitle}</span>
                     </div>
-                    <span class="af-section-chip">SECCIÓN ${pCurrent}/${pTotal}</span>
+                    <span class="af-section-chip" style="${isPostSubmit ? 'background:#dcfce7;color:#166534;' : ''}">${sectionLabel}</span>
                 </div>
                 <div class="questions-container" id="af-page-body-${pKey}"></div>
             `;
@@ -2051,6 +2054,19 @@ const AutoFormViewModule = (function () {
             if (nav.submit) {
                 globalActionIndex++;
                 pageBody.appendChild(createClickCard(tabId, globalActionIndex, 'Enviar', nav.submit));
+            }
+
+            // Render post-submit actions as click cards
+            if (isPostSubmit && page.postSubmitActions) {
+                const actions = page.postSubmitActions;
+                if (actions.saveAndEdit) {
+                    globalActionIndex++;
+                    pageBody.appendChild(createClickCard(tabId, globalActionIndex, actions.saveAndEdit.text || 'Guardar mi respuesta', actions.saveAndEdit));
+                }
+                if (actions.submitAnother) {
+                    globalActionIndex++;
+                    pageBody.appendChild(createClickCard(tabId, globalActionIndex, actions.submitAnother.text || 'Enviar otra respuesta', actions.submitAnother));
+                }
             }
         });
 
