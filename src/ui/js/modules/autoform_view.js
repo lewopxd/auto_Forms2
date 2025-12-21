@@ -2334,7 +2334,7 @@ const AutoFormViewModule = (function () {
         // Check if any option has isBranch: true
         const hasBranch = q.options?.some(opt => opt.isBranch === true) || false;
 
-        // Branch indicator chip (Edit mode only) - BEFORE "Obligatoria"
+        // Branch indicator chip (Edit mode only) - positioned first, pushes to right
         if (hasBranch && !isViewMode) {
             bodyHtml += `
                 <div class="af-branch-chip" style="
@@ -2356,8 +2356,9 @@ const AutoFormViewModule = (function () {
             `;
         }
 
+        // "* Obligatoria" comes after Branch chip (both right-aligned)
         if (q.required) {
-            bodyHtml += `<div class="af-req" style="${hasBranch ? '' : 'margin-left:auto;'}">* Obligatoria</div>`;
+            bodyHtml += `<div class="af-req" style="${hasBranch ? 'margin-left:8px;' : 'margin-left:auto;'}">* Obligatoria</div>`;
         }
 
         bodyHtml += `</div>`;
@@ -3117,13 +3118,19 @@ const AutoFormViewModule = (function () {
             }
         }
 
+        // Check if question has branch options
+        const hasBranch = question.options?.some(opt => opt.isBranch === true) || false;
+        const branchClass = hasBranch ? 'has-branch' : '';
+        const branchIconHtml = hasBranch ? '<i data-lucide="git-branch" class="afv-branch-icon"></i>' : '';
+
         row.innerHTML = `
             <div class="afv-flow-line">
                 <div class="afv-flow-num ${actionType}">${actionNum}</div>
             </div>
-            <div class="afv-card ${actionType}">
+            <div class="afv-card ${actionType} ${branchClass}">
                 <div class="afv-card-accent ${actionType}">
                     <i data-lucide="${iconName}"></i>
+                    ${branchIconHtml}
                 </div>
                 <div class="afv-card-content">
                     <div class="afv-question"><span class="afv-q-num">${questionNum}.</span> ${escHtml(question.text || 'Sin pregunta')}</div>
