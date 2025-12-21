@@ -1587,14 +1587,20 @@ const AutoFormViewModule = (function () {
     }
 
     /**
-     * Load Chrome profiles when the profile checkbox is checked
+     * Load profiles for the selected browser
      */
     async function loadChromeProfiles() {
         const profileRow = document.getElementById('new-rec-profile-row');
         const profileSelect = document.getElementById('new-rec-profile');
         const spinnerEl = document.getElementById('new-rec-profile-spinner');
+        const browserSelect = document.getElementById('new-rec-browser');
 
         if (!profileRow || !profileSelect) return;
+
+        // Get selected browser type and path
+        const selectedOption = browserSelect?.options[browserSelect.selectedIndex];
+        const browserType = browserSelect?.value || 'chrome';
+        const browserPath = selectedOption?.dataset?.path || null;
 
         // Show the profile row and spinner
         profileRow.style.display = 'flex';
@@ -1605,7 +1611,10 @@ const AutoFormViewModule = (function () {
         if (window.lucide) lucide.createIcons();
 
         try {
-            const result = await window.bridgePy.send('list_chrome_profiles', {});
+            const result = await window.bridgePy.send('list_chrome_profiles', {
+                browser_type: browserType,
+                browser_path: browserPath
+            });
             console.log('[AutoForm] list_chrome_profiles result:', result);
 
             profileSelect.innerHTML = '';
@@ -1620,7 +1629,8 @@ const AutoFormViewModule = (function () {
                 });
                 profileSelect.disabled = false;
             } else {
-                profileSelect.innerHTML = '<option value="">No se encontraron perfiles</option>';
+                const errorMsg = result.error || 'No se encontraron perfiles';
+                profileSelect.innerHTML = `<option value="">${errorMsg}</option>`;
                 profileSelect.disabled = true;
             }
         } catch (e) {
@@ -1724,13 +1734,20 @@ const AutoFormViewModule = (function () {
         // Check if profile is in use before proceeding
         if (useProfile && profileName) {
             try {
-                const checkResult = await window.bridgePy.send('check_profile_in_use', { name: profileName });
+                const selectedOption = browserEl.options[browserEl.selectedIndex];
+                const browserPath = selectedOption?.dataset?.path || null;
+
+                const checkResult = await window.bridgePy.send('check_profile_in_use', {
+                    name: profileName,
+                    browser_type: browser,
+                    browser_path: browserPath
+                });
                 if (checkResult.in_use) {
                     window.showAlert({
                         icon: 'alert-circle',
                         iconColor: 'text-red-500',
                         title: 'Perfil en Uso',
-                        message: `El perfil "${profileName}" ya está siendo usado por Chrome.\n\nCierra Chrome o selecciona otro perfil.`,
+                        message: `El perfil "${profileName}" ya está siendo usado por el navegador.\n\nCierra el navegador o selecciona otro perfil.`,
                         confirmText: 'Entendido',
                         confirmColor: 'bg-red-600 hover:bg-red-700'
                     });

@@ -34,6 +34,7 @@ try:
     )
     from core.browser_automation.profile_utils import (
         get_chrome_profiles_path,
+        get_browser_profiles_path,
         list_chrome_profiles,
         is_profile_in_use,
         get_profile_info
@@ -401,7 +402,7 @@ class SeleniumHandler:
             return {"success": False, "error": str(e)}
 
     def handle_list_chrome_profiles(self, content: Dict[str, Any]) -> Dict[str, Any]:
-        """List available Chrome profiles."""
+        """List available profiles for the selected browser."""
         print("[SeleniumHandler] handle_list_chrome_profiles called")
         
         err = self._check_selenium()
@@ -409,14 +410,17 @@ class SeleniumHandler:
             return err
         
         try:
-            info = get_profile_info()
+            browser_type = content.get("browser_type", "chrome")
+            browser_path = content.get("browser_path", None)
+            print(f"[SeleniumHandler] Listing profiles for browser: {browser_type}")
+            info = get_profile_info(browser_type, browser_path)
             return {"success": True, **info}
         except Exception as e:
             print(f"[SeleniumHandler] Error listing profiles: {e}")
             return {"success": False, "error": str(e), "profiles": []}
 
     def handle_check_profile_in_use(self, content: Dict[str, Any]) -> Dict[str, Any]:
-        """Check if a Chrome profile is currently in use."""
+        """Check if a browser profile is currently in use."""
         print("[SeleniumHandler] handle_check_profile_in_use called")
         
         err = self._check_selenium()
@@ -424,10 +428,13 @@ class SeleniumHandler:
             return err
         
         try:
-            path = content.get("path") or get_chrome_profiles_path()
+            browser_type = content.get("browser_type", "chrome")
+            browser_path = content.get("browser_path", None)
+            path = content.get("path") or get_browser_profiles_path(browser_type, browser_path)
             name = content.get("name", "Default")
             
-            in_use = is_profile_in_use(path, name)
+            print(f"[SeleniumHandler] Checking profile in use: {name} for {browser_type}")
+            in_use = is_profile_in_use(path, name, browser_type)
             return {"success": True, "in_use": in_use, "profile": name}
         except Exception as e:
             print(f"[SeleniumHandler] Error checking profile: {e}")
