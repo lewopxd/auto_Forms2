@@ -2356,7 +2356,13 @@ const AutoFormViewModule = (function () {
         card.style.flexShrink = '0';
 
         const rawSelectors = navObj.selectors || [];
-        const selectorText = rawSelectors.length > 0 ? rawSelectors[0].value : '(Sin selector)';
+        // Handle both formats: navObj.selector (string) and navObj.selectors (array)
+        let selectorText = '(Sin selector)';
+        if (navObj.selector) {
+            selectorText = navObj.selector;
+        } else if (rawSelectors.length > 0) {
+            selectorText = rawSelectors[0].value || rawSelectors[0];
+        }
         const cardId = `af-click-${tabId}-${num}`;
 
         card.innerHTML = `
