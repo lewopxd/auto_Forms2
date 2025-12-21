@@ -171,7 +171,7 @@
             
             <!-- SECTION 3: CONTROL COLUMN -->
             <div class="af-config-section">
-                <div class="af-config-sec-title">Columna de Control</div>
+                <div class="af-config-sec-title">Columna(s) de Control</div>
                 <div class="af-config-row" style="flex-direction:column; gap:8px;">
                     <div class="flex items-center gap-2">
                         <div class="af-config-label" style="min-width:auto;">Columna:</div>
@@ -182,7 +182,7 @@
                         </div>
                     </div>
                     <div style="font-size:11px; color:#6b7280; padding-left:4px;">
-                        Columna para marcar filas como procesadas (opcional)
+                        Opcional. Se usará para mostrar la fila activa en el status
                     </div>
                 </div>
             </div>

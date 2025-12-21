@@ -146,6 +146,11 @@ const AutoFormViewModule = (function () {
             }
         }
 
+        // Restore automation config explicitly (it's stored in tab, not recording data)
+        if (formData && tabData && tabData.automationConfig) {
+            formData.automationConfig = JSON.parse(JSON.stringify(tabData.automationConfig));
+        }
+
         // Read saved mode BEFORE generating HTML to avoid flash
         const savedMode = tabData?.uiState?.mode || 'edit';
         const isViewMode = savedMode === 'view';
@@ -354,6 +359,11 @@ const AutoFormViewModule = (function () {
         tab.uiState = {
             mode: getCurrentMode(tabId)
         };
+
+        // Sync Automation Config
+        if (state.formData && state.formData.automationConfig) {
+            tab.automationConfig = JSON.parse(JSON.stringify(state.formData.automationConfig));
+        }
 
         // Trigger autosave (debounced in app.js)
         if (window.triggerAutoSave) window.triggerAutoSave();
@@ -3121,6 +3131,137 @@ const AutoFormViewModule = (function () {
         return row;
     }
 
+    // ============================================================
+    // FILTER EVALUATION FUNCTIONS
+    // ============================================================
+
+    /**
+     * Evaluate if the current row passes the filter condition
+     * @param {object} filterConfig - Filter configuration from automationConfig
+     * @param {object} selectedData - Current selected row data
+     * @returns {boolean} - True if filter passes or no filter enabled
+     */
+    function evaluateFilter(filterConfig, selectedData) {
+        if (!filterConfig || !filterConfig.enabled) return true;
+        if (!selectedData || selectedData.rowIndex === undefined) return true;
+
+        // Extract column name from {Column} format
+        const colMatch = filterConfig.column?.match(/\{([^{}]+)\}/);
+        if (!colMatch) return true;
+
+        const columnName = colMatch[1].trim();
+        const cellValue = getColumnValue(columnName, selectedData);
+        const filterValue = filterConfig.value || '';
+        const operator = filterConfig.operator || 'equals';
+
+        // Perform comparison
+        const cellStr = String(cellValue || '').toLowerCase().trim();
+        const filterStr = String(filterValue).toLowerCase().trim();
+
+        switch (operator) {
+            case 'equals':
+                return cellStr === filterStr;
+            case 'notEquals':
+                return cellStr !== filterStr;
+            case 'contains':
+                return cellStr.includes(filterStr);
+            case 'startsWith':
+                return cellStr.startsWith(filterStr);
+            default:
+                return true;
+        }
+    }
+
+    /**
+     * Get value from a column for the selected row
+     * @param {string} columnName - Column header name
+     * @param {object} selectedData - Current selected row data
+     * @returns {string} - Cell value or empty string
+     */
+    function getColumnValue(columnName, selectedData) {
+        const headers = window.globalHeaders || [];
+        const colIndex = headers.indexOf(columnName);
+        if (colIndex === -1 || !selectedData?.rowData) return '';
+        return selectedData.rowData[colIndex] || '';
+    }
+
+    /**
+     * Build status text with row number and control column values
+     * @param {object} automationConfig - Automation configuration
+     * @param {object} selectedData - Current selected row data
+     * @returns {string} - Status text like "Row: 5, John Doe"
+     */
+    function buildStatusText(automationConfig, selectedData) {
+        if (!selectedData || selectedData.rowIndex === undefined || selectedData.rowIndex < 0) {
+            return 'Listo';
+        }
+
+        const rowNum = selectedData.rowIndex + 1; // 1-indexed for display
+        let statusText = `Row: ${rowNum}`;
+
+        // If control column is configured, append its value(s)
+        const controlCol = automationConfig?.controlColumn || '';
+        if (controlCol) {
+            // Extract all {Column} placeholders
+            const regex = /\{([^{}]+)\}/g;
+            let match;
+            const values = [];
+            while ((match = regex.exec(controlCol)) !== null) {
+                const colName = match[1].trim();
+                const val = getColumnValue(colName, selectedData);
+                if (val) values.push(val);
+            }
+            if (values.length > 0) {
+                statusText += ', ' + values.join(', ');
+            }
+        }
+
+        return statusText;
+    }
+
+    /**
+     * Create a simple card showing filter condition not met
+     * @param {object} filterConfig - Filter configuration
+     * @param {object} selectedData - Current selected row data
+     * @returns {HTMLElement} - The card element
+     */
+    function createFilterFailedCard(filterConfig, selectedData) {
+        const card = document.createElement('div');
+        card.className = 'afv-filter-failed-card';
+        card.style.cssText = 'padding:24px; text-align:center; background:#fef3c7; border-radius:8px; border:1px solid #fcd34d; margin:16px;';
+
+        // Get column and value info
+        const colMatch = filterConfig.column?.match(/\{([^{}]+)\}/);
+        const columnName = colMatch ? colMatch[1].trim() : 'Columna';
+        const cellValue = getColumnValue(columnName, selectedData);
+        const filterValue = filterConfig.value || '';
+        const operatorLabels = {
+            'equals': '=',
+            'notEquals': '≠',
+            'contains': 'contiene',
+            'startsWith': 'empieza con'
+        };
+        const opLabel = operatorLabels[filterConfig.operator] || filterConfig.operator;
+
+        card.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
+                <i data-lucide="filter-x" style="width:24px; height:24px; color:#d97706;"></i>
+                <span style="font-size:14px; font-weight:600; color:#92400e;">Filtro no cumplido</span>
+            </div>
+            <div style="font-size:13px; color:#78350f; background:white; padding:12px; border-radius:6px; display:inline-block;">
+                <span style="font-weight:600;">{${escHtml(columnName)}}</span> = 
+                <span style="color:#0369a1;">"${escHtml(cellValue)}"</span>
+                <span style="margin:0 8px; color:#6b7280;">|</span>
+                <span style="color:#6b7280;">Esperado: ${opLabel} "${escHtml(filterValue)}"</span>
+            </div>
+            <div style="font-size:11px; color:#a16207; margin-top:12px;">
+                Esta fila no será procesada por la automatización
+            </div>
+        `;
+
+        return card;
+    }
+
     /**
      * Main render function for the new View Mode
      * Uses a single grid for ALL pages so the line connects everything
@@ -3190,6 +3331,40 @@ const AutoFormViewModule = (function () {
         `;
         // Insert at beginning of view-mode (before scroll container)
         viewModeContainer.insertBefore(viewHeader, scrollContainer);
+
+        // === FILTER EVALUATION ===
+        const automationConfig = state.formData.automationConfig || {};
+        const filterConfig = automationConfig.filter;
+        const filterPasses = evaluateFilter(filterConfig, selectedData);
+
+        // DEBUG LOGS
+        console.log('[ViewMode] selectedData:', selectedData);
+        console.log('[ViewMode] automationConfig:', automationConfig);
+        console.log('[ViewMode] filterConfig:', filterConfig);
+        console.log('[ViewMode] filterPasses:', filterPasses);
+
+        // Update status text with row info
+        const statusEl = document.getElementById(`afv-status-${tabId}`);
+        console.log('[ViewMode] statusEl:', statusEl, 'text:', buildStatusText(automationConfig, selectedData));
+        if (statusEl) {
+            statusEl.textContent = buildStatusText(automationConfig, selectedData);
+        }
+
+        // If filter does not pass, show filter failed card instead of normal content
+        if (!filterPasses && selectedData?.rowIndex >= 0) {
+            const failedCard = createFilterFailedCard(filterConfig, selectedData);
+            scrollContainer.appendChild(failedCard);
+            if (window.lucide) lucide.createIcons();
+
+            // Attach config button handler
+            const configBtn = document.getElementById(`afv-config-${tabId}`);
+            if (configBtn && window.AutomationConfigModal) {
+                configBtn.onclick = () => {
+                    AutomationConfigModal.open(tabId, automationConfig);
+                };
+            }
+            return; // Don't render normal content
+        }
 
         // Create a SINGLE grid for all pages inside scroll container
         const gridContainer = createFlowGrid();

@@ -214,7 +214,10 @@ const SheetViewModule = (function () {
         const rowData = e.rowData || [];
 
         // Build globalSelectedData as simple {HeaderName: Value} object
-        window.globalSelectedData = {};
+        window.globalSelectedData = {
+            rowIndex: e.rowIndex,
+            rowData: rowData
+        };
 
         if (currentData && currentData.headers) {
             currentData.headers.forEach((h, i) => {
