@@ -3273,6 +3273,15 @@ const AutoFormViewModule = (function () {
 
 
         if (window.lucide) lucide.createIcons();
+
+        // Attach config button handler
+        const configBtn = document.getElementById(`afv-config-${tabId}`);
+        if (configBtn && window.AutomationConfigModal) {
+            configBtn.onclick = () => {
+                const autoConfig = state.formData.automationConfig || {};
+                AutomationConfigModal.open(tabId, autoConfig);
+            };
+        }
     }
 
     // Keep renderPreview as alias for backwards compatibility
