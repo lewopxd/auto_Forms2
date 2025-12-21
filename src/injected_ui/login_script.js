@@ -1,6 +1,6 @@
 /**
  * Login Mode UI - Wait for user authentication
- * Consistent design with record mode panel (script.js)
+ * Small corner panel (like recording mode) - does NOT block page interaction
  * Uses Shadow DOM and command queue for Python communication
  */
 
@@ -20,12 +20,15 @@
         check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>`,
         close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
         warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-        spinner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`
+        spinner: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`,
+        collapse: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>`,
+        expand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`
     };
 
+    // Create floating panel (same position as recording panel)
     const host = document.createElement('div');
     host.id = ROOT_ID;
-    host.style.cssText = 'position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;z-index:2147483647!important;pointer-events:none!important;';
+    host.style.cssText = 'position:fixed!important;top:20px!important;right:20px!important;z-index:2147483647!important;';
 
     const shadow = host.attachShadow({ mode: 'closed' });
 
@@ -39,69 +42,75 @@
                 line-height: 1.5;
             }
             
-            .overlay {
-                position: fixed;
-                top: 0; left: 0; right: 0; bottom: 0;
-                background: rgba(0, 0, 0, 0.4);
-                backdrop-filter: blur(4px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                pointer-events: auto;
-            }
-            
             .panel {
                 background: rgba(255, 255, 255, 0.98);
                 backdrop-filter: blur(20px);
                 border: 1px solid rgba(0, 0, 0, 0.12);
-                border-radius: 16px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-                width: 380px;
+                border-radius: 12px;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+                width: 320px;
                 overflow: hidden;
                 animation: slideIn 0.3s ease-out;
             }
             
+            .panel.collapsed { height: auto !important; }
+            
             @keyframes slideIn {
-                from { opacity: 0; transform: scale(0.95) translateY(-10px); }
-                to { opacity: 1; transform: scale(1) translateY(0); }
+                from { opacity: 0; transform: translateY(-10px); }
+                to { opacity: 1; transform: translateY(0); }
             }
             
             .header {
                 display: flex; 
                 align-items: center;
-                padding: 16px 20px;
+                padding: 12px 16px;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                cursor: move;
+                user-select: none;
             }
             
             .header-icon { 
-                width: 24px; 
-                height: 24px; 
+                width: 20px; 
+                height: 20px; 
                 color: white; 
-                margin-right: 12px; 
+                margin-right: 10px; 
             }
             
             .header-title { 
                 flex: 1; 
-                font-size: 16px; 
+                font-size: 15px; 
                 font-weight: 600; 
                 color: white; 
             }
             
+            .header-btn {
+                width: 28px; height: 28px; border: none;
+                background: rgba(255,255,255,0.2); border-radius: 6px;
+                cursor: pointer; display: flex; align-items: center;
+                justify-content: center; margin-left: 6px;
+            }
+            .header-btn:hover { background: rgba(255,255,255,0.3); }
+            .header-btn svg { width: 14px; height: 14px; color: white; }
+            
             .body { 
-                padding: 28px 24px; 
-                text-align: center;
+                padding: 16px;
             }
             
-            .spinner-container {
-                margin-bottom: 20px;
+            .body.hidden { display: none; }
+            
+            .spinner-row {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
             }
             
             .spinner {
-                width: 48px;
-                height: 48px;
+                width: 24px;
+                height: 24px;
                 color: #667eea;
                 animation: spin 1s linear infinite;
-                margin: 0 auto;
+                flex-shrink: 0;
             }
             
             @keyframes spin { 
@@ -110,21 +119,20 @@
             }
             
             .instruction {
-                font-size: 18px;
+                font-size: 14px;
                 font-weight: 600;
                 color: #1e293b;
-                margin-bottom: 12px;
             }
             
             .warning {
-                display: inline-flex;
+                display: flex;
                 align-items: center;
-                gap: 6px;
+                gap: 8px;
                 background: #fef3c7;
                 color: #92400e;
-                padding: 10px 16px;
+                padding: 10px 12px;
                 border-radius: 8px;
-                font-size: 13px;
+                font-size: 12px;
                 font-weight: 600;
                 margin-bottom: 12px;
                 border: 1px solid #fcd34d;
@@ -138,159 +146,85 @@
             }
             
             .hint {
-                font-size: 12px;
+                font-size: 11px;
                 color: #64748b;
-                margin-bottom: 0;
+                margin-bottom: 16px;
+                text-align: center;
             }
             
-            .footer {
-                padding: 16px 24px;
-                background: #f8fafc;
-                border-top: 1px solid #e2e8f0;
+            .buttons {
                 display: flex;
                 flex-direction: column;
-                gap: 10px;
+                gap: 8px;
             }
             
             .btn {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 8px;
+                gap: 6px;
                 border: none;
-                border-radius: 8px;
-                padding: 12px 16px;
+                border-radius: 6px;
+                padding: 10px 14px;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 600;
                 transition: all 0.15s ease;
             }
             
             .btn svg { 
-                width: 16px; 
-                height: 16px; 
+                width: 14px; 
+                height: 14px; 
             }
             
             .btn-primary { 
                 background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
                 color: white; 
-                box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
             }
             
             .btn-primary:hover { 
                 background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
             }
             
             .btn-secondary { 
-                background: transparent;
+                background: #f1f5f9;
                 color: #64748b;
-                border: 1px solid #e2e8f0;
             }
             
             .btn-secondary:hover { 
-                background: #f1f5f9;
-                color: #475569;
-            }
-            
-            /* Timeout warning overlay */
-            .timeout-overlay {
-                position: absolute;
-                inset: 0;
-                background: rgba(255, 255, 255, 0.95);
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                padding: 24px;
-                text-align: center;
-                z-index: 10;
-            }
-            
-            .timeout-overlay.visible {
-                display: flex;
-            }
-            
-            .timeout-title {
-                font-size: 15px;
-                font-weight: 600;
-                color: #1e293b;
-                margin-bottom: 8px;
-            }
-            
-            .timeout-text {
-                font-size: 13px;
-                color: #64748b;
-                margin-bottom: 16px;
-            }
-            
-            .timeout-actions {
-                display: flex;
-                gap: 10px;
-            }
-            
-            .timeout-btn {
-                padding: 8px 16px;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                border: none;
-            }
-            
-            .timeout-btn-continue {
-                background: #667eea;
-                color: white;
-            }
-            
-            .timeout-btn-cancel {
-                background: #f1f5f9;
-                color: #64748b;
+                background: #e2e8f0;
             }
         </style>
         
-        <div class="overlay">
-            <div class="panel">
-                <div class="header">
-                    <span class="header-icon">${ICONS.lock}</span>
-                    <span class="header-title">Modo Login</span>
+        <div class="panel" id="panel">
+            <div class="header" id="header">
+                <span class="header-icon">${ICONS.lock}</span>
+                <span class="header-title">Modo Login</span>
+                <button class="header-btn" id="collapseBtn" title="Colapsar">${ICONS.collapse}</button>
+            </div>
+            
+            <div class="body" id="body">
+                <div class="spinner-row">
+                    <div class="spinner">${ICONS.spinner}</div>
+                    <span class="instruction">Inicia sesión en tu cuenta</span>
                 </div>
                 
-                <div class="body">
-                    <div class="spinner-container">
-                        <div class="spinner">${ICONS.spinner}</div>
-                    </div>
-                    
-                    <p class="instruction">Inicia sesión en tu cuenta</p>
-                    
-                    <div class="warning">
-                        ${ICONS.warning}
-                        <span>NO cierres esta pestaña</span>
-                    </div>
-                    
-                    <p class="hint">La página puede recargar durante el login</p>
+                <div class="warning">
+                    ${ICONS.warning}
+                    <span>NO cierres esta pestaña</span>
                 </div>
                 
-                <div class="footer">
+                <p class="hint">La página puede recargar durante el login.<br>Cuando termines, haz clic en continuar.</p>
+                
+                <div class="buttons">
                     <button class="btn btn-primary" id="btnContinue">
                         ${ICONS.check}
                         <span>Ya inicié sesión - Continuar</span>
                     </button>
                     <button class="btn btn-secondary" id="btnCancel">
                         ${ICONS.close}
-                        <span>Cancelar Grabación</span>
+                        <span>Cancelar</span>
                     </button>
-                </div>
-                
-                <!-- Timeout warning (hidden by default) -->
-                <div class="timeout-overlay" id="timeoutOverlay">
-                    <div class="timeout-title">¿Sigues ahí?</div>
-                    <div class="timeout-text">Han pasado 5 minutos esperando el login</div>
-                    <div class="timeout-actions">
-                        <button class="timeout-btn timeout-btn-continue" id="btnTimeoutContinue">Seguir esperando</button>
-                        <button class="timeout-btn timeout-btn-cancel" id="btnTimeoutCancel">Cancelar</button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -299,11 +233,42 @@
     document.body.appendChild(host);
 
     // Get elements
+    const panel = shadow.getElementById('panel');
+    const header = shadow.getElementById('header');
+    const body = shadow.getElementById('body');
+    const collapseBtn = shadow.getElementById('collapseBtn');
     const btnContinue = shadow.getElementById('btnContinue');
     const btnCancel = shadow.getElementById('btnCancel');
-    const timeoutOverlay = shadow.getElementById('timeoutOverlay');
-    const btnTimeoutContinue = shadow.getElementById('btnTimeoutContinue');
-    const btnTimeoutCancel = shadow.getElementById('btnTimeoutCancel');
+
+    // Collapse/Expand
+    let collapsed = false;
+    collapseBtn.onclick = () => {
+        collapsed = !collapsed;
+        body.classList.toggle('hidden', collapsed);
+        panel.classList.toggle('collapsed', collapsed);
+        collapseBtn.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
+    };
+
+    // Drag Logic (same as recording panel)
+    let dragging = false, ox = 0, oy = 0;
+    header.onmousedown = (e) => {
+        if (e.target.closest('.header-btn')) return;
+        dragging = true;
+        const rect = host.getBoundingClientRect();
+        ox = e.clientX - rect.left;
+        oy = e.clientY - rect.top;
+        e.preventDefault();
+    };
+    document.onmousemove = (e) => {
+        if (!dragging) return;
+        const panelRect = panel.getBoundingClientRect();
+        let newX = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - panelRect.width));
+        let newY = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - panelRect.height));
+        host.style.left = newX + 'px';
+        host.style.right = 'auto';
+        host.style.top = newY + 'px';
+    };
+    document.onmouseup = () => dragging = false;
 
     // Continue button - Login complete
     btnContinue.onclick = () => {
@@ -317,22 +282,11 @@
         host.remove();
     };
 
-    // Timeout overlay handlers
-    btnTimeoutContinue.onclick = () => {
-        timeoutOverlay.classList.remove('visible');
-    };
-
-    btnTimeoutCancel.onclick = () => {
-        window.__msfa_commands.push({ type: 'stop', save: false });
-        host.remove();
-    };
-
-    // Expose function for Python to show timeout warning
+    // Expose function for Python to show timeout warning (optional)
     window.__msfa_showTimeoutWarning = function () {
-        if (timeoutOverlay) {
-            timeoutOverlay.classList.add('visible');
-        }
+        // Could add a visual indicator here if needed
+        console.log('[MSFA] Login timeout warning');
     };
 
-    console.log('[MSFA] Login Mode UI ready');
+    console.log('[MSFA] Login Mode UI ready (corner panel)');
 })();
