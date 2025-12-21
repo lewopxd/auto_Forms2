@@ -2391,7 +2391,12 @@ const AutoFormViewModule = (function () {
     // ============================================================
 
     function getSortedPages(pages) {
-        return Object.keys(pages).sort((a, b) => parseInt(a.replace('page_', '')) - parseInt(b.replace('page_', '')));
+        return Object.keys(pages).sort((a, b) => {
+            // Put page_postSubmit at the end
+            if (a === 'page_postSubmit') return 1;
+            if (b === 'page_postSubmit') return -1;
+            return parseInt(a.replace('page_', '')) - parseInt(b.replace('page_', ''));
+        });
     }
     function getSortedQuestions(qs) {
         return Object.keys(qs).sort((a, b) => parseInt(a.replace('q', '')) - parseInt(b.replace('q', '')));
@@ -3117,9 +3122,17 @@ const AutoFormViewModule = (function () {
             const page = pages[pKey];
             const questions = Object.keys(page.questions || {});
             const nav = page.navigation || {};
+            const isPostSubmit = page.isPostSubmitPage || pKey === 'page_postSubmit';
+
             totalGlobalActions += questions.length;
             if (nav.next) totalGlobalActions++;
             if (nav.submit) totalGlobalActions++;
+
+            // Count post-submit actions
+            if (isPostSubmit && page.postSubmitActions) {
+                if (page.postSubmitActions.saveAndEdit) totalGlobalActions++;
+                if (page.postSubmitActions.submitAnother) totalGlobalActions++;
+            }
         });
 
         // === VIEW MODE HEADER (URL + Player) - prepend to view-mode ===
@@ -3164,16 +3177,23 @@ const AutoFormViewModule = (function () {
 
         sortedPages.forEach((pKey, pageIndex) => {
             const page = pages[pKey];
+            const isPostSubmit = page.isPostSubmitPage || pKey === 'page_postSubmit';
 
             // Add page separator as a grid row
             const sepRow = document.createElement('div');
             sepRow.className = 'afv-flow-row separator';
+
+            // Use "Post-Submit" label for post-submit page
+            const pageLabel = isPostSubmit
+                ? 'Post-Submit'
+                : `Página ${pageIndex + 1}${page.pageInfo ? ` — ${page.pageInfo.current || '?'}/${page.pageInfo.total || '?'}` : ''}`;
+
             sepRow.innerHTML = `
                 <div class="afv-flow-line">
                     <div class="afv-flow-line-segment"></div>
                 </div>
                 <div class="afv-page-label">
-                    <span>Página ${pageIndex + 1}${page.pageInfo ? ` — ${page.pageInfo.current || '?'}/${page.pageInfo.total || '?'}` : ''}</span>
+                    <span>${pageLabel}</span>
                 </div>
             `;
             gridContainer.appendChild(sepRow);
@@ -3209,6 +3229,23 @@ const AutoFormViewModule = (function () {
                 const isFirst = globalActionIndex === 1;
                 const isLast = globalActionIndex === totalGlobalActions;
                 gridContainer.appendChild(createViewClickRow('Enviar', nav.submit, globalActionIndex, isFirst, isLast));
+            }
+
+            // Render post-submit actions as click rows
+            if (isPostSubmit && page.postSubmitActions) {
+                const actions = page.postSubmitActions;
+                if (actions.saveAndEdit) {
+                    globalActionIndex++;
+                    const isFirst = globalActionIndex === 1;
+                    const isLast = globalActionIndex === totalGlobalActions;
+                    gridContainer.appendChild(createViewClickRow(actions.saveAndEdit.text || 'Guardar mi respuesta', actions.saveAndEdit, globalActionIndex, isFirst, isLast));
+                }
+                if (actions.submitAnother) {
+                    globalActionIndex++;
+                    const isFirst = globalActionIndex === 1;
+                    const isLast = globalActionIndex === totalGlobalActions;
+                    gridContainer.appendChild(createViewClickRow(actions.submitAnother.text || 'Enviar otra respuesta', actions.submitAnother, globalActionIndex, isFirst, isLast));
+                }
             }
         });
 

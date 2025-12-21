@@ -333,7 +333,13 @@ class RecordingSession:
             return
         
         page_info = data.get("pageInfo", {})
-        page_key = f"page_{page_info.get('current', 1)}"
+        is_post_submit = data.get("isPostSubmitPage", False)
+        
+        # Use special key for post-submit page to avoid overwriting normal page
+        if is_post_submit:
+            page_key = "page_postSubmit"
+        else:
+            page_key = f"page_{page_info.get('current', 1)}"
         
         # Convert questions array to object format { "q1": {...}, "q2": {...} }
         questions_array = data.get("questions", [])

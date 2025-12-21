@@ -1,0 +1,86 @@
+{
+  "url": "https://forms.office.com/r/HFyTz3cje2",
+  "filename": "recording_1766286086798",
+  "pages": {
+    "page_1": {
+      "questions": {
+        "q1": {
+          "num": "1",
+          "options": [],
+          "questionId": "r5072fdbb0342426385c48b42041b0a52",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5072fdbb0342426385c48b42041b0a52\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos Psicosocial",
+          "type": "text"
+        },
+        "q2": {
+          "num": "2",
+          "options": [],
+          "questionId": "ree65746980a44ae29bc329f89853a445",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_ree65746980a44ae29bc329f89853a445\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "2 Número de Documento del/la Psicosocial",
+          "type": "text"
+        }
+      },
+      "pageInfo": {
+        "current": 1,
+        "text": "",
+        "total": 1
+      },
+      "navigation": {
+        "back": null,
+        "next": null,
+        "submit": {
+          "selector": "[data-automation-id=\"submitButton\"]",
+          "text": "Enviar"
+        }
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_postSubmit": {
+      "questions": {},
+      "pageInfo": {
+        "current": 1,
+        "text": "",
+        "total": 1
+      },
+      "navigation": {
+        "back": null,
+        "next": null,
+        "submit": null
+      },
+      "isPostSubmitPage": true,
+      "postSubmitActions": {
+        "saveAndEdit": {
+          "action": "click",
+          "selector": "[data-automation-id=\"saveAndEditButton\"]",
+          "text": "Guardar mi respuesta para editar"
+        },
+        "submitAnother": {
+          "action": "click",
+          "selector": "[data-automation-id=\"submitAnother\"]",
+          "text": "Enviar otra respuesta"
+        }
+      }
+    }
+  },
+  "recorded_at": "2025-12-20 22:02:13",
+  "name": "recording_1766286086798",
+  "created": "2025-12-20T22:02:13.791263",
+  "updated": "2025-12-20T22:02:13.791263"
+}

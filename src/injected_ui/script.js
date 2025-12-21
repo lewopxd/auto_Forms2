@@ -396,20 +396,31 @@
     // Auto-save function (Always active in memory)
     function triggerAutoSave() {
         if (!formData) return;
-        const currentPage = formData.pageInfo?.current;
+
+        console.log('[MSFA] triggerAutoSave called, formData:', formData ? 'exists' : 'null');
+        console.log('[MSFA] formData.pageInfo:', formData?.pageInfo);
+
+        // Always store page data for View All modal
+        if (formData.pageInfo) {
+            // Use special key for post-submit page
+            const pageKey = formData.isPostSubmitPage ? 'page_postSubmit' : ('page_' + formData.pageInfo.current);
+            allSavedPages[pageKey] = {
+                questions: formData.questions,
+                pageInfo: formData.pageInfo,
+                isPostSubmitPage: formData.isPostSubmitPage || false,
+                postSubmitActions: formData.postSubmitActions || {}
+            };
+            console.log('[MSFA] Saved to allSavedPages:', pageKey, 'Total pages:', Object.keys(allSavedPages).length);
+        } else {
+            console.log('[MSFA] No pageInfo, skipping allSavedPages update');
+        }
+
+        // Only send save command to backend when page changes
+        const currentPage = formData.isPostSubmitPage ? 'postSubmit' : formData.pageInfo?.current;
         if (currentPage !== lastSavedPage) {
             lastSavedPage = currentPage;
             statusSaved.innerHTML = `${ICONS.spinner} Saving...`;
             window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
-
-            // Store page data for View All
-            if (formData.pageInfo) {
-                const pageKey = 'page_' + formData.pageInfo.current;
-                allSavedPages[pageKey] = {
-                    questions: formData.questions,
-                    pageInfo: formData.pageInfo
-                };
-            }
 
             // Fake "Saved" state after delay
             setTimeout(() => {
@@ -452,6 +463,9 @@
     // Render Modal Content
     function renderModal() {
         const pages = Object.keys(allSavedPages).sort((a, b) => {
+            // Put page_postSubmit at the end
+            if (a === 'page_postSubmit') return 1;
+            if (b === 'page_postSubmit') return -1;
             const numA = parseInt(a.replace('page_', ''));
             const numB = parseInt(b.replace('page_', ''));
             return numA - numB;
@@ -467,26 +481,53 @@
         let html = '';
         pages.forEach(pageKey => {
             const pageData = allSavedPages[pageKey];
-            const pageNum = pageKey.replace('page_', '');
+            const isPostSubmit = pageData.isPostSubmitPage || pageKey === 'page_postSubmit';
+
+            // Header: show "Post-Submit" for post-submit page
+            const headerText = isPostSubmit
+                ? 'Post-Submit'
+                : `Página ${pageKey.replace('page_', '')} de ${totalPages}`;
 
             html += `<div class="page-section">
-                <div class="page-header">Página ${pageNum} de ${totalPages}</div>`;
+                <div class="page-header">${headerText}</div>`;
 
-            pageData.questions.forEach(q => {
-                let optionsHtml = '';
-                if (q.options && q.options.length > 0) {
-                    optionsHtml = '<div class="page-options">' +
-                        q.options.map((o, i) => `<span class="page-option">${i + 1}. ${o.text || o.value}</span>`).join('') +
-                        '</div>';
+            // Render questions (if any)
+            if (pageData.questions && pageData.questions.length > 0) {
+                pageData.questions.forEach(q => {
+                    let optionsHtml = '';
+                    if (q.options && q.options.length > 0) {
+                        optionsHtml = '<div class="page-options">' +
+                            q.options.map((o, i) => `<span class="page-option">${i + 1}. ${o.text || o.value}</span>`).join('') +
+                            '</div>';
+                    }
+
+                    html += `<div class="page-question">
+                        <span class="page-question-num">${q.num}</span>
+                        ${q.text || 'Sin título'}
+                        <span class="page-question-type">${q.type || ''}</span>
+                        ${optionsHtml}
+                    </div>`;
+                });
+            }
+
+            // Render post-submit actions as click items
+            if (isPostSubmit && pageData.postSubmitActions) {
+                const actions = pageData.postSubmitActions;
+                if (actions.saveAndEdit) {
+                    html += `<div class="page-question" style="background:#dcfce7; border-left:3px solid #16a34a;">
+                        <span class="page-question-num">•</span>
+                        ${actions.saveAndEdit.text || 'Guardar mi respuesta'}
+                        <span class="page-question-type">CLICK</span>
+                    </div>`;
                 }
-
-                html += `<div class="page-question">
-                    <span class="page-question-num">${q.num}</span>
-                    ${q.text || 'Sin título'}
-                    <span class="page-question-type">${q.type || ''}</span>
-                    ${optionsHtml}
-                </div>`;
-            });
+                if (actions.submitAnother) {
+                    html += `<div class="page-question" style="background:#dcfce7; border-left:3px solid #16a34a;">
+                        <span class="page-question-num">•</span>
+                        ${actions.submitAnother.text || 'Enviar otra respuesta'}
+                        <span class="page-question-type">CLICK</span>
+                    </div>`;
+                }
+            }
 
             html += '</div>';
         });
@@ -621,13 +662,13 @@
             postSubmitContainer.className = 'post-submit-container';
             postSubmitContainer.style.cssText = 'margin-top:12px; padding:10px; background:linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%); border-radius:8px; border:1px solid #86efac;';
 
-            let actionsHtml = '<div style="font-size:12px; font-weight:600; color:#166534; margin-bottom:8px;">✅ Formulario Enviado</div>';
+            let actionsHtml = '<div style="font-size:12px; font-weight:600; color:#166534; margin-bottom:8px;">Formulario Enviado</div>';
             actionsHtml += '<div style="font-size:11px; color:#15803d; margin-bottom:8px;">Acciones disponibles:</div>';
 
             if (data.postSubmitActions.saveAndEdit) {
                 actionsHtml += `
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:6px; background:white; border-radius:4px; border:1px solid #bbf7d0;">
-                        <span style="color:#16a34a;">💾</span>
+                        <span style="color:#16a34a;">•</span>
                         <span style="font-size:11px; color:#15803d;">${data.postSubmitActions.saveAndEdit.text}</span>
                     </div>
                 `;
@@ -636,7 +677,7 @@
             if (data.postSubmitActions.submitAnother) {
                 actionsHtml += `
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; padding:6px; background:white; border-radius:4px; border:1px solid #bbf7d0;">
-                        <span style="color:#16a34a;">🔄</span>
+                        <span style="color:#16a34a;">•</span>
                         <span style="font-size:11px; color:#15803d;">${data.postSubmitActions.submitAnother.text}</span>
                     </div>
                 `;
@@ -645,7 +686,7 @@
             postSubmitContainer.innerHTML = actionsHtml;
             questionList.appendChild(postSubmitContainer);
 
-            statusText.textContent = '✅ Enviado - Post-submit detectado';
+            statusText.textContent = 'Enviado - Post-submit detectado';
         }
 
         // Trigger auto-save to memory
