@@ -1429,7 +1429,8 @@ const AutoFormViewModule = (function () {
                         <div class="af-config-section">
                             <div class="af-config-sec-title">Navegador</div>
                             <div class="af-config-row" style="gap: 8px; align-items: center;">
-                                <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled>
+                                <select id="new-rec-browser" class="af-config-select" style="flex:1" disabled
+                                        onchange="AutoFormViewModule.handleBrowserChange()">
                                     <option value="">Cargando navegadores...</option>
                                 </select>
                                 <div id="new-rec-browser-spinner" class="af-browser-spinner">
@@ -1654,6 +1655,18 @@ const AutoFormViewModule = (function () {
         } else {
             // Hide profile row when unchecked
             if (profileRow) profileRow.style.display = 'none';
+        }
+    }
+
+    /**
+     * Handle browser selection change - Reload profiles if profile checkbox is checked
+     */
+    async function handleBrowserChange() {
+        const profileCheckbox = document.getElementById('new-rec-use-profile');
+
+        // Only reload profiles if the checkbox is checked
+        if (profileCheckbox && profileCheckbox.checked) {
+            await loadChromeProfiles();
         }
     }
 
@@ -3379,6 +3392,7 @@ const AutoFormViewModule = (function () {
         stopRecording,
         toggleDebugMode,
         handleProfileCheckbox,
+        handleBrowserChange,
         // Events
         initRecordingEvents
     };

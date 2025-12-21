@@ -300,6 +300,16 @@ class SeleniumHandler:
                 try:
                     config = BrowserConfig.from_dict(browser_config)
                     print(f"[SeleniumHandler] Using BrowserConfig: profile={config.efficiency_profile}")
+                    
+                    # Calculate user_profile_path based on browser type if using profile
+                    if config.use_user_profile and not config.user_profile_path:
+                        profile_path = get_browser_profiles_path(browser, browser_path)
+                        if profile_path:
+                            config.user_profile_path = profile_path
+                            print(f"[SeleniumHandler] Calculated profile path for {browser}: {profile_path}")
+                        else:
+                            print(f"[SeleniumHandler] Warning: No profile path found for {browser}")
+                    
                 except Exception as e:
                     print(f"[SeleniumHandler] Error creating BrowserConfig: {e}")
             elif BrowserConfig:
