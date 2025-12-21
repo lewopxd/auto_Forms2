@@ -1,0 +1,877 @@
+{
+  "url": "https://forms.office.com/Pages/ResponsePage.aspx?id=CAjjs6jpKk-bwadgrpEM9aooGyI_AfhDr6ta5K8hD-ZUNVRUUFdTSkJSSkZFRks1VDM4OTNEOVo0Ty4u",
+  "filename": "APROBADOS-intermed",
+  "pages": {
+    "page_1": {
+      "questions": {
+        "q1": {
+          "num": "1",
+          "options": [],
+          "questionId": "r8ebed53125904bab89541295184d8825",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r8ebed53125904bab89541295184d8825\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos Psicosocial",
+          "type": "text"
+        },
+        "q2": {
+          "num": "2",
+          "options": [],
+          "questionId": "r5d7d698a72514303a280c563ca5d60ac",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5d7d698a72514303a280c563ca5d60ac\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Documento del/la Psicosocial",
+          "type": "text (number)"
+        },
+        "q3": {
+          "num": "3",
+          "options": [],
+          "questionId": "r5de01b65c1444f0389ca2c6f7205ef3b",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5de01b65c1444f0389ca2c6f7205ef3b\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Tarjeta Profesional del/la Psicosocial",
+          "type": "text"
+        }
+      },
+      "pageInfo": {
+        "current": 1,
+        "text": "Página 1 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": null,
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_2": {
+      "questions": {
+        "q4": {
+          "num": "4",
+          "options": [],
+          "questionId": "ra5581923efdc40f49bcd27347f7ca570",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_ra5581923efdc40f49bcd27347f7ca570\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos del beneficiario/a",
+          "type": "text"
+        },
+        "q5": {
+          "num": "5",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1 . Cedula de Ciudadania\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1 . Cedula de Ciudadania\"]",
+                "method": "click"
+              },
+              "text": "1 . Cedula de Ciudadania",
+              "value": "1 . Cedula de Ciudadania"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2 . Tarjeta de Identidad\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2 . Tarjeta de Identidad\"]",
+                "method": "click"
+              },
+              "text": "2 . Tarjeta de Identidad",
+              "value": "2 . Tarjeta de Identidad"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3 . Cedula de Extranjeria\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3 . Cedula de Extranjeria\"]",
+                "method": "click"
+              },
+              "text": "3 . Cedula de Extranjeria",
+              "value": "3 . Cedula de Extranjeria"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"9 . Permiso de Proteccion Temporal\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"9 . Permiso de Proteccion Temporal\"]",
+                "method": "click"
+              },
+              "text": "9 . Permiso de Proteccion Temporal",
+              "value": "9 . Permiso de Proteccion Temporal"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"99. Contraseña \"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"99. Contraseña \"]",
+                "method": "click"
+              },
+              "text": "99. Contraseña ",
+              "value": "99. Contraseña "
+            }
+          ],
+          "questionId": "r8c0333caf51f4978a126bc5424475260",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r8c0333caf51f4978a126bc5424475260",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Tipo Documento del/la beneficiario/a",
+          "type": "choice"
+        },
+        "q6": {
+          "num": "6",
+          "options": [],
+          "questionId": "rd491bfcd8ed34ca9b0771f6561541b15",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_rd491bfcd8ed34ca9b0771f6561541b15\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Documento del/la Beneficiario/a",
+          "type": "text (number)"
+        },
+        "q7": {
+          "num": "7",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Curso Corto\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Curso Corto\"]",
+                "method": "click"
+              },
+              "text": "1. Curso Corto",
+              "value": "1. Curso Corto"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. EPJA\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. EPJA\"]",
+                "method": "click"
+              },
+              "text": "2. EPJA",
+              "value": "2. EPJA"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Superior - EFT\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Superior - EFT\"]",
+                "method": "click"
+              },
+              "text": "3. Superior - EFT",
+              "value": "3. Superior - EFT"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Superior - Tecnico\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Superior - Tecnico\"]",
+                "method": "click"
+              },
+              "text": "4. Superior - Tecnico",
+              "value": "4. Superior - Tecnico"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Superior - Teconologo\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Superior - Teconologo\"]",
+                "method": "click"
+              },
+              "text": "5. Superior - Teconologo",
+              "value": "5. Superior - Teconologo"
+            },
+            {
+              "position": "6",
+              "selenium": {
+                "byInputValue": "input[value=\"6. Superior - Superior\"]",
+                "byPosition": "[aria-posinset=\"6\"]",
+                "byValue": "[data-automation-value=\"6. Superior - Superior\"]",
+                "method": "click"
+              },
+              "text": "6. Superior - Superior",
+              "value": "6. Superior - Superior"
+            }
+          ],
+          "questionId": "r1dfe34ffb4f64c8382c6c32655ee6b35",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r1dfe34ffb4f64c8382c6c32655ee6b35",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Ruta del beneficiario",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 2,
+        "text": "Página 2 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_3": {
+      "questions": {
+        "q8": {
+          "num": "8",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Proyecto de Vida\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Proyecto de Vida\"]",
+                "method": "click"
+              },
+              "text": "1. Proyecto de Vida",
+              "value": "1. Proyecto de Vida"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. Trayectoria de Formacion\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. Trayectoria de Formacion\"]",
+                "method": "click"
+              },
+              "text": "2. Trayectoria de Formacion",
+              "value": "2. Trayectoria de Formacion"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Actividades Complementarias\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Actividades Complementarias\"]",
+                "method": "click"
+              },
+              "text": "3. Actividades Complementarias",
+              "value": "3. Actividades Complementarias"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Intermediación laboral \"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Intermediación laboral \"]",
+                "method": "click"
+              },
+              "text": "4. Intermediación laboral ",
+              "value": "4. Intermediación laboral "
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Seguimiento a nivel de riesgo\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Seguimiento a nivel de riesgo\"]",
+                "method": "click"
+              },
+              "text": "5. Seguimiento a nivel de riesgo",
+              "value": "5. Seguimiento a nivel de riesgo"
+            }
+          ],
+          "questionId": "re0470f2d9fcc4e65bee2d536ff73dd22",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "re0470f2d9fcc4e65bee2d536ff73dd22",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Seleccione el tipo de seguimiento psicosocial",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 3,
+        "text": "Página 3 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_12": {
+      "questions": {
+        "q9": {
+          "num": "9",
+          "options": [
+            {
+              "isBranch": true,
+              "position": "1",
+              "reveals": [
+                "r69ab69b5abd9434ea5402a6a73749e06",
+                "re3dfacd7151e44ea9bea369767340769",
+                "r0603ec85b2614514a3abd4d049d8f39b"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"1. Virtual\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Virtual\"]",
+                "method": "click"
+              },
+              "text": "1. Virtual",
+              "value": "1. Virtual"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. Presencial\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. Presencial\"]",
+                "method": "click"
+              },
+              "text": "2. Presencial",
+              "value": "2. Presencial"
+            },
+            {
+              "isBranch": true,
+              "position": "3",
+              "reveals": [
+                "r69ab69b5abd9434ea5402a6a73749e06",
+                "re3dfacd7151e44ea9bea369767340769",
+                "r0603ec85b2614514a3abd4d049d8f39b"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"3. Hibrido\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Hibrido\"]",
+                "method": "click"
+              },
+              "text": "3. Hibrido",
+              "value": "3. Hibrido"
+            },
+            {
+              "isBranch": true,
+              "position": "4",
+              "reveals": [
+                "r24197c8b0c744201ac9da15355ad287d"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"4. No contactado\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. No contactado\"]",
+                "method": "click"
+              },
+              "text": "4. No contactado",
+              "value": "4. No contactado"
+            }
+          ],
+          "questionId": "ra6c6cb5ccf024dfabe70b18bd26bb7a0",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "ra6c6cb5ccf024dfabe70b18bd26bb7a0",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Contacto Presencial- Virtual (Si/No)",
+          "type": "choice"
+        },
+        "q10": {
+          "num": "10",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r69ab69b5abd9434ea5402a6a73749e06",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r69ab69b5abd9434ea5402a6a73749e06",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Contacto Telefónico (Si/No)",
+          "type": "choice"
+        },
+        "q11": {
+          "num": "11",
+          "options": [],
+          "questionId": "re3dfacd7151e44ea9bea369767340769",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_re3dfacd7151e44ea9bea369767340769\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Operador que brinda la Intermediación al/a Joven",
+          "type": "text"
+        },
+        "q12": {
+          "num": "12",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "isBranch": true,
+              "position": "2",
+              "reveals": [
+                "ra08e78088bb448adbd4567de085985b0"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r0603ec85b2614514a3abd4d049d8f39b",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r0603ec85b2614514a3abd4d049d8f39b",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven desistió del proceso de intermediación laboral?",
+          "type": "choice"
+        },
+        "q13": {
+          "num": "13",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "isBranch": true,
+              "position": "2",
+              "reveals": [
+                "r650d1171e25d4d0aaba7d52ea4c6f32c"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "ra08e78088bb448adbd4567de085985b0",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "ra08e78088bb448adbd4567de085985b0",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven presentó inconvenientes para registrarse en la plataforma de empleo del operador o entidad con quien se encuentra realizando el proceso de Intermediación Laboral?",
+          "type": "choice"
+        },
+        "q14": {
+          "num": "14",
+          "options": [
+            {
+              "isBranch": true,
+              "position": "1",
+              "reveals": [
+                "r0cd8ced66147464993be2ce4cae5036a",
+                "r7c20f56036b649afb5dd0910a2abb232",
+                "rc7b22b18fca6419ca1ee22bf9de6e067",
+                "r7309a409c4f746e5a263084a1b30748d",
+                "ra869248b0fcd4eed8da88c9ee9667de2",
+                "r1186e19d95e1407bb44d8490e5c4a1f9",
+                "r01ccda982337432b878223f21e4fb58b"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r650d1171e25d4d0aaba7d52ea4c6f32c",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r650d1171e25d4d0aaba7d52ea4c6f32c",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven participó de las sesiones de habilidades blandas?",
+          "type": "choice"
+        },
+        "q15": {
+          "num": "15",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Virtual\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Virtual\"]",
+                "method": "click"
+              },
+              "text": "1. Virtual",
+              "value": "1. Virtual"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. Presencial\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. Presencial\"]",
+                "method": "click"
+              },
+              "text": "2. Presencial",
+              "value": "2. Presencial"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Hibrido\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Hibrido\"]",
+                "method": "click"
+              },
+              "text": "3. Hibrido",
+              "value": "3. Hibrido"
+            }
+          ],
+          "questionId": "r0cd8ced66147464993be2ce4cae5036a",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r0cd8ced66147464993be2ce4cae5036a",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿En qué modalidad tomó las sesiones de habilidades blandas? (Virtual/Presencial/3. Hibrido)",
+          "type": "choice"
+        },
+        "q16": {
+          "num": "16",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r7c20f56036b649afb5dd0910a2abb232",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r7c20f56036b649afb5dd0910a2abb232",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿Los temas abordados en las sesiones de habilidades blandas fueron de interés del /la joven?",
+          "type": "choice"
+        },
+        "q17": {
+          "num": "17",
+          "options": [],
+          "questionId": "rc7b22b18fca6419ca1ee22bf9de6e067",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_rc7b22b18fca6419ca1ee22bf9de6e067\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Concepto Psicosocial U Observaciones:Describa el proceso de desarrollo de las sesiones de habilidades blandas.",
+          "type": "long_text"
+        },
+        "q18": {
+          "num": "18",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r7309a409c4f746e5a263084a1b30748d",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r7309a409c4f746e5a263084a1b30748d",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven realizó alguna autopostulación en vacantes laborales a través de la Plataforma?",
+          "type": "choice"
+        },
+        "q19": {
+          "num": "19",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "ra869248b0fcd4eed8da88c9ee9667de2",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "ra869248b0fcd4eed8da88c9ee9667de2",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven participó en ferias de empleo?",
+          "type": "choice"
+        },
+        "q20": {
+          "num": "20",
+          "options": [],
+          "questionId": "r1186e19d95e1407bb44d8490e5c4a1f9",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r1186e19d95e1407bb44d8490e5c4a1f9\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Concepto Psicosocial U Observaciones:Describa el proceso de autopostulación y ferias de empleo del joven durante el proceso de intermediación laboral.",
+          "type": "long_text"
+        },
+        "q21": {
+          "num": "21",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r01ccda982337432b878223f21e4fb58b",
+          "required": false,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r01ccda982337432b878223f21e4fb58b",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El beneficiario solicita actualización de datos personales ?",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 12,
+        "text": "Página 12 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": null,
+        "submit": {
+          "selector": "[data-automation-id=\"submitButton\"]",
+          "text": "Enviar"
+        }
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    }
+  },
+  "recorded_at": "2025-12-21 13:00:37",
+  "name": "APROBADOS-intermed",
+  "created": "2025-12-21T13:00:37.574962",
+  "updated": "2025-12-21T13:00:37.619402"
+}

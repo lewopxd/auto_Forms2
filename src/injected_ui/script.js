@@ -596,6 +596,21 @@
 
     // API
     window.__msfa_setFormData = function (data) {
+        // Merge branch data into incoming data before storing
+        if (typeof branchData !== 'undefined' && Object.keys(branchData).length > 0) {
+            data.questions.forEach(q => {
+                if (q.questionId && branchData[q.questionId] && q.options) {
+                    q.options.forEach(opt => {
+                        const optValue = opt.text || opt.value;
+                        if (branchData[q.questionId][optValue]) {
+                            opt.isBranch = true;
+                            opt.reveals = branchData[q.questionId][optValue];
+                        }
+                    });
+                }
+            });
+        }
+
         formData = data;
         hasAnalyzed = true;
 

@@ -2331,12 +2331,43 @@ const AutoFormViewModule = (function () {
             `;
         }
 
-        if (q.required) {
-            bodyHtml += `<div class="af-req" style="margin-left:auto;">* Obligatoria</div>`;
+        // Check if any option has isBranch: true
+        const hasBranch = q.options?.some(opt => opt.isBranch === true) || false;
+
+        // Branch indicator chip (Edit mode only) - BEFORE "Obligatoria"
+        if (hasBranch && !isViewMode) {
+            bodyHtml += `
+                <div class="af-branch-chip" style="
+                    display:inline-flex;
+                    align-items:center;
+                    gap:4px;
+                    padding:2px 8px;
+                    background:#fffbeb;
+                    border:1px solid #fcd34d;
+                    border-radius:4px;
+                    font-size:10px;
+                    font-weight:600;
+                    color:#92400e;
+                    margin-left:auto;
+                ">
+                    <i data-lucide="git-branch" style="width:12px;height:12px;"></i>
+                    Branch
+                </div>
+            `;
         }
+
+        if (q.required) {
+            bodyHtml += `<div class="af-req" style="${hasBranch ? '' : 'margin-left:auto;'}">* Obligatoria</div>`;
+        }
+
         bodyHtml += `</div>`;
 
         card.innerHTML = headerHtml + bodyHtml;
+
+        // Add branch dot indicator for View mode (AFTER innerHTML to preserve class)
+        if (hasBranch && isViewMode) {
+            card.classList.add('has-branch');
+        }
 
         // Attach Event for Settings
         if (!isViewMode) {
@@ -3242,15 +3273,17 @@ const AutoFormViewModule = (function () {
      * Build status text with row number and control column values
      * @param {object} automationConfig - Automation configuration
      * @param {object} selectedData - Current selected row data
-     * @returns {string} - Status text like "Row: 5, John Doe"
+     * @returns {string} - Status text like "Row: 5 John Doe"
      */
     function buildStatusText(automationConfig, selectedData) {
         if (!selectedData || selectedData.rowIndex === undefined || selectedData.rowIndex < 0) {
             return 'Listo';
         }
 
-        const rowNum = selectedData.rowIndex + 1; // 1-indexed for display
-        let statusText = `Row: ${rowNum}`;
+        // rowIndex is 0-based from data rows (row 0 = first data row after headers)
+        // Excel row 1 = headers, so data row 0 = Excel row 2
+        const rowNum = selectedData.rowIndex + 2;
+        let statusText = `<span style="color:rgba(0,0,0,0.5);">Row: ${rowNum}</span>`;
 
         // If control column is configured, append its value(s)
         const controlCol = automationConfig?.controlColumn || '';
@@ -3265,7 +3298,7 @@ const AutoFormViewModule = (function () {
                 if (val) values.push(val);
             }
             if (values.length > 0) {
-                statusText += ', ' + values.join(', ');
+                statusText += '<br><span style="font-weight:700;color:#f97316;">' + values.join(' ') + '</span>';
             }
         }
 
@@ -3434,7 +3467,7 @@ const AutoFormViewModule = (function () {
         const statusEl = document.getElementById(`afv-status-${tabId}`);
         console.log('[ViewMode] statusEl:', statusEl, 'text:', buildStatusText(automationConfig, selectedData));
         if (statusEl) {
-            statusEl.textContent = buildStatusText(automationConfig, selectedData);
+            statusEl.innerHTML = buildStatusText(automationConfig, selectedData);
         }
 
         // If filter does not pass, show filter failed card instead of normal content
