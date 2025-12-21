@@ -1354,61 +1354,43 @@
     outline: none;
 }
 
-/* Base Chip Style */
+/* Base Chip Style - NO PADDING/BORDER for perfect sync */
 .ac-smart-chip {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 4px;
-    padding: 0 4px;
-    margin: 0 1px;
-    font-size: 12px;
-    height: 20px;
-    vertical-align: middle;
-    box-sizing: border-box;
-    line-height: normal;
-    font-weight: 500;
+    display: inline;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 3px;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    white-space: pre;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
 }
 
 .ac-smart-chip svg,
 .ac-chip-icon {
-    width: 10px !important;
-    height: 10px !important;
-    min-width: 10px !important;
-    max-width: 10px !important;
-    margin-left: 8px !important;
-    stroke-width: 2px !important;
-    opacity: 0.8;
-    vertical-align: text-bottom;
+    display: none;
+    /* Hide icon to maintain perfect sync */
 }
 
-/* Valid (Exists): Purple, clean look */
+/* Valid (Exists): Purple */
 .ac-smart-chip.valid {
     background-color: #f3e8ff;
-    /* Purple-100 */
-    border: 1px solid #d8b4fe;
-    /* Purple-300 */
     color: #7e22ce;
-    /* Purple-700 */
 }
 
-/* Invalid (Missing): Pale Orange, warning look */
+/* Invalid (Missing): Pale Orange */
 .ac-smart-chip.invalid {
     background-color: #ffedd5;
-    /* Orange-100 */
-    border: 1px solid #fed7aa;
-    /* Orange-200 */
     color: #c2410c;
-    /* Orange-700 */
 }
 
-/* Valid Concept: Cyan, distinct from columns */
+/* Valid Concept: Cyan */
 .ac-smart-chip.valid-concept {
     background-color: #e0f2fe;
-    /* Cyan-100 */
-    border: 1px solid #7dd3fc;
-    /* Cyan-300 */
     color: #0369a1;
-    /* Cyan-700 */
 }
 
 /* =========================================
