@@ -1441,56 +1441,18 @@ const AutoFormViewModule = (function () {
                         <!-- Perfil de Chrome -->
                         <div class="af-config-section mt-3" id="new-rec-profile-section">
                             <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="new-rec-use-profile" class="af-checkbox-blue">
+                                <input type="checkbox" id="new-rec-use-profile" class="af-checkbox-blue" 
+                                       onchange="AutoFormViewModule.handleProfileCheckbox(this.checked)">
                                 <span class="text-sm font-medium text-gray-700">Usar Perfil de Chrome</span>
                             </label>
-                            <script>
-                                // Initialize profile checkbox handler
-                                document.getElementById('new-rec-use-profile')?.addEventListener('change', async function(e) {
-                                    const profileRow = document.getElementById('new-rec-profile-row');
-                                    if (e.target.checked) {
-                                        // Show loading
-                                        profileRow.style.display = 'flex';
-                                        const profileSelect = document.getElementById('new-rec-profile');
-                                        const spinnerEl = document.getElementById('new-rec-profile-spinner');
-                                        if (spinnerEl) spinnerEl.style.display = 'flex';
-                                        profileSelect.disabled = true;
-                                        profileSelect.innerHTML = '<option value="">Buscando perfiles...</option>';
-                                        if (window.lucide) lucide.createIcons();
-                                        
-                                        try {
-                                            const result = await window.bridgePy.send('list_chrome_profiles', {});
-                                            profileSelect.innerHTML = '';
-                                            if (result.success && result.profiles && result.profiles.length > 0) {
-                                                result.profiles.forEach((profile, i) => {
-                                                    const opt = document.createElement('option');
-                                                    opt.value = profile.name;
-                                                    opt.textContent = profile.display_name || profile.name;
-                                                    if (i === 0) opt.selected = true;
-                                                    profileSelect.appendChild(opt);
-                                                });
-                                                profileSelect.disabled = false;
-                                            } else {
-                                                profileSelect.innerHTML = '<option value="">No se encontraron perfiles</option>';
-                                            }
-                                        } catch (err) {
-                                            profileSelect.innerHTML = '<option value="">Error al cargar</option>';
-                                        } finally {
-                                            if (spinnerEl) spinnerEl.style.display = 'none';
-                                        }
-                                    } else {
-                                        if (profileRow) profileRow.style.display = 'none';
-                                    }
-                                });
-                            </script>
                             <div class="text-xs text-gray-500 ml-6 mt-1 mb-2">
                                 Mantiene sesiones de login entre grabaciones
                             </div>
                             <div class="af-config-row" style="gap: 8px; align-items: center; display: none;" id="new-rec-profile-row">
                                 <select id="new-rec-profile" class="af-config-select" style="flex:1" disabled>
-                                    <option value="">Buscando perfiles...</option>
+                                    <option value="">Selecciona perfil...</option>
                                 </select>
-                                <div id="new-rec-profile-spinner" class="af-browser-spinner" style="display: flex;">
+                                <div id="new-rec-profile-spinner" class="af-browser-spinner" style="display: none;">
                                     <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                 </div>
                             </div>
@@ -1672,22 +1634,17 @@ const AutoFormViewModule = (function () {
     }
 
     /**
-     * Setup profile checkbox event handler
+     * Handle profile checkbox change - Called from HTML onchange
      */
-    function setupProfileCheckbox() {
-        const checkbox = document.getElementById('new-rec-use-profile');
+    async function handleProfileCheckbox(checked) {
         const profileRow = document.getElementById('new-rec-profile-row');
 
-        if (!checkbox) return;
-
-        checkbox.addEventListener('change', async (e) => {
-            if (e.target.checked) {
-                await loadChromeProfiles();
-            } else {
-                // Hide profile row when unchecked
-                if (profileRow) profileRow.style.display = 'none';
-            }
-        });
+        if (checked) {
+            await loadChromeProfiles();
+        } else {
+            // Hide profile row when unchecked
+            if (profileRow) profileRow.style.display = 'none';
+        }
     }
 
     /**
@@ -3404,6 +3361,7 @@ const AutoFormViewModule = (function () {
         startNewRecording,
         stopRecording,
         toggleDebugMode,
+        handleProfileCheckbox,
         // Events
         initRecordingEvents
     };
