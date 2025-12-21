@@ -3136,23 +3136,20 @@ const AutoFormViewModule = (function () {
     // ============================================================
 
     /**
-     * Evaluate if the current row passes the filter condition
-     * @param {object} filterConfig - Filter configuration from automationConfig
+     * Evaluate a single condition against selected data
+     * @param {object} condition - Single condition object {logic, column, operator, value}
      * @param {object} selectedData - Current selected row data
-     * @returns {boolean} - True if filter passes or no filter enabled
+     * @returns {boolean} - True if condition passes
      */
-    function evaluateFilter(filterConfig, selectedData) {
-        if (!filterConfig || !filterConfig.enabled) return true;
-        if (!selectedData || selectedData.rowIndex === undefined) return true;
-
+    function evaluateSingleCondition(condition, selectedData) {
         // Extract column name from {Column} format
-        const colMatch = filterConfig.column?.match(/\{([^{}]+)\}/);
-        if (!colMatch) return true;
+        const colMatch = condition.column?.match(/\{([^{}]+)\}/);
+        if (!colMatch) return true; // No valid column = pass
 
         const columnName = colMatch[1].trim();
         const cellValue = getColumnValue(columnName, selectedData);
-        const filterValue = filterConfig.value || '';
-        const operator = filterConfig.operator || 'equals';
+        const filterValue = condition.value || '';
+        const operator = condition.operator || 'equals';
 
         // Perform comparison
         const cellStr = String(cellValue || '').toLowerCase().trim();
@@ -3170,6 +3167,62 @@ const AutoFormViewModule = (function () {
             default:
                 return true;
         }
+    }
+
+    /**
+     * Evaluate if the current row passes all filter conditions
+     * Supports multiple conditions with AND/OR logic
+     * Precedence: AND has higher priority than OR
+     * Example: A OR B AND C = A OR (B AND C)
+     * 
+     * @param {object} filterConfig - Filter configuration from automationConfig
+     * @param {object} selectedData - Current selected row data
+     * @returns {boolean} - True if filter passes or no filter enabled
+     */
+    function evaluateFilter(filterConfig, selectedData) {
+        if (!filterConfig || !filterConfig.enabled) return true;
+        if (!selectedData || selectedData.rowIndex === undefined) return true;
+
+        // New format: array of conditions
+        if (Array.isArray(filterConfig.conditions) && filterConfig.conditions.length > 0) {
+            const conditions = filterConfig.conditions;
+
+            // Group conditions by OR (AND has higher precedence)
+            // Split into OR-separated groups where each group contains AND-connected conditions
+            const orGroups = [];
+            let currentGroup = [];
+
+            for (const cond of conditions) {
+                if (cond.logic === 'OR' && currentGroup.length > 0) {
+                    // Start new OR group
+                    orGroups.push([...currentGroup]);
+                    currentGroup = [cond];
+                } else {
+                    // Continue current group (IF or AND)
+                    currentGroup.push(cond);
+                }
+            }
+            // Push last group
+            if (currentGroup.length > 0) {
+                orGroups.push(currentGroup);
+            }
+
+            // Evaluate: At least one OR group must pass (all ANDs within must pass)
+            return orGroups.some(group =>
+                group.every(cond => evaluateSingleCondition(cond, selectedData))
+            );
+        }
+
+        // Legacy format: single condition (backwards compatibility)
+        if (filterConfig.column) {
+            return evaluateSingleCondition({
+                column: filterConfig.column,
+                operator: filterConfig.operator,
+                value: filterConfig.value
+            }, selectedData);
+        }
+
+        return true;
     }
 
     /**
@@ -3230,31 +3283,65 @@ const AutoFormViewModule = (function () {
         card.className = 'afv-filter-failed-card';
         card.style.cssText = 'padding:24px; text-align:center; background:#fef3c7; border-radius:8px; border:1px solid #fcd34d; margin:16px;';
 
-        // Get column and value info
-        const colMatch = filterConfig.column?.match(/\{([^{}]+)\}/);
-        const columnName = colMatch ? colMatch[1].trim() : 'Columna';
-        const cellValue = getColumnValue(columnName, selectedData);
-        const filterValue = filterConfig.value || '';
         const operatorLabels = {
             'equals': '=',
             'notEquals': '≠',
             'contains': 'contiene',
             'startsWith': 'empieza con'
         };
-        const opLabel = operatorLabels[filterConfig.operator] || filterConfig.operator;
+
+        // Build conditions summary
+        let conditionsHtml = '';
+        const conditions = Array.isArray(filterConfig.conditions) ? filterConfig.conditions : [];
+
+        if (conditions.length > 0) {
+            conditions.forEach((cond, idx) => {
+                const colMatch = cond.column?.match(/\{([^{}]+)\}/);
+                const columnName = colMatch ? colMatch[1].trim() : 'Columna';
+                const cellValue = getColumnValue(columnName, selectedData);
+                const opLabel = operatorLabels[cond.operator] || cond.operator;
+                const passes = evaluateSingleCondition(cond, selectedData);
+                const statusIcon = passes ? '✓' : '✗';
+                const statusColor = passes ? '#16a34a' : '#dc2626';
+
+                conditionsHtml += `
+                    <div style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:white; border-radius:4px; margin-bottom:4px; font-size:12px;">
+                        <span style="color:${statusColor}; font-weight:600;">${statusIcon}</span>
+                        <span style="color:#6b7280; font-weight:500;">${idx === 0 ? 'IF' : cond.logic}</span>
+                        <span style="font-weight:600;">{${escHtml(columnName)}}</span>
+                        <span style="color:#6b7280;">${opLabel}</span>
+                        <span style="color:#0369a1;">"${escHtml(cond.value)}"</span>
+                        <span style="color:#9ca3af;">|</span>
+                        <span style="color:#6b7280;">Actual: "${escHtml(cellValue)}"</span>
+                    </div>
+                `;
+            });
+        } else if (filterConfig.column) {
+            // Legacy format
+            const colMatch = filterConfig.column?.match(/\{([^{}]+)\}/);
+            const columnName = colMatch ? colMatch[1].trim() : 'Columna';
+            const cellValue = getColumnValue(columnName, selectedData);
+            const opLabel = operatorLabels[filterConfig.operator] || filterConfig.operator;
+
+            conditionsHtml = `
+                <div style="font-size:13px; color:#78350f; background:white; padding:12px; border-radius:6px; display:inline-block;">
+                    <span style="font-weight:600;">{${escHtml(columnName)}}</span> = 
+                    <span style="color:#0369a1;">"${escHtml(cellValue)}"</span>
+                    <span style="margin:0 8px; color:#6b7280;">|</span>
+                    <span style="color:#6b7280;">Esperado: ${opLabel} "${escHtml(filterConfig.value)}"</span>
+                </div>
+            `;
+        }
 
         card.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px;">
                 <i data-lucide="filter-x" style="width:24px; height:24px; color:#d97706;"></i>
                 <span style="font-size:14px; font-weight:600; color:#92400e;">Filtro no cumplido</span>
             </div>
-            <div style="font-size:13px; color:#78350f; background:white; padding:12px; border-radius:6px; display:inline-block;">
-                <span style="font-weight:600;">{${escHtml(columnName)}}</span> = 
-                <span style="color:#0369a1;">"${escHtml(cellValue)}"</span>
-                <span style="margin:0 8px; color:#6b7280;">|</span>
-                <span style="color:#6b7280;">Esperado: ${opLabel} "${escHtml(filterValue)}"</span>
+            <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px;">
+                ${conditionsHtml}
             </div>
-            <div style="font-size:11px; color:#a16207; margin-top:12px;">
+            <div style="font-size:11px; color:#a16207;">
                 Esta fila no será procesada por la automatización
             </div>
         `;

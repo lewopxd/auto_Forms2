@@ -1,13 +1,15 @@
 /**
  * Automation Config Modal Module
  * Configures automation parameters for form filling execution
+ * Supports advanced filter conditions with AND/OR logic
  */
 (function () {
     'use strict';
 
     let currentTabId = null;
     let currentConfig = {};
-    let filterColumnValues = []; // Unique values from filter column
+    let filterColumnValues = {}; // Cache of unique values per column
+    let conditionIdCounter = 0;
 
     function escHtml(str) {
         if (!str) return '';
@@ -17,6 +19,8 @@
     function open(tabId, config = {}) {
         currentTabId = tabId;
         currentConfig = config || {};
+        conditionIdCounter = 0;
+        filterColumnValues = {};
 
         const modalOverlay = getOrCreateModal();
         renderModalContent(modalOverlay, currentConfig);
@@ -43,6 +47,7 @@
         }
         currentTabId = null;
         currentConfig = {};
+        filterColumnValues = {};
     }
 
     function getOrCreateModal() {
@@ -52,7 +57,7 @@
             el.id = 'af-auto-config-overlay';
             el.className = 'af-modal-overlay';
             el.innerHTML = `
-                <div class="af-modal-window" id="af-auto-config-window" style="max-width:520px;">
+                <div class="af-modal-window auto-cfg-modal-resizable" id="af-auto-config-window">
                     <div class="af-window-header">
                         <div class="af-window-title" id="af-auto-cfg-title">
                             <i data-lucide="settings-2" class="w-5 h-5"></i>
@@ -93,6 +98,31 @@
         return el;
     }
 
+    /**
+     * Convert legacy filter config to new conditions array format
+     */
+    function normalizeFilterConfig(filter) {
+        if (!filter) return [];
+
+        // Already in new format
+        if (Array.isArray(filter.conditions)) {
+            return filter.conditions;
+        }
+
+        // Legacy format: single condition
+        if (filter.column || filter.value) {
+            return [{
+                id: 'cond-0',
+                logic: 'IF',
+                column: filter.column || '',
+                operator: filter.operator || 'equals',
+                value: filter.value || ''
+            }];
+        }
+
+        return [];
+    }
+
     function renderModalContent(overlay, config) {
         const body = overlay.querySelector('#af-auto-cfg-body');
         const win = overlay.querySelector('.af-modal-window');
@@ -102,51 +132,37 @@
         win.classList.add('accent-orange');
 
         const filterEnabled = config.filter?.enabled || false;
-        const filterColumn = config.filter?.column || '';
-        const filterOperator = config.filter?.operator || 'equals';
-        const filterValue = config.filter?.value || '';
+        const conditions = normalizeFilterConfig(config.filter);
         const range = config.range || '';
         const controlColumn = config.controlColumn || '';
 
         let html = `
             <!-- SECTION 1: FILTER -->
             <div class="af-config-section">
-                <div class="af-config-sec-title">Filtrar Filas</div>
+                <div class="af-config-sec-title">
+                    Filtrar Filas
+                    <span class="auto-cfg-info-icon" title="Precedencia de operadores: AND tiene mayor prioridad que OR.&#10;Ejemplo: A OR B AND C = A OR (B AND C)">
+                        <i data-lucide="info" style="width:14px;height:14px;"></i>
+                    </span>
+                </div>
                 <div class="af-config-row" style="align-items: flex-start; flex-direction: column; gap: 12px;">
                     <!-- Enable Toggle -->
                     <div class="flex items-center gap-2">
                         <div class="af-config-label" style="min-width:auto;">Activar Filtro</div>
                         <label class="af-switch">
                             <input type="checkbox" id="auto-cfg-filter-enable" ${filterEnabled ? 'checked' : ''}
-                                   onchange="document.getElementById('auto-cfg-filter-area').style.display = this.checked ? 'flex' : 'none'">
+                                   onchange="document.getElementById('auto-cfg-filter-area').style.display = this.checked ? 'block' : 'none'">
                             <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
                         </label>
                     </div>
                     
-                    <!-- Filter Controls -->
-                    <div id="auto-cfg-filter-area" style="display:${filterEnabled ? 'flex' : 'none'}; flex-wrap:wrap; gap:8px; align-items:center; width:100%;">
-                        <span style="font-size:12px; font-weight:600; color:#374151;">Si:</span>
-                        
-                        <!-- Column Input with Backdrop -->
-                        <div class="ac-smart-container" style="flex:1; min-width:120px; max-width:180px;">
-                            <div id="auto-cfg-filter-col-bd" class="ac-smart-backdrop"></div>
-                            <input type="text" id="auto-cfg-filter-col" class="ac-smart-input" 
-                                   value="${escHtml(filterColumn)}" placeholder="{Columna}">
+                    <!-- Filter Conditions Container -->
+                    <div id="auto-cfg-filter-area" style="display:${filterEnabled ? 'block' : 'none'}; width:100%;">
+                        <div class="auto-cfg-conditions-wrapper">
+                            <div class="auto-cfg-conditions-table" id="auto-cfg-conditions-table">
+                                <!-- Condition rows will be inserted here -->
+                            </div>
                         </div>
-                        
-                        <!-- Operator Dropdown -->
-                        <select id="auto-cfg-filter-op" class="af-config-select" style="min-width:100px;">
-                            <option value="equals" ${filterOperator === 'equals' ? 'selected' : ''}>Igual a</option>
-                            <option value="notEquals" ${filterOperator === 'notEquals' ? 'selected' : ''}>No igual a</option>
-                            <option value="contains" ${filterOperator === 'contains' ? 'selected' : ''}>Contiene</option>
-                            <option value="startsWith" ${filterOperator === 'startsWith' ? 'selected' : ''}>Empieza con</option>
-                        </select>
-                        
-                        <!-- Value Dropdown (populated dynamically) -->
-                        <select id="auto-cfg-filter-val" class="af-config-select" style="flex:1; min-width:140px;">
-                            <option value="">-- Seleccionar valor --</option>
-                            ${filterValue ? `<option value="${escHtml(filterValue)}" selected>${escHtml(filterValue)}</option>` : ''}
-                        </select>
                     </div>
                 </div>
             </div>
@@ -191,19 +207,132 @@
         body.innerHTML = html;
         if (window.lucide) lucide.createIcons();
 
-        // Initialize smart inputs with backdrop highlighting
+        // Render initial conditions
+        const tableEl = document.getElementById('auto-cfg-conditions-table');
+        if (conditions.length === 0) {
+            // Add default first condition
+            addConditionRow(tableEl, { logic: 'IF', column: '', operator: 'equals', value: '' }, true);
+        } else {
+            conditions.forEach((cond, idx) => {
+                addConditionRow(tableEl, cond, idx === 0);
+            });
+        }
+
+        // Update button visibility
+        updateConditionButtons();
+
+        // Initialize smart input for control column
         setTimeout(() => {
-            setupSmartInput('auto-cfg-filter-col', 'auto-cfg-filter-col-bd', true);
             setupSmartInput('auto-cfg-control-col', 'auto-cfg-control-bd', false);
         }, 0);
     }
 
     /**
-     * Setup smart input with backdrop for column placeholder highlighting
+     * Add a condition row to the table
      */
-    function setupSmartInput(inputId, backdropId, triggerValueLoad = false) {
-        const input = document.getElementById(inputId);
-        const backdrop = document.getElementById(backdropId);
+    function addConditionRow(tableEl, condition, isFirst = false) {
+        const condId = 'cond-' + (conditionIdCounter++);
+        const row = document.createElement('div');
+        row.className = 'auto-cfg-condition-row';
+        row.dataset.condId = condId;
+        if (isFirst) row.classList.add('first');
+
+        const logicCell = isFirst
+            ? `<div class="auto-cfg-cell logic"><span class="auto-cfg-logic-label">IF</span></div>`
+            : `<div class="auto-cfg-cell logic">
+                <select class="auto-cfg-logic-select" data-field="logic">
+                    <option value="AND" ${condition.logic === 'AND' ? 'selected' : ''}>AND</option>
+                    <option value="OR" ${condition.logic === 'OR' ? 'selected' : ''}>OR</option>
+                </select>
+               </div>`;
+
+        const operatorOptions = `
+            <option value="equals" ${condition.operator === 'equals' ? 'selected' : ''}>Igual a</option>
+            <option value="notEquals" ${condition.operator === 'notEquals' ? 'selected' : ''}>No igual a</option>
+            <option value="contains" ${condition.operator === 'contains' ? 'selected' : ''}>Contiene</option>
+            <option value="startsWith" ${condition.operator === 'startsWith' ? 'selected' : ''}>Empieza con</option>
+        `;
+
+        row.innerHTML = `
+            ${logicCell}
+            <div class="auto-cfg-cell column">
+                <div class="ac-smart-container auto-cfg-col-input">
+                    <div class="ac-smart-backdrop" id="bd-${condId}"></div>
+                    <input type="text" class="ac-smart-input" data-field="column" 
+                           value="${escHtml(condition.column || '')}" placeholder="{Columna}">
+                </div>
+            </div>
+            <div class="auto-cfg-cell operator">
+                <select class="af-config-select auto-cfg-op-select" data-field="operator">
+                    ${operatorOptions}
+                </select>
+            </div>
+            <div class="auto-cfg-cell value">
+                <select class="af-config-select auto-cfg-val-select" data-field="value">
+                    <option value="">-- Valor --</option>
+                    ${condition.value ? `<option value="${escHtml(condition.value)}" selected>${escHtml(condition.value)}</option>` : ''}
+                </select>
+            </div>
+            <div class="auto-cfg-cell actions">
+                <button class="auto-cfg-btn-remove" title="Eliminar condición" ${isFirst ? 'style="visibility:hidden;"' : ''}>
+                    <i data-lucide="minus" style="width:14px;height:14px;"></i>
+                </button>
+                <button class="auto-cfg-btn-add" title="Agregar condición">
+                    <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                </button>
+            </div>
+        `;
+
+        tableEl.appendChild(row);
+
+        // Setup smart input for column
+        const colInput = row.querySelector('input[data-field="column"]');
+        const backdrop = row.querySelector(`#bd-${condId}`);
+        setupRowSmartInput(colInput, backdrop, row);
+
+        // Setup event listeners
+        const removeBtn = row.querySelector('.auto-cfg-btn-remove');
+        const addBtn = row.querySelector('.auto-cfg-btn-add');
+
+        removeBtn.onclick = () => {
+            row.remove();
+            updateConditionButtons();
+        };
+
+        addBtn.onclick = () => {
+            addConditionRow(tableEl, { logic: 'AND', column: '', operator: 'equals', value: '' }, false);
+            updateConditionButtons();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * Update which buttons are visible (only last row shows add button)
+     */
+    function updateConditionButtons() {
+        const rows = document.querySelectorAll('.auto-cfg-condition-row');
+        rows.forEach((row, idx) => {
+            const addBtn = row.querySelector('.auto-cfg-btn-add');
+            const removeBtn = row.querySelector('.auto-cfg-btn-remove');
+
+            // Only show add button on last row
+            if (addBtn) {
+                addBtn.style.display = idx === rows.length - 1 ? 'flex' : 'none';
+            }
+
+            // Hide remove button on first row
+            if (removeBtn) {
+                removeBtn.style.visibility = idx === 0 ? 'hidden' : 'visible';
+            }
+        });
+    }
+
+    /**
+     * Setup smart input with backdrop for a condition row
+     */
+    function setupRowSmartInput(input, backdrop, row) {
         if (!input || !backdrop) return;
 
         const update = () => {
@@ -238,9 +367,9 @@
             backdrop.innerHTML = html;
             if (window.lucide) lucide.createIcons();
 
-            // Load column values for filter dropdown
-            if (triggerValueLoad && foundValidColumn) {
-                loadFilterColumnValues(foundValidColumn);
+            // Load column values for value dropdown
+            if (foundValidColumn) {
+                loadRowFilterValues(foundValidColumn, row);
             }
         };
 
@@ -250,10 +379,10 @@
     }
 
     /**
-     * Load unique values from Excel column into filter value dropdown
+     * Load unique values from Excel column into a row's value dropdown
      */
-    function loadFilterColumnValues(columnName) {
-        const select = document.getElementById('auto-cfg-filter-val');
+    function loadRowFilterValues(columnName, row) {
+        const select = row.querySelector('select[data-field="value"]');
         if (!select) return;
 
         const headers = window.globalHeaders || [];
@@ -265,34 +394,105 @@
             return;
         }
 
-        // Extract unique values
-        const uniqueSet = new Set();
-        for (let i = 0; i < data.length; i++) {
-            const val = data[i][colIndex];
-            if (val !== null && val !== undefined && val !== '') {
-                uniqueSet.add(String(val));
+        // Use cached values if available
+        if (!filterColumnValues[columnName]) {
+            const uniqueSet = new Set();
+            for (let i = 0; i < data.length; i++) {
+                const val = data[i][colIndex];
+                if (val !== null && val !== undefined && val !== '') {
+                    uniqueSet.add(String(val));
+                }
             }
+            filterColumnValues[columnName] = Array.from(uniqueSet).sort();
         }
-        filterColumnValues = Array.from(uniqueSet).sort();
 
-        // Populate dropdown
-        const currentVal = currentConfig.filter?.value || '';
-        select.innerHTML = '<option value="">-- Seleccionar valor --</option>' +
-            filterColumnValues.map(v =>
+        const values = filterColumnValues[columnName];
+        const currentVal = select.value;
+
+        select.innerHTML = '<option value="">-- Valor --</option>' +
+            values.map(v =>
                 `<option value="${escHtml(v)}" ${v === currentVal ? 'selected' : ''}>${escHtml(v)}</option>`
             ).join('');
+    }
+
+    /**
+     * Setup smart input with backdrop for column placeholder highlighting (for control column)
+     */
+    function setupSmartInput(inputId, backdropId, triggerValueLoad = false) {
+        const input = document.getElementById(inputId);
+        const backdrop = document.getElementById(backdropId);
+        if (!input || !backdrop) return;
+
+        const update = () => {
+            const text = input.value;
+            let html = '';
+            let lastIndex = 0;
+            const regex = /\{([^{}]+)\}/g;
+            let match;
+
+            const headers = window.globalHeaders || [];
+
+            while ((match = regex.exec(text)) !== null) {
+                html += escHtml(text.substring(lastIndex, match.index));
+
+                const content = match[1];
+                const cleanVal = content.trim();
+                const isValid = headers.includes(cleanVal);
+
+                const chipClass = isValid ? 'valid' : 'invalid';
+                const iconHtml = isValid
+                    ? ''
+                    : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width:10px;height:10px;margin-left:8px;"></i>';
+
+                html += `<span class="ac-smart-chip ${chipClass}">{${escHtml(content)}}${iconHtml}</span>`;
+                lastIndex = regex.lastIndex;
+            }
+            html += escHtml(text.substring(lastIndex));
+
+            backdrop.innerHTML = html;
+            if (window.lucide) lucide.createIcons();
+        };
+
+        input.oninput = update;
+        input.onscroll = () => { backdrop.scrollLeft = input.scrollLeft; };
+        update();
+    }
+
+    /**
+     * Collect all conditions from the UI
+     */
+    function collectConditions() {
+        const conditions = [];
+        const rows = document.querySelectorAll('.auto-cfg-condition-row');
+
+        rows.forEach((row, idx) => {
+            const isFirst = idx === 0;
+            const logicEl = isFirst ? null : row.querySelector('select[data-field="logic"]');
+            const columnEl = row.querySelector('input[data-field="column"]');
+            const operatorEl = row.querySelector('select[data-field="operator"]');
+            const valueEl = row.querySelector('select[data-field="value"]');
+
+            conditions.push({
+                logic: isFirst ? 'IF' : (logicEl?.value || 'AND'),
+                column: columnEl?.value || '',
+                operator: operatorEl?.value || 'equals',
+                value: valueEl?.value || ''
+            });
+        });
+
+        return conditions;
     }
 
     function handleSave() {
         const getVal = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
         const getCheck = (id, def) => { const el = document.getElementById(id); return el ? el.checked : def; };
 
+        const conditions = collectConditions();
+
         const newConfig = {
             filter: {
                 enabled: getCheck('auto-cfg-filter-enable', false),
-                column: getVal('auto-cfg-filter-col', ''),
-                operator: getVal('auto-cfg-filter-op', 'equals'),
-                value: getVal('auto-cfg-filter-val', '')
+                conditions: conditions
             },
             range: getVal('auto-cfg-range', ''),
             controlColumn: getVal('auto-cfg-control-col', '')

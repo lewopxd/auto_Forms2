@@ -2484,3 +2484,220 @@
     padding: 1px 5px;
     opacity: 0.85;
 }
+
+/* =========================================
+   ADVANCED FILTER CONDITIONS SYSTEM
+   ========================================= */
+
+/* Resizable modal for automation config */
+.auto-cfg-modal-resizable {
+    min-width: 420px;
+    max-width: 90vw;
+    width: auto;
+}
+
+/* Info icon next to section title */
+.auto-cfg-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    color: #9ca3af;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.auto-cfg-info-icon:hover {
+    color: #6b7280;
+}
+
+/* Wrapper for conditions table */
+.auto-cfg-conditions-wrapper {
+    width: 100%;
+    max-height: 180px;
+    overflow-y: auto;
+    overflow-x: visible;
+}
+
+/* Conditions table container */
+.auto-cfg-conditions-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+}
+
+/* Each condition row - auto columns that shrink to content */
+.auto-cfg-condition-row {
+    display: grid;
+    grid-template-columns: auto minmax(80px, 1fr) auto minmax(70px, 120px) auto;
+    gap: 4px;
+    align-items: center;
+    min-height: 34px;
+    padding: 2px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.auto-cfg-condition-row:last-child {
+    border-bottom: none;
+}
+
+/* Cells */
+.auto-cfg-cell {
+    display: flex;
+    align-items: center;
+    padding: 2px 4px;
+    height: 100%;
+}
+
+/* First column - Logic operator (left border only) */
+.auto-cfg-cell.logic {
+    border-left: 2px solid #f97316;
+    background: #fff7ed;
+    justify-content: center;
+    padding: 4px 6px;
+    min-width: 40px;
+}
+
+/* Column cell */
+.auto-cfg-cell.column {
+    min-width: 80px;
+}
+
+/* Operator cell */
+.auto-cfg-cell.operator {
+    min-width: auto;
+}
+
+/* Last input column - Value (right border only) */
+.auto-cfg-cell.value {
+    border-right: 2px solid #f97316;
+    background: #fffbeb;
+    min-width: 70px;
+    max-width: 140px;
+}
+
+/* Actions column - always visible, flex-shrink: 0 */
+.auto-cfg-cell.actions {
+    display: flex;
+    gap: 3px;
+    justify-content: flex-start;
+    padding-left: 6px;
+    background: transparent;
+    border: none;
+    flex-shrink: 0;
+    min-width: 52px;
+}
+
+/* IF label (fixed text) */
+.auto-cfg-logic-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #f97316;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* AND/OR select dropdown */
+.auto-cfg-logic-select {
+    padding: 1px 2px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid #fcd34d;
+    border-radius: 3px;
+    background: #fffbeb;
+    color: #b45309;
+    cursor: pointer;
+    min-width: 36px;
+    text-align: center;
+}
+
+.auto-cfg-logic-select:focus {
+    outline: none;
+    border-color: #f97316;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+}
+
+/* Column input container (smart input) */
+.auto-cfg-col-input {
+    width: 100%;
+    height: 26px;
+    min-width: 70px;
+}
+
+.auto-cfg-col-input .ac-smart-backdrop {
+    padding: 0 6px;
+    font-size: 11px;
+}
+
+.auto-cfg-col-input .ac-smart-input {
+    padding: 0 6px;
+    font-size: 11px;
+}
+
+/* Operator select - compact */
+.auto-cfg-op-select {
+    min-width: auto !important;
+    width: auto !important;
+    font-size: 10px !important;
+    padding: 3px 4px !important;
+    height: 26px !important;
+}
+
+/* Value select - compact */
+.auto-cfg-val-select {
+    width: 100% !important;
+    min-width: auto !important;
+    font-size: 10px !important;
+    padding: 3px 4px !important;
+    height: 26px !important;
+}
+
+/* Add/Remove buttons - compact */
+.auto-cfg-btn-add,
+.auto-cfg-btn-remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.auto-cfg-btn-add {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.auto-cfg-btn-add:hover {
+    background: #bbf7d0;
+    color: #15803d;
+}
+
+.auto-cfg-btn-remove {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.auto-cfg-btn-remove:hover {
+    background: #fecaca;
+    color: #b91c1c;
+}
+
+.auto-cfg-btn-add i,
+.auto-cfg-btn-add svg,
+.auto-cfg-btn-remove i,
+.auto-cfg-btn-remove svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Section title with info icon */
+.af-config-sec-title {
+    display: flex;
+    align-items: center;
+}
