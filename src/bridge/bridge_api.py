@@ -232,12 +232,21 @@ class BridgeAPI:
                 except Exception as e:
                     Logger.error(f"[Bridge] Error in ready callback: {e}")
         
+        # Include Light UI Mode config for JS to apply optimizations
+        try:
+            from core.config import LIGHT_UI_MODE, LIGHT_UI_ZOOM
+        except ImportError:
+            LIGHT_UI_MODE = False
+            LIGHT_UI_ZOOM = 1.0
+        
         return {
             "status": "ready",
             "timestamp": datetime.now().isoformat(),
             "version": "2.0.0",
             "was_refresh": was_refresh,
-            "handlers": self.get_registered_handlers()
+            "handlers": self.get_registered_handlers(),
+            "light_ui_mode": LIGHT_UI_MODE,
+            "light_ui_zoom": LIGHT_UI_ZOOM
         }
     
     def _handle_ping(self, content: Dict[str, Any]) -> Dict[str, Any]:

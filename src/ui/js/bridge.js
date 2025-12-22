@@ -5,6 +5,54 @@
 (function () {
     'use strict';
 
+    // ========== Light UI Mode Config ==========
+    // These will be set from Python during handshake if LIGHT_UI_MODE is active
+    window.LIGHT_UI_MODE = false;
+    window.LIGHT_UI_ZOOM = 1.0;
+
+    // Console interceptor - redirects browser logs to Python console
+    (function setupConsoleInterceptor() {
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+
+        function sendToPython(level, args) {
+            // Only intercept if Light UI Mode is active and bridge is ready
+            if (!window.LIGHT_UI_MODE) return;
+            if (!window.pywebview?.api?.handle_message) return;
+
+            try {
+                const message = Array.from(args).map(arg => {
+                    if (typeof arg === 'object') {
+                        try { return JSON.stringify(arg); } catch { return String(arg); }
+                    }
+                    return String(arg);
+                }).join(' ');
+
+                window.pywebview.api.handle_message(JSON.stringify({
+                    id: `console_${Date.now()}`,
+                    msg: 'console_log',
+                    content: { level, message }
+                }));
+            } catch (e) {
+                // Silently fail - don't want to cause infinite loops
+            }
+        }
+
+        console.log = function (...args) {
+            sendToPython('log', args);
+            originalLog.apply(console, args);
+        };
+        console.warn = function (...args) {
+            sendToPython('warn', args);
+            originalWarn.apply(console, args);
+        };
+        console.error = function (...args) {
+            sendToPython('error', args);
+            originalError.apply(console, args);
+        };
+    })();
+
     // ========== State ==========
     let isReady = false;
     let pendingCalls = [];
@@ -91,6 +139,23 @@
             const result = await send('handshake', { client: 'FormFlow UI' });
             console.log('[Bridge] Handshake complete:', result);
             isReady = true;
+
+            // Apply Light UI Mode settings from Python
+            if (result.light_ui_mode) {
+                window.LIGHT_UI_MODE = true;
+                window.LIGHT_UI_ZOOM = result.light_ui_zoom || 0.95;
+
+                console.log(`[Bridge] Light UI Mode enabled (zoom: ${window.LIGHT_UI_ZOOM})`);
+
+                // Apply CSS zoom
+                if (window.LIGHT_UI_ZOOM !== 1.0) {
+                    document.documentElement.style.zoom = String(window.LIGHT_UI_ZOOM);
+                }
+
+                // Apply reduce-motion class
+                document.body.classList.add('reduce-motion');
+            }
+
             emit('ready');
 
             // Process pending calls

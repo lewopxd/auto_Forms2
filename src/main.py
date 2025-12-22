@@ -196,7 +196,8 @@ def _run_webview_process(log_queue: multiprocessing.Queue,
         send_status("Initializing configuration...")
         
         from core.config import (
-            APP_NAME, APP_VERSION, DEBUG_MODE, UNIQUE_URL, DEFAULT_WINDOW
+            APP_NAME, APP_VERSION, DEBUG_MODE, UNIQUE_URL, DEFAULT_WINDOW,
+            LIGHT_UI_MODE, LIGHT_UI_ZOOM
         )
         from core.logger import Logger
         
@@ -332,9 +333,10 @@ def _run_webview_process(log_queue: multiprocessing.Queue,
         send_progress(0.95)
         
         # --- Start webview ---
-        # debug=False to prevent devtools from opening automatically
-        Logger.info(f"[Child] Starting webview")
-        webview.start(debug=True)
+        # Light UI Mode: disable devtools for better performance
+        use_debug = DEBUG_MODE and not LIGHT_UI_MODE
+        Logger.info(f"[Child] Starting webview (debug={use_debug}, lightUI={LIGHT_UI_MODE})")
+        webview.start(debug=use_debug)
         
         Logger.info("[Child] Application closed")
         

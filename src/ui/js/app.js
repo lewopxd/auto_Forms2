@@ -631,4 +631,44 @@
         init();
     }
 
+    // === DEEP RELOAD FUNCTION ===
+    /**
+     * Deep reload: clears all caches except localStorage, then hard reloads
+     * More powerful than Shift+F5 but preserves user data
+     */
+    window.deepReload = function () {
+        console.log('[App] Deep reload initiated...');
+
+        // Clear sessionStorage
+        try {
+            sessionStorage.clear();
+            console.log('[App] SessionStorage cleared');
+        } catch (e) {
+            console.warn('[App] Failed to clear sessionStorage:', e);
+        }
+
+        // Clear Cache API if available
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => {
+                    caches.delete(name);
+                    console.log('[App] Cache deleted:', name);
+                });
+            }).catch(e => {
+                console.warn('[App] Failed to clear caches:', e);
+            });
+        }
+
+        // Force hard reload after a tiny delay to let cache clearing complete
+        setTimeout(() => {
+            location.reload(true);
+        }, 100);
+    };
+
+    // Setup deep reload button
+    const deepReloadBtn = document.getElementById('deep-reload-btn');
+    if (deepReloadBtn) {
+        deepReloadBtn.addEventListener('click', window.deepReload);
+    }
+
 })();

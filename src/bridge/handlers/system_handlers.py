@@ -48,6 +48,28 @@ def register_system_handlers(bridge):
     """
     bridge.register_handler("get_system_info", handle_get_system_info)
     bridge.register_handler("log_from_ui", handle_log_from_ui)
+    bridge.register_handler("console_log", handle_console_log)
+
+
+def handle_console_log(content: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Handle console.log/warn/error from browser and print to Python console.
+    Used in Light UI Mode when DevTools is disabled.
+    """
+    level = content.get("level", "log").upper()
+    message = content.get("message", "")
+    
+    # Color codes for terminal
+    colors = {
+        "LOG": "\033[94m",    # Blue
+        "WARN": "\033[93m",   # Yellow
+        "ERROR": "\033[91m",  # Red
+    }
+    reset = "\033[0m"
+    color = colors.get(level, "\033[94m")
+    
+    print(f"{color}[BROWSER:{level}]{reset} {message}")
+    return {"success": True}
 
 
 def handle_get_system_info(content: Dict[str, Any]) -> Dict[str, Any]:

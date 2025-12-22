@@ -33,6 +33,10 @@ DEFAULT_WINDOW = {
     "background_color": "#1a1a2e"
 }
 
+# --- Light UI Mode (Performance Optimization) ---
+LIGHT_UI_MODE = True        # Enable for reduced resource consumption
+LIGHT_UI_ZOOM = 0.95        # Render at 95% = less pixels (1.0 = normal)
+
 # --- Logger Settings ---
 LOG_LEVEL = "DEBUG"         # DEBUG, INFO, WARN, ERROR, SILENT
 LOG_COLORS = True           # Enable ANSI colors in terminal

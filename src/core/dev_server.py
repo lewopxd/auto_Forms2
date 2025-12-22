@@ -585,13 +585,16 @@ class DevServer:
     
     def run_webview_loop(self):
         """Main webview loop - creates windows on demand."""
-        from core.config import DEBUG_MODE
+        from core.config import DEBUG_MODE, LIGHT_UI_MODE
         
-        self.console.info("Creating initial browser window...")
+        # Light UI Mode: disable devtools for better performance
+        use_debug = DEBUG_MODE and not LIGHT_UI_MODE
+        
+        self.console.info(f"Creating initial browser window... (debug={use_debug}, lightUI={LIGHT_UI_MODE})")
         self.create_window()
         
         # Start webview - this blocks until ALL windows are closed
-        self.webview_module.start(debug=DEBUG_MODE)
+        self.webview_module.start(debug=use_debug)
         
         # If we get here, user closed the window
         self.console.webview("Webview engine stopped")
@@ -606,7 +609,7 @@ class DevServer:
                 
                 self.console.webview("Restarting browser window...")
                 self.create_window()
-                self.webview_module.start(debug=DEBUG_MODE)
+                self.webview_module.start(debug=use_debug)
                 self.console.webview("Webview engine stopped again")
     
     def start(self):

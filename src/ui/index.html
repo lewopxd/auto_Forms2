@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FormFlow - Form Automation Suite</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (local copy for performance) -->
+    <script src="js/lib/tailwind.min.js"></script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -199,6 +199,11 @@
             <span class="excel-info">Sin Excel</span>
         </div>
         <div class="footer-section flex-grow"></div>
+        <div class="footer-section">
+            <button id="deep-reload-btn" class="footer-btn" title="Recarga profunda (limpia cache, preserva datos)">
+                <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+        </div>
         <div class="footer-section">
             <span class="save-status">FormFlow v1.0</span>
         </div>
