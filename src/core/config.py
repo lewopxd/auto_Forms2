@@ -35,7 +35,7 @@ DEFAULT_WINDOW = {
 
 # --- Light UI Mode (Performance Optimization) ---
 LIGHT_UI_MODE = True        # Enable for reduced resource consumption
-LIGHT_UI_ZOOM = 0.95        # Render at 95% = less pixels (1.0 = normal)
+LIGHT_UI_ZOOM = 1        # Render at 95% = less pixels (1.0 = normal)
 
 # --- Logger Settings ---
 LOG_LEVEL = "DEBUG"         # DEBUG, INFO, WARN, ERROR, SILENT

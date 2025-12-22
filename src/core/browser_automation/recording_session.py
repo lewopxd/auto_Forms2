@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, Callable
 
 from .browser_manager import BrowserManager
 from .browser_settings import BrowserConfig
+from .browser_state import BrowserState
 from . import js_injector
 from .form_analyzer import analyze_form, get_questions_for_ui
 from .form_storage import save_recording
@@ -36,7 +37,10 @@ class RecordingSession:
         on_connected: Callable = None,
         on_browser_closed: Callable = None,
         on_stop_requested: Callable[[bool], None] = None,
-        on_data_update: Callable[[dict], None] = None
+        on_data_update: Callable[[dict], None] = None,
+        # NEW: State callbacks for UI updates
+        on_state_change: Callable[[str, str], None] = None,
+        on_warning: Callable[[str, str], None] = None
     ):
         """
         Initialize recording session.
@@ -71,6 +75,8 @@ class RecordingSession:
         self.on_browser_closed = on_browser_closed
         self.on_stop_requested = on_stop_requested
         self.on_data_update = on_data_update
+        self.on_state_change = on_state_change
+        self.on_warning = on_warning
         
         # State
         self.browser: Optional[BrowserManager] = None
@@ -87,7 +93,9 @@ class RecordingSession:
     
     def start(self) -> Dict[str, Any]:
         """
-        Start the recording session.
+        Start the recording session with state updates.
+        
+        Uses async browser initialization with progress callbacks.
         
         Returns:
             Dict with success status and error message if any
@@ -104,9 +112,19 @@ class RecordingSession:
             # Set callback for external close
             self.browser.set_close_callback(self._handle_browser_closed)
             
-            # Initialize browser
-            if not self.browser.initialize():
-                return {"success": False, "error": "Failed to initialize browser"}
+            # Initialize browser ASYNCHRONOUSLY with state callbacks
+            ready_event = self.browser.initialize_async(
+                on_progress=self._emit_state,
+                on_warning=self._emit_warning
+            )
+            
+            # Wait for browser to be ready (blocking but with background monitoring)
+            ready_event.wait()
+            
+            # Check result
+            result = self.browser.get_launch_result()
+            if not result.get("success"):
+                return {"success": False, "error": result.get("error", "Failed to initialize browser")}
             
             # Navigate: to MS login first if login_mode, otherwise directly to form URL
             if self.login_mode:
@@ -120,8 +138,8 @@ class RecordingSession:
                     self.browser.close()
                     return {"success": False, "error": "Failed to navigate to URL"}
             
-            # Wait a moment for page to stabilize
-            time.sleep(1)
+            # Emit injecting state
+            self._emit_state("injecting", "Inyectando script de grabación...")
             
             # Inject appropriate UI based on login_mode
             if self.login_mode:
@@ -143,8 +161,12 @@ class RecordingSession:
             self.is_active = True
             self.is_connected = True
             
+            # Emit ready state
+            self._emit_state("ready", "¡Listo para grabar!")
+            
             # Only analyze if not in login mode
             if not self.login_mode:
+                self._emit_state("recording", "Analizando formulario...")
                 self._analyze_current_page()
             
             # Notify connected
@@ -156,9 +178,28 @@ class RecordingSession:
             
         except Exception as e:
             print(f"[RecordingSession] Start failed: {e}")
+            self._emit_state("error", str(e))
             if self.browser:
                 self.browser.close()
             return {"success": False, "error": str(e)}
+    
+    def _emit_state(self, state: str, message: str):
+        """Emit state change to callback if registered."""
+        print(f"[RecordingSession] State: {state} - {message}")
+        if self.on_state_change:
+            try:
+                self.on_state_change(state, message)
+            except Exception as e:
+                print(f"[RecordingSession] State callback error: {e}")
+    
+    def _emit_warning(self, warning_type: str, message: str):
+        """Emit warning to callback if registered."""
+        print(f"[RecordingSession] Warning ({warning_type}): {message}")
+        if self.on_warning:
+            try:
+                self.on_warning(warning_type, message)
+            except Exception as e:
+                print(f"[RecordingSession] Warning callback error: {e}")
     
     def stop(self, save: bool = True) -> Dict[str, Any]:
         """
@@ -441,7 +482,9 @@ def start_new_session(
         on_connected=callbacks.get("on_connected"),
         on_browser_closed=callbacks.get("on_browser_closed"),
         on_stop_requested=callbacks.get("on_stop_requested"),
-        on_data_update=callbacks.get("on_data_update")
+        on_data_update=callbacks.get("on_data_update"),
+        on_state_change=callbacks.get("on_state_change"),
+        on_warning=callbacks.get("on_warning")
     )
     
     result = session.start()

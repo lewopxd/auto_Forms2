@@ -344,6 +344,26 @@ class SeleniumHandler:
                         f"window.dispatchEvent(new CustomEvent('recording_stopped', {{detail: {json.dumps(result)}}}));"
                     )
             
+            def on_state_change(state: str, message: str):
+                """Emit browser state change to UI."""
+                print(f"[SeleniumHandler] State change: {state} - {message}")
+                if self.bridge.window:
+                    import json
+                    detail = json.dumps({"state": state, "message": message})
+                    self.bridge.window.evaluate_js(
+                        f"window.dispatchEvent(new CustomEvent('browser_state_change', {{detail: {detail}}}));"
+                    )
+            
+            def on_warning(warning_type: str, message: str):
+                """Emit slow operation warning to UI."""
+                print(f"[SeleniumHandler] Warning: {warning_type} - {message}")
+                if self.bridge.window:
+                    import json
+                    detail = json.dumps({"type": warning_type, "message": message})
+                    self.bridge.window.evaluate_js(
+                        f"window.dispatchEvent(new CustomEvent('browser_warning', {{detail: {detail}}}));"
+                    )
+            
             print(f"[SeleniumHandler] Starting session with login_mode={login_mode}")
             result = start_new_session(
                 filename=filename,
@@ -354,7 +374,9 @@ class SeleniumHandler:
                 callbacks={
                     "on_connected": on_connected,
                     "on_browser_closed": on_browser_closed,
-                    "on_stop_requested": on_stop_requested
+                    "on_stop_requested": on_stop_requested,
+                    "on_state_change": on_state_change,
+                    "on_warning": on_warning
                 }
             )
             

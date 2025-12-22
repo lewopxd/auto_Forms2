@@ -1509,15 +1509,28 @@ const AutoFormViewModule = (function () {
                     </div>
                 </div>
                 
-                <div class="af-window-footer">
-                    <div style="flex:1"></div>
-                    <button class="af-btn-ghost" onclick="AutoFormViewModule.closeNewRecordingModal()">
-                        Cancelar
-                    </button>
-                    <button class="af-btn-primary" onclick="AutoFormViewModule.startNewRecording()" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
-                        <i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i>
-                        Iniciar Grabación
-                    </button>
+                <div class="af-window-footer" style="flex-direction: column; align-items: stretch; gap: 0; padding: 0;">
+                    <!-- STATE INDICATOR (hidden by default, shown when recording starts) -->
+                    <div id="new-rec-state-area" class="px-4 py-2 bg-gray-50 border-b border-gray-200" style="display: none;">
+                        <div class="flex items-center gap-2">
+                            <div id="new-rec-state-dot" class="w-2 h-2 rounded-full bg-gray-400"></div>
+                            <span id="new-rec-state-label" class="text-xs font-medium text-gray-600">Esperando...</span>
+                        </div>
+                        <div id="new-rec-log" class="text-xs text-gray-500 mt-1 font-mono truncate" style="max-height: 36px; overflow: hidden;">
+                            Idle - Esperando inicio
+                        </div>
+                    </div>
+                    
+                    <!-- BUTTONS -->
+                    <div class="flex justify-end gap-3 px-4 py-3">
+                        <button class="af-btn-ghost" id="new-rec-cancel-btn" onclick="AutoFormViewModule.closeNewRecordingModal()">
+                            Cancelar
+                        </button>
+                        <button class="af-btn-primary" id="new-rec-start-btn" onclick="AutoFormViewModule.startNewRecording()" style="display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 150px; justify-content: center;">
+                            <i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i>
+                            Iniciar Grabación
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -1791,13 +1804,50 @@ const AutoFormViewModule = (function () {
 
         console.log('[AutoForm] Starting Recording:', { filename, url, browser, loginMode, useProfile, profileName, config: tempRecordingConfig });
 
-        // Show spinner on button (keep modal open until connected)
+        // IMMEDIATELY change button to "Detener" and show state area
         const originalBtnHtml = startBtn?.innerHTML || '';
         if (startBtn) {
-            startBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Conectando...';
-            startBtn.disabled = true;
+            startBtn.style.background = '#ef4444';  // Red
+            startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4" style="fill: currentColor;"></i> Detener Grabación';
             if (window.lucide) lucide.createIcons();
+
+            // Set onclick to stop immediately
+            startBtn.onclick = async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.showAlert({
+                    icon: 'alert-triangle',
+                    iconColor: 'text-orange-500',
+                    title: '¿Detener Grabación?',
+                    message: 'Se cancelará el proceso de grabación.',
+                    confirmText: 'Detener',
+                    confirmColor: 'bg-red-600 hover:bg-red-700',
+                    cancelText: 'Continuar',
+                    onConfirm: async () => {
+                        try {
+                            await window.bridgePy.send('stop_recording', { save: false, close_browser: true });
+                        } catch (err) {
+                            console.error('Stop failed:', err);
+                        }
+                    }
+                });
+            };
         }
+
+        // Show state area immediately
+        const stateArea = document.getElementById('new-rec-state-area');
+        if (stateArea) stateArea.style.display = 'block';
+
+        // Update state to launching
+        const stateLabel = document.getElementById('new-rec-state-label');
+        const stateDot = document.getElementById('new-rec-state-dot');
+        const stateLog = document.getElementById('new-rec-log');
+        if (stateLabel) stateLabel.textContent = 'Conectando';
+        if (stateDot) {
+            stateDot.classList.remove('bg-gray-400', 'bg-green-500', 'bg-red-500');
+            stateDot.classList.add('bg-blue-500', 'animate-pulse');
+        }
+        if (stateLog) stateLog.textContent = 'Iniciando navegador...';
 
         // If debug mode is enabled, switch to debug view
         if (tempRecordingConfig.debug_mode) {
@@ -1910,27 +1960,52 @@ const AutoFormViewModule = (function () {
                 // The Modal remains the control center.
 
             } else {
-                // Error - restore button
-                throw new Error(result.error || 'Failed to start recording');
+                // Backend said failure - but browser might still be open
+                // Check if state area shows browser_opened (set by state_change event)
+                const stateLabel = document.getElementById('new-rec-state-label');
+                const isBrowserOpen = stateLabel && (
+                    stateLabel.textContent === 'Navegador abierto' ||
+                    stateLabel.textContent.includes('abierto')
+                );
+
+                if (isBrowserOpen) {
+                    // Browser opened but WebDriver didn't connect - NOT a user-visible error
+                    // Just log and keep button in Detener state
+                    console.log('[AutoForm] WebDriver connection issue, but browser is open. Continuing...');
+                } else {
+                    // Real error - browser didn't open
+                    throw new Error(result.error || 'Failed to start recording');
+                }
             }
         } catch (e) {
             console.error('[AutoForm] Error starting recording:', e);
 
-            // Restore button state
-            if (startBtn) {
-                startBtn.innerHTML = originalBtnHtml;
-                startBtn.disabled = false;
-                if (window.lucide) lucide.createIcons();
-            }
+            // Only show error and restore button if browser didn't open
+            const stateLabel = document.getElementById('new-rec-state-label');
+            const isBrowserOpen = stateLabel && stateLabel.textContent.includes('abierto');
 
-            window.showAlert({
-                icon: 'alert-circle',
-                iconColor: 'text-red-500',
-                title: 'Error al Iniciar',
-                message: `No se pudo iniciar la grabación: ${e.message || e}`,
-                confirmText: 'Entendido',
-                confirmColor: 'bg-red-600 hover:bg-red-700'
-            });
+            if (!isBrowserOpen) {
+                // Restore button state only if browser didn't open
+                if (startBtn) {
+                    startBtn.style.background = '#f97316';
+                    startBtn.innerHTML = '<i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i> Iniciar Grabación';
+                    if (window.lucide) lucide.createIcons();
+                }
+
+                // Hide state area
+                const stateArea = document.getElementById('new-rec-state-area');
+                if (stateArea) stateArea.style.display = 'none';
+
+                window.showAlert({
+                    icon: 'alert-circle',
+                    iconColor: 'text-red-500',
+                    title: 'Error al Iniciar',
+                    message: `No se pudo iniciar la grabación: ${e.message || e}`,
+                    confirmText: 'Entendido',
+                    confirmColor: 'bg-red-600 hover:bg-red-700'
+                });
+            }
+            // If browser is open, don't show error - button stays in Detener mode
         }
     }
 
@@ -3629,27 +3704,108 @@ const AutoFormViewModule = (function () {
      * Initialize event listeners for recording system
      */
     function initRecordingEvents() {
+        // ========== BROWSER STATE CHANGE LISTENER ==========
+        window.addEventListener('browser_state_change', (e) => {
+            const { state, message } = e.detail || {};
+            console.log(`[AutoForm] Browser state: ${state} - ${message}`);
+
+            const stateArea = document.getElementById('new-rec-state-area');
+            const stateDot = document.getElementById('new-rec-state-dot');
+            const stateLabel = document.getElementById('new-rec-state-label');
+            const stateLog = document.getElementById('new-rec-log');
+            const startBtn = document.getElementById('new-rec-start-btn');
+
+            // Show state area
+            if (stateArea) stateArea.style.display = 'block';
+
+            // Update label (Spanish)
+            if (stateLabel) {
+                const stateMap = {
+                    'idle': 'Esperando',
+                    'starting_process': 'Iniciando proceso',
+                    'process_detected': 'Abriendo navegador',
+                    'browser_opened': 'Navegador abierto',
+                    'navigating': 'Navegando',
+                    'page_loaded': 'Página cargada',
+                    'injecting': 'Inyectando',
+                    'connected': 'Conectado',
+                    'ready': 'Listo',
+                    'recording': 'Grabando',
+                    'stopping': 'Deteniendo',
+                    'closed': 'Cerrado',
+                    'error': 'Error'
+                };
+                stateLabel.textContent = stateMap[state] || state;
+            }
+
+            // Update dot color
+            if (stateDot) {
+                stateDot.classList.remove('bg-gray-400', 'bg-blue-500', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'animate-pulse');
+                if (state === 'error') stateDot.classList.add('bg-red-500');
+                else if (['connected', 'ready', 'recording'].includes(state)) stateDot.classList.add('bg-green-500');
+                else if (['starting_process', 'process_detected', 'browser_opened', 'navigating', 'injecting'].includes(state)) stateDot.classList.add('bg-blue-500', 'animate-pulse');
+                else stateDot.classList.add('bg-gray-400');
+            }
+
+            // Update log
+            if (stateLog && message) {
+                stateLog.textContent = message;
+                stateLog.style.color = '#6b7280';
+            }
+
+            // Transform button
+            if (startBtn) {
+                if (['connected', 'ready', 'recording'].includes(state)) {
+                    startBtn.style.background = '#ef4444';
+                    startBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4" style="fill: currentColor;"></i> Detener Grabación';
+                    if (window.lucide) lucide.createIcons();
+                } else if (state === 'error' || state === 'closed') {
+                    startBtn.style.background = '#f97316';
+                    startBtn.innerHTML = '<i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i> Iniciar Grabación';
+                    startBtn.disabled = false;
+                    if (window.lucide) lucide.createIcons();
+                }
+            }
+        });
+
+        // ========== BROWSER WARNING LISTENER ==========
+        window.addEventListener('browser_warning', (e) => {
+            const { type, message } = e.detail || {};
+            console.log(`[AutoForm] Browser warning: ${type} - ${message}`);
+
+            const stateDot = document.getElementById('new-rec-state-dot');
+            if (stateDot) {
+                stateDot.classList.remove('bg-gray-400', 'bg-blue-500', 'bg-green-500', 'bg-red-500');
+                stateDot.classList.add('bg-yellow-500', 'animate-pulse');
+            }
+
+            const stateLog = document.getElementById('new-rec-log');
+            if (stateLog && message) {
+                stateLog.textContent = message;
+                stateLog.style.color = '#f59e0b';
+            }
+        });
+
         // Listen for browser closed externally
         window.addEventListener('recording_browser_closed', (e) => {
             console.log('[AutoForm] Browser closed externally event received');
 
-            // Reset Start Modal State
-            const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
+            // Reset state area
+            const stateArea = document.getElementById('new-rec-state-area');
+            if (stateArea) stateArea.style.display = 'none';
+
+            // Reset Start Button
+            const startBtn = document.getElementById('new-rec-start-btn');
             if (startBtn) {
-                // Reset to initial state
                 startBtn.disabled = false;
-                startBtn.style.background = '#f97316'; // Orange
-                startBtn.innerHTML = 'Iniciar Grabación';
-                startBtn.onclick = () => startNewRecording(); // Restore original handler
+                startBtn.style.background = '#f97316';
+                startBtn.innerHTML = '<i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i> Iniciar Grabación';
+                if (window.lucide) lucide.createIcons();
             }
 
             // Re-enable inputs
             const inputs = document.querySelectorAll('#modal-new-recording input, #modal-new-recording select');
             inputs.forEach(el => el.disabled = false);
-
-            // Remove status message
-            const statusEl = document.getElementById('rec-modal-status');
-            if (statusEl) statusEl.remove();
 
             // Close modal
             closeNewRecordingModal();
@@ -3660,22 +3816,23 @@ const AutoFormViewModule = (function () {
             console.log('[AutoForm] Recording stopped event received:', e.detail);
             const detail = e.detail || {};
 
-            // 1. Reset "New Recording" Modal UI (if open)
-            const startBtn = document.querySelector('#modal-new-recording .af-btn-primary');
+            // Reset state area
+            const stateArea = document.getElementById('new-rec-state-area');
+            if (stateArea) stateArea.style.display = 'none';
+
+            // Reset Start Button
+            const startBtn = document.getElementById('new-rec-start-btn');
             if (startBtn) {
                 startBtn.disabled = false;
-                startBtn.style.background = '#f97316'; // Orange
-                startBtn.innerHTML = 'Iniciar Grabación';
-                startBtn.onclick = () => startNewRecording(); // Restore handler
+                startBtn.style.background = '#f97316';
+                startBtn.innerHTML = '<i data-lucide="circle" class="w-4 h-4" style="fill: currentColor;"></i> Iniciar Grabación';
+                if (window.lucide) lucide.createIcons();
             }
 
             const inputs = document.querySelectorAll('#modal-new-recording input, #modal-new-recording select');
             inputs.forEach(el => el.disabled = false);
 
-            const statusEl = document.getElementById('rec-modal-status');
-            if (statusEl) statusEl.remove();
-
-            // 2. Close Modal
+            // Close Modal
             closeNewRecordingModal();
 
             // 3. Handle Saved Recording
