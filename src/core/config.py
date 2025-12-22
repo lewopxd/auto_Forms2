@@ -42,3 +42,9 @@ LOG_LEVEL = "DEBUG"         # DEBUG, INFO, WARN, ERROR, SILENT
 LOG_COLORS = True           # Enable ANSI colors in terminal
 LOG_TO_FILE = False         # Enable file logging
 LOG_FILE_NAME = "autoforms.log"
+
+# --- UI Freeze During Recording ---
+FREEZE_UI_ENABLED = True              # Master switch for UI freeze during recording
+FREEZE_UI_MINIMIZE = True             # Minimize window when recording starts
+FREEZE_UI_HIDE = False                # Hide window completely (more aggressive)
+FREEZE_UI_PAUSE_ANIMATIONS = True     # Pause CSS animations/transitions

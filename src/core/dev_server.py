@@ -422,12 +422,21 @@ class DevServer:
             return "PONG"
         
         elif cmd == "STATUS":
+            # Check if UI is frozen (during recording)
+            frozen_suffix = ""
+            try:
+                from core.ui_freeze import UIFreezeManager
+                if UIFreezeManager.is_frozen():
+                    frozen_suffix = ":FROZEN"
+            except ImportError:
+                pass
+            
             if self._window_open and self.webview_ready:
-                return f"OK:READY:{self.port}"
+                return f"OK:READY:{self.port}{frozen_suffix}"
             elif self._window_open:
-                return f"OK:LOADING:{self.port}"
+                return f"OK:LOADING:{self.port}{frozen_suffix}"
             else:
-                return f"OK:CLOSED:{self.port}"
+                return f"OK:CLOSED:{self.port}{frozen_suffix}"
         
         elif cmd == "RELOAD":
             return self.do_reload()

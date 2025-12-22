@@ -39,6 +39,7 @@ try:
         is_profile_in_use,
         get_profile_info
     )
+    from core.ui_freeze import UIFreezeManager
     SELENIUM_AVAILABLE = True
 except ImportError as e:
     _selenium_import_error = str(e)
@@ -61,6 +62,7 @@ except ImportError as e:
     list_chrome_profiles = None
     is_profile_in_use = None
     get_profile_info = None
+    UIFreezeManager = None
 
 
 class SeleniumHandler:
@@ -330,6 +332,9 @@ class SeleniumHandler:
             
             def on_browser_closed():
                 print("[SeleniumHandler] Browser closed externally, notifying UI")
+                # === UNFREEZE UI ===
+                if UIFreezeManager:
+                    UIFreezeManager.unfreeze()
                 if self.bridge.window:
                     self.bridge.window.evaluate_js(
                         "window.dispatchEvent(new CustomEvent('recording_browser_closed', {detail: {}}));"
@@ -338,6 +343,9 @@ class SeleniumHandler:
             def on_stop_requested(save: bool):
                 print(f"[SeleniumHandler] Stop requested from injected UI, save={save}")
                 result = stop_active_session(save=save)
+                # === UNFREEZE UI ===
+                if UIFreezeManager:
+                    UIFreezeManager.unfreeze()
                 if self.bridge.window:
                     import json
                     self.bridge.window.evaluate_js(
@@ -363,6 +371,10 @@ class SeleniumHandler:
                     self.bridge.window.evaluate_js(
                         f"window.dispatchEvent(new CustomEvent('browser_warning', {{detail: {detail}}}));"
                     )
+            
+            # === FREEZE UI before starting session ===
+            if UIFreezeManager and self.bridge.window:
+                UIFreezeManager.freeze(self.bridge.window, "recording")
             
             print(f"[SeleniumHandler] Starting session with login_mode={login_mode}")
             result = start_new_session(
@@ -412,9 +424,15 @@ class SeleniumHandler:
         try:
             save = content.get("save", True)
             result = stop_active_session(save=save)
+            # === UNFREEZE UI ===
+            if UIFreezeManager:
+                UIFreezeManager.unfreeze()
             return result
         except Exception as e:
             print(f"[SeleniumHandler] Error stopping recording: {e}")
+            # Unfreeze even on error
+            if UIFreezeManager:
+                UIFreezeManager.unfreeze()
             return {"success": False, "error": str(e)}
 
     def handle_get_recording_status(self, content: Dict[str, Any]) -> Dict[str, Any]:
