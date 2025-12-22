@@ -1,0 +1,230 @@
+/**
+ * Export Modal Styles
+ * Styles for the Excel export modal in AutoForms
+ */
+
+/* Modal window sizing */
+.export-modal {
+    width: 520px;
+    max-height: 85vh;
+}
+
+.export-modal .af-window-body {
+    overflow-y: auto;
+    max-height: calc(85vh - 120px);
+    padding: 16px 20px;
+}
+
+/* Source info section */
+.export-source-info {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.export-source-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.export-source-label {
+    color: #6b7280;
+    min-width: 80px;
+}
+
+.export-source-value {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+/* Browse button */
+.export-browse-btn {
+    padding: 8px 12px !important;
+    border: 1px solid #e5e7eb !important;
+}
+
+.export-browse-btn:hover {
+    background: #f3f4f6 !important;
+}
+
+/* Columns container */
+.export-columns-container {
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: #fafafa;
+}
+
+.export-column-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    width: 100%;
+    /* Full width per row */
+}
+
+.export-column-item:hover {
+    border-color: #f97316;
+    background: #fff7ed;
+}
+
+.export-column-item input {
+    accent-color: #f97316;
+}
+
+.export-column-item input:checked+span {
+    color: #ea580c;
+    font-weight: 500;
+}
+
+.export-columns-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.export-col-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background: white;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.export-col-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+/* Header preview */
+.export-preview-headers {
+    margin-top: 12px;
+    padding: 10px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.export-preview-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-right: 4px;
+}
+
+.export-preview-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+    background: #dcfce7;
+    color: #166534;
+    border-radius: 4px;
+    font-family: monospace;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.export-preview-etc {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Footer button - ensure inline layout */
+#export-btn-export {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* Options */
+.export-option-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.export-option-row:hover {
+    color: #f97316;
+}
+
+.export-option-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-left: auto;
+}
+
+/* Progress bar */
+.export-progress-container {
+    height: 32px;
+    background: #f3f4f6;
+    border-top: 1px solid #e5e7eb;
+    position: relative;
+    overflow: hidden;
+}
+
+.export-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316, #fb923c);
+    width: 0%;
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation for progress */
+.export-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent);
+    animation: progressShine 1.5s infinite;
+}
+
+@keyframes progressShine {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}

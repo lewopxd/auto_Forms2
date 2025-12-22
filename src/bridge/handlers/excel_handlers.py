@@ -127,6 +127,10 @@ class ExcelHandler:
         self.bridge.register_handler("excel_reload", self.handle_reload)
         self.bridge.register_handler("excel_get_cache", self.handle_get_cache)
         self.bridge.register_handler("excel_restore_cache", self.handle_restore_cache)
+        # Export handlers
+        self.bridge.register_handler("get_default_export_path", self.handle_get_default_export_path)
+        self.bridge.register_handler("browse_export_folder", self.handle_browse_export_folder)
+        self.bridge.register_handler("export_form_responses", self.handle_export_form_responses)
         
         # Warmup openpyxl in background thread
         threading.Thread(target=self._warmup_openpyxl, daemon=True).start()
@@ -502,6 +506,145 @@ class ExcelHandler:
         except Exception as e:
             Logger.error(f"[Excel] Parse sheet error: {e}")
             return {"error": str(e)}
+
+    def handle_get_default_export_path(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Get default export path (Documents/autoforms_exports/)"""  
+        try:
+            import os
+            # Get My Documents folder
+            if os.name == 'nt':  # Windows
+                documents_path = Path.home() / "Documents"
+            else:  # Linux/Mac
+                documents_path = Path.home() / "Documents"
+            
+            # Default export subfolder
+            export_folder = documents_path / "autoforms_exports"
+            
+            # Return path (don't create yet - only create on actual export)
+            Logger.info(f"[Excel Export] Default path: {export_folder}")
+            return {"success": True, "path": str(export_folder)}
+            
+        except Exception as e:
+            Logger.error(f"[Excel Export] Error getting default path: {e}")
+            return {"success": False, "error": str(e)}
+
+    def handle_browse_export_folder(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Open native folder selection dialog for export destination"""
+        try:
+            windows = webview.windows
+            if not windows:
+                return {"success": False, "error": "No active window"}
+            
+            window = windows[0]
+            result = window.create_file_dialog(
+                webview.FOLDER_DIALOG,
+                allow_multiple=False
+            )
+            
+            if result and len(result) > 0:
+                folder_path = result[0]
+                Logger.info(f"[Excel Export] Selected folder: {folder_path}")
+                return {"success": True, "path": folder_path}
+            
+            return {"success": False, "cancelled": True}
+            
+        except Exception as e:
+            Logger.error(f"[Excel Export] Browse folder error: {e}")
+            return {"success": False, "error": str(e)}
+
+    def handle_export_form_responses(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Export form responses to Excel file.
+        
+        Expected content:
+        - filename: str - Name of output file (with .xlsx)
+        - output_path: str - Directory path for output
+        - headers: List[str] - Column headers
+        - rows: List[List[str]] - Row data
+        """
+        try:
+            import openpyxl
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            
+            filename = content.get("filename", "export.xlsx")
+            output_path = content.get("output_path", "")
+            headers = content.get("headers", [])
+            rows = content.get("rows", [])
+            
+            if not output_path:
+                return {"success": False, "error": "No output path provided"}
+            
+            if not headers:
+                return {"success": False, "error": "No headers provided"}
+            
+            # Create output folder if it doesn't exist
+            output_dir = Path(output_path)
+            if not output_dir.exists():
+                output_dir.mkdir(parents=True, exist_ok=True)
+                Logger.info(f"[Excel Export] Created folder: {output_dir}")
+            
+            # Create workbook
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Respuestas"
+            
+            # Style definitions
+            header_font = Font(bold=True, color="FFFFFF")
+            header_fill = PatternFill(start_color="F97316", end_color="F97316", fill_type="solid")
+            header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            thin_border = Border(
+                left=Side(style='thin', color='E5E7EB'),
+                right=Side(style='thin', color='E5E7EB'),
+                top=Side(style='thin', color='E5E7EB'),
+                bottom=Side(style='thin', color='E5E7EB')
+            )
+            
+            # Write headers
+            for col_idx, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = header_alignment
+                cell.border = thin_border
+            
+            # Write data rows
+            for row_idx, row_data in enumerate(rows, 2):
+                for col_idx, value in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(vertical="center", wrap_text=True)
+            
+            # Auto-adjust column widths (with max limit)
+            for col_idx, header in enumerate(headers, 1):
+                max_length = len(str(header))
+                for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                    for cell in row:
+                        try:
+                            if cell.value:
+                                max_length = max(max_length, min(len(str(cell.value)), 50))
+                        except:
+                            pass
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = adjusted_width
+            
+            # Freeze header row
+            ws.freeze_panes = 'A2'
+            
+            # Build full path
+            full_path = output_dir / filename
+            
+            # Save workbook
+            wb.save(full_path)
+            wb.close()
+            
+            Logger.info(f"[Excel Export] Saved: {full_path} ({len(rows)} rows)")
+            return {"success": True, "path": str(full_path), "rowCount": len(rows)}
+            
+        except Exception as e:
+            Logger.error(f"[Excel Export] Error: {e}")
+            import traceback
+            Logger.debug(traceback.format_exc())
+            return {"success": False, "error": str(e)}
 
 
 # Factory function

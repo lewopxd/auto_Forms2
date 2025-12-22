@@ -171,6 +171,10 @@ const SheetViewModule = (function () {
         // 2. globalExcelData: Raw data
         window.globalExcelData = data.data;
 
+        // 3. globalExcelFilename and globalActiveSheet for export modal
+        window.globalExcelFilename = data.filename;
+        window.globalActiveSheet = data.activeSheet;
+
         // 3. Restore selection from projectData if available
         if (window.projectData?.excel?.selectedRow !== undefined) {
             const row = window.projectData.excel.selectedRow;
