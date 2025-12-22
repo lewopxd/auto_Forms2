@@ -37,6 +37,31 @@ Write-Host "==================================================" -ForegroundColor
 Write-Host "  Git Auto Commit & Push" -ForegroundColor Yellow
 Write-Host "==================================================" -ForegroundColor Yellow
 
+# Mostrar branch activo
+$currentBranch = git branch --show-current 2>&1
+Write-Host ""
+Write-Host "  Branch activo: " -NoNewline -ForegroundColor White
+if ($currentBranch -eq "main") {
+    Write-Host "$currentBranch" -ForegroundColor Green
+} else {
+    Write-Host "$currentBranch" -ForegroundColor Magenta
+}
+
+Write-Host ""
+Write-Host "  Titulo: " -NoNewline -ForegroundColor White
+Write-Host "$SafeTitle" -ForegroundColor Cyan
+
+# Preguntar confirmación
+Write-Host ""
+Write-Host "  Continuar con commit y push? (S/N): " -NoNewline -ForegroundColor Yellow
+$confirmation = Read-Host
+if ($confirmation -notmatch '^[Ss]$') {
+    Write-Host ""
+    Write-Host "  Operacion cancelada por el usuario." -ForegroundColor Red
+    Write-Host ""
+    exit 0
+}
+
 Write-Host ""
 Write-Host "[1/3] Staging all changes..." -ForegroundColor Cyan
 # Suppress CRLF warnings by redirecting stderr to null
