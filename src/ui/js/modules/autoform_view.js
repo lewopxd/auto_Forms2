@@ -3986,6 +3986,79 @@ const AutoFormViewModule = (function () {
         console.log('[AutoForm] Recording event listeners initialized');
     }
 
+    // ============================================================
+    // EXPORT HELPER - Build row data for export using same logic as view mode
+    // ============================================================
+
+    /**
+     * Build resolved data for a single row (for export or automation)
+     * Uses EXACT same resolution logic as renderViewMode tarjetas
+     * @param {string} tabId - Tab identifier
+     * @param {object} rowData - Row data from Excel { HeaderName: Value, rowIndex: n }
+     * @returns {object} - Resolved row data with all questions/values
+     */
+    function buildRowDataForExport(tabId, rowData) {
+        const state = tabs.get(tabId);
+        if (!state || !state.formData) return null;
+
+        const formData = state.formData;
+        const pages = formData.pages || {};
+        const automationConfig = formData.automationConfig || {};
+
+        // Evaluate filter
+        const filterPasses = evaluateFilter(automationConfig.filter, rowData);
+
+        // Build questions array using SAME order as renderViewMode
+        const questions = [];
+        const sortedPages = getSortedPages(pages);
+        let globalIndex = 0;
+
+        sortedPages.forEach(pKey => {
+            const page = pages[pKey];
+            const isPostSubmit = page.isPostSubmitPage || pKey === 'page_postSubmit';
+            if (isPostSubmit) return; // Skip post-submit for export
+
+            // Process questions in correct order
+            getSortedQuestions(page.questions || {}).forEach(qKey => {
+                globalIndex++;
+                const q = page.questions[qKey];
+                const action = q.selenium?.action || 'fill';
+                const isSelect = action === 'select' || q.type === 'choice';
+
+                // Resolve value using SAME function as view mode
+                let resolvedValue = resolveValueWithMappings(q, rowData);
+
+                // Clean unresolved placeholders for export (replace {Col} and [[Concept]] with empty string)
+                if (resolvedValue && typeof resolvedValue === 'string') {
+                    resolvedValue = resolvedValue.replace(/\{[^{}]+\}/g, '');  // Remove unresolved {Column}
+                    resolvedValue = resolvedValue.replace(/\[\[[^\[\]]+\]\]/g, '');  // Remove unresolved [[Concept]]
+                }
+
+                // Extract question number from qKey
+                const qNum = parseInt(qKey.replace(/\D/g, ''), 10) || globalIndex;
+
+                questions.push({
+                    index: globalIndex,
+                    questionNumber: qNum,
+                    pageKey: pKey,
+                    questionKey: qKey,
+                    type: isSelect ? 'select' : 'fill',
+                    text: q.text || '',
+                    originalResponse: q.response || '',
+                    resolvedValue: resolvedValue ?? '',
+                    hasMapping: !!q.config?.mapping?.enabled
+                });
+            });
+        });
+
+        return {
+            rowIndex: rowData.rowIndex,
+            excelData: rowData,
+            filterPasses: filterPasses,
+            questions: questions
+        };
+    }
+
     // Auto-initialize when module loads
     if (typeof document !== 'undefined') {
         if (document.readyState === 'loading') {
@@ -4023,7 +4096,9 @@ const AutoFormViewModule = (function () {
         // Automation Config
         updateAutomationConfig,
         // Events
-        initRecordingEvents
+        initRecordingEvents,
+        // Export Helper
+        buildRowDataForExport
     };
 })();
 

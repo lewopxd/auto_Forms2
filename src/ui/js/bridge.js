@@ -58,7 +58,7 @@
     let pendingCalls = [];
     let messageId = 0;
     const pendingResponses = new Map();
-    const TIMEOUT_MS = 30000;
+    const TIMEOUT_MS = 300000; // 5 minutes for long operations like export
 
     // Event listeners
     const listeners = {};

@@ -513,14 +513,30 @@
                 });
             }
         } catch (e) {
+            // Improved error logging
             console.error('[Export] Error:', e);
+            if (e && e.stack) console.error('[Export] Stack:', e.stack);
+
             hideProgress();
             exportInProgress = false;
+
+            // Build error message from various sources
+            let errorMsg = 'Error desconocido';
+            if (e?.message) {
+                errorMsg = e.message;
+            } else if (typeof e === 'string') {
+                errorMsg = e;
+            } else if (e?.error) {
+                errorMsg = e.error;
+            } else if (e) {
+                errorMsg = JSON.stringify(e);
+            }
+
             window.showAlert({
                 icon: 'x-circle',
                 iconColor: 'text-red-500',
                 title: 'Error',
-                message: 'Error durante la exportación: ' + e.message,
+                message: 'Error durante la exportación: ' + errorMsg,
                 confirmText: 'Cerrar',
                 confirmColor: 'bg-red-600 hover:bg-red-700'
             });
@@ -528,7 +544,8 @@
     }
 
     /**
-     * Build export data by resolving placeholders for each row
+     * Build export data using AutoFormViewModule.buildRowDataForExport()
+     * This guarantees exported data matches EXACTLY what is shown in tarjetas
      */
     async function buildExportData(options) {
         const {
@@ -541,9 +558,17 @@
 
         const headers = window.globalHeaders || [];
         const excelData = window.globalExcelData || [];
-        const questions = getQuestionsList();
 
-        // Build output headers
+        // Get first resolved row to determine question order (same order as tarjetas)
+        // We need to build headers from the first row's questions
+        const firstRowData = buildSelectedDataFromRow(headers, excelData[0] || [], 0);
+        const sampleResolvedRow = window.AutoFormViewModule?.buildRowDataForExport?.(currentTabId, firstRowData);
+
+        if (!sampleResolvedRow || !sampleResolvedRow.questions) {
+            throw new Error('No se pudo obtener estructura de preguntas. Verifica que la grabación esté cargada.');
+        }
+
+        // Build output headers using question order from resolved data
         const outputHeaders = [];
 
         // 1. Selected columns from source Excel
@@ -551,8 +576,8 @@
             outputHeaders.push(col.name);
         });
 
-        // 2. Question headers
-        questions.forEach(q => {
+        // 2. Question headers (using SAME order as tarjetas)
+        sampleResolvedRow.questions.forEach(q => {
             let header = '';
             switch (headerFormat) {
                 case 'number':
@@ -589,32 +614,24 @@
 
         // Build output rows
         const outputRows = [];
-        const filterConfig = automationConfig.filter;
 
         for (let idx = 0; idx < rowsToProcess.length; idx++) {
             const rowIndex = rowsToProcess[idx];
-            const rowData = excelData[rowIndex];
-            if (!rowData) continue;
+            const rawRowData = excelData[rowIndex];
+            if (!rawRowData) continue;
 
             // Build selectedData object for this row
-            const selectedData = {};
-            headers.forEach((h, colIdx) => {
-                selectedData[h] = rowData[colIdx] ?? '';
-            });
-            selectedData.rowIndex = rowIndex;
-            selectedData.rowData = rowData;
+            const selectedData = buildSelectedDataFromRow(headers, rawRowData, rowIndex);
 
-            // Evaluate filter if using automation
-            let filterPasses = true;
-            let filterStatusText = '';
+            // Use AutoFormViewModule to resolve values (SAME logic as tarjetas!)
+            const resolvedRow = window.AutoFormViewModule?.buildRowDataForExport?.(currentTabId, selectedData);
 
-            if (useAutomation && filterConfig?.enabled) {
-                filterPasses = evaluateFilterForExport(filterConfig, selectedData);
-                filterStatusText = buildFilterStatusText(filterConfig, selectedData);
-            }
+            if (!resolvedRow) continue;
 
             // Skip if filter doesn't pass and we're using automation
-            if (useAutomation && filterConfig?.enabled && !filterPasses) {
+            if (useAutomation && automationConfig.filter?.enabled && !resolvedRow.filterPasses) {
+                // Update progress even when skipping
+                updateProgress(idx + 1, rowsToProcess.length);
                 continue;
             }
 
@@ -623,18 +640,17 @@
 
             // 1. Selected columns from source
             selectedColumns.forEach(col => {
-                outputRow.push(rowData[col.index] ?? '');
+                outputRow.push(rawRowData[col.index] ?? '');
             });
 
-            // 2. Resolved question answers
-            questions.forEach(q => {
-                const resolvedValue = resolveValueForExport(q.question, selectedData);
-                outputRow.push(resolvedValue);
+            // 2. Resolved question answers (from the resolved row - SAME as tarjetas!)
+            resolvedRow.questions.forEach(q => {
+                outputRow.push(q.resolvedValue ?? '');
             });
 
             // 3. Filter status (if enabled)
             if (includeFilterStatus) {
-                outputRow.push(filterStatusText || 'N/A');
+                outputRow.push(resolvedRow.filterPasses ? 'PASS' : 'FAIL');
             }
 
             outputRows.push(outputRow);
@@ -652,6 +668,19 @@
             headers: outputHeaders,
             rows: outputRows
         };
+    }
+
+    /**
+     * Helper: Build selectedData object from raw row array
+     */
+    function buildSelectedDataFromRow(headers, rawRowData, rowIndex) {
+        const selectedData = {};
+        headers.forEach((h, colIdx) => {
+            selectedData[h] = rawRowData[colIdx] ?? '';
+        });
+        selectedData.rowIndex = rowIndex;
+        selectedData.rowData = rawRowData;
+        return selectedData;
     }
 
     /**
@@ -688,154 +717,6 @@
         });
 
         return Array.from(result).sort((a, b) => a - b);
-    }
-
-    /**
-     * Evaluate filter conditions for export (copy of logic from autoform_view)
-     */
-    function evaluateFilterForExport(filterConfig, selectedData) {
-        if (!filterConfig || !filterConfig.enabled) return true;
-        if (!selectedData) return true;
-
-        const conditions = filterConfig.conditions;
-        if (!Array.isArray(conditions) || conditions.length === 0) return true;
-
-        // Group by OR logic
-        const orGroups = [];
-        let currentGroup = [];
-
-        for (const cond of conditions) {
-            if (cond.logic === 'OR' && currentGroup.length > 0) {
-                orGroups.push([...currentGroup]);
-                currentGroup = [cond];
-            } else {
-                currentGroup.push(cond);
-            }
-        }
-        if (currentGroup.length > 0) {
-            orGroups.push(currentGroup);
-        }
-
-        return orGroups.some(group =>
-            group.every(cond => evaluateSingleCondition(cond, selectedData))
-        );
-    }
-
-    function evaluateSingleCondition(condition, selectedData) {
-        const colMatch = condition.column?.match(/\{([^{}]+)\}/);
-        if (!colMatch) return true;
-
-        const columnName = colMatch[1].trim();
-        const cellValue = selectedData[columnName] ?? '';
-        const filterValue = condition.value || '';
-        const operator = condition.operator || 'equals';
-
-        const cellStr = String(cellValue).toLowerCase().trim();
-        const filterStr = String(filterValue).toLowerCase().trim();
-
-        switch (operator) {
-            case 'equals': return cellStr === filterStr;
-            case 'notEquals': return cellStr !== filterStr;
-            case 'contains': return cellStr.includes(filterStr);
-            case 'startsWith': return cellStr.startsWith(filterStr);
-            default: return true;
-        }
-    }
-
-    /**
-     * Build filter status text for column
-     */
-    function buildFilterStatusText(filterConfig, selectedData) {
-        if (!filterConfig?.conditions) return '';
-
-        const parts = [];
-        filterConfig.conditions.forEach(cond => {
-            const colMatch = cond.column?.match(/\{([^{}]+)\}/);
-            if (!colMatch) return;
-
-            const colName = colMatch[1].trim();
-            const value = selectedData[colName] ?? '';
-            const prefix = cond.logic !== 'IF' ? ` ${cond.logic} ` : '';
-            parts.push(`${prefix}${colName}=${value}`);
-        });
-
-        return parts.join('').trim();
-    }
-
-    /**
-     * Resolve value for a question (simplified version for export)
-     */
-    function resolveValueForExport(question, selectedData) {
-        // Check if mapping is enabled
-        if (question.config?.mapping?.enabled) {
-            const mapping = question.config.mapping;
-            const placeholder = mapping.placeholder || '';
-            const map = mapping.map || {};
-
-            // Get column value
-            const colMatch = placeholder.match(/\{([^{}]+)\}/);
-            if (colMatch) {
-                const colName = colMatch[1].trim();
-                const colValue = selectedData[colName] ?? '';
-                const colStr = String(colValue).trim();
-
-                // Look up in mapping
-                let mappedText = map[colStr] ?? null;
-                if (mappedText === null) {
-                    const foundKey = Object.keys(map).find(k => String(k).trim() === colStr);
-                    if (foundKey) mappedText = map[foundKey];
-                }
-
-                if (mappedText !== null) {
-                    return resolveAllPlaceholdersForExport(mappedText, selectedData);
-                }
-
-                // Use default value if no match
-                if (mapping.defaultValue) {
-                    return resolveAllPlaceholdersForExport(mapping.defaultValue, selectedData);
-                }
-            }
-        }
-
-        // Standard: resolve placeholders in response
-        return resolveAllPlaceholdersForExport(question.response || '', selectedData);
-    }
-
-    /**
-     * Resolve all placeholders for export
-     */
-    function resolveAllPlaceholdersForExport(text, selectedData) {
-        if (!text) return '';
-        let result = text;
-
-        // Resolve [[Concept]] placeholders
-        result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, name) => {
-            const content = getConceptContentForExport(name.trim());
-            return content !== null ? content : match;
-        });
-
-        // Resolve {Column} placeholders
-        result = result.replace(/\{([^{}]+)\}/g, (match, col) => {
-            const val = selectedData?.[col.trim()];
-            return val !== undefined && val !== '' ? val : '';
-        });
-
-        return result;
-    }
-
-    /**
-     * Get concept content for export
-     */
-    function getConceptContentForExport(conceptName) {
-        const conceptsTab = window.projectData?.tabs?.find(t => t.type === 'concepts');
-        if (!conceptsTab?.content?.tabs) return null;
-
-        const tab = conceptsTab.content.tabs.find(t =>
-            t.title?.toLowerCase() === conceptName.toLowerCase()
-        );
-        if (!tab) return null;
-
-        return tab.content || '';
     }
 
     // ========================================
