@@ -1,9 +1,8 @@
 """
-Selenium Handlers for Bridge API
-Handles browser detection, form record management, and recording sessions.
+Browser Automation Handlers for Bridge API.
 
-NOTE: Selenium imports are OPTIONAL. If selenium is not installed,
-the handlers will return graceful error messages instead of crashing.
+Delegates to either Selenium or Playwright based on BROWSER_ENGINE config.
+Handles browser detection, form record management, and recording sessions.
 """
 import sys
 import os
@@ -12,6 +11,9 @@ from typing import Dict, Any
 # Ensure core is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Load config to check which engine to use
+from core.config import BROWSER_ENGINE
+
 # === OPTIONAL SELENIUM IMPORTS ===
 # These are wrapped in try/except so the server doesn't crash if selenium isn't installed
 SELENIUM_AVAILABLE = False
@@ -19,15 +21,15 @@ _selenium_import_error = None
 
 try:
     from core.browser_automation.browser_detector import BrowserDetector
-    from core.browser_automation.browser_settings import BrowserConfig, get_available_profiles
-    from core.browser_automation.form_storage import (
+    from core.browser_automation.S3lenium.browser_settings import BrowserConfig, get_available_profiles
+    from core.browser_automation.S3lenium.form_storage import (
         get_all_forms, 
         load_form_data_from_path, 
         delete_record,
         rename_record,
         import_record
     )
-    from core.browser_automation.recording_session import (
+    from core.browser_automation.S3lenium.recording_session import (
         start_new_session,
         stop_active_session,
         get_active_session
@@ -64,20 +66,30 @@ except ImportError as e:
 
 
 class SeleniumHandler:
-    """Handles Selenium-related bridge messages."""
+    """Handles browser automation bridge messages. Delegates to Selenium or Playwright."""
     
     def __init__(self, bridge):
         self.bridge = bridge
         self.detector = None
+        self.playwright_handler = None
         
-        # Only create detector if selenium is available
+        print(f"[SeleniumHandler] BROWSER_ENGINE = {BROWSER_ENGINE}")
+        
+        # Check if we should delegate to Playwright
+        if BROWSER_ENGINE == "playwright":
+            try:
+                from bridge.handlers.playwright_handlers import PlaywrightHandler
+                self.playwright_handler = PlaywrightHandler(bridge)
+                print("[SeleniumHandler] Delegating to Playwright handler")
+            except Exception as e:
+                print(f"[SeleniumHandler] ERROR loading Playwright handler: {e}")
+        
+        # Initialize Selenium detector if available (even if using Playwright for other things)
         if SELENIUM_AVAILABLE and BrowserDetector:
             self.detector = BrowserDetector()
-            print("[SeleniumHandler] Registering handlers (Selenium AVAILABLE)")
-        else:
-            print(f"[SeleniumHandler] Registering handlers (Selenium NOT available: {_selenium_import_error})")
+            print("[SeleniumHandler] Selenium detector available")
         
-        # Register handlers - they will return errors if selenium not available
+        # Register handlers - they will delegate or return errors
         bridge.register_handler("detect_browsers", self.handle_detect_browsers)
         bridge.register_handler("list_form_records", self.handle_list_records)
         bridge.register_handler("load_form_record", self.handle_load_record)
@@ -95,7 +107,7 @@ class SeleniumHandler:
         bridge.register_handler("list_chrome_profiles", self.handle_list_chrome_profiles)
         bridge.register_handler("check_profile_in_use", self.handle_check_profile_in_use)
         
-        print("[SeleniumHandler] Handlers registered: browsers, records, recording, profiles")
+        print(f"[SeleniumHandler] Handlers registered (Engine: {BROWSER_ENGINE})")
 
     
     def _check_selenium(self) -> Dict[str, Any] | None:
@@ -109,16 +121,20 @@ class SeleniumHandler:
         return None
     
     def handle_detect_browsers(self, content: Dict[str, Any]) -> Dict[str, Any]:
-        """Detect installed browsers."""
-        print("[SeleniumHandler] handle_detect_browsers called")
+        """Detect installed browsers. Delegates to Playwright if configured."""
+        print(f"[SeleniumHandler] handle_detect_browsers called (Engine: {BROWSER_ENGINE})")
         
-        # Check selenium availability
+        # Delegate to Playwright if configured
+        if BROWSER_ENGINE == "playwright" and self.playwright_handler:
+            return self.playwright_handler.handle_detect_browsers(content)
+        
+        # Otherwise use Selenium detector
         if not self.detector:
             return {"success": False, "error": "Browser detection not available", "browsers": []}
         
         try:
             browsers = self.detector.get_dropdown_choices()
-            print(f"[SeleniumHandler] Detected {len(browsers)} browsers")
+            print(f"[SeleniumHandler] Detected {len(browsers)} Selenium browsers")
             return {"success": True, "browsers": browsers}
         except Exception as e:
             print(f"[SeleniumHandler] Error detecting browsers: {e}")

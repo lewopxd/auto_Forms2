@@ -124,7 +124,9 @@ class BrowserDetector:
             return None
         
         # Get version silently from file properties
-        version = self._get_version_from_exe(path)
+        # DISABLED for performance - version fetching via PowerShell is slow
+        # version = self._get_version_from_exe(path)
+        version = None
         
         info = BrowserInfo(
             name=browser_name,

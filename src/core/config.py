@@ -23,6 +23,9 @@ DEBUG_MODE = True           # Enable DevTools in webview
 UNIQUE_URL = True           # Add UUID to URL to prevent cache
 PERSISTENT_WEBVIEW_DEV = True  # Enable for fast dev - requires setuptools installed
 
+# --- Browser Automation Engine ---
+BROWSER_ENGINE = "playwright"  # Options: "selenium" | "playwright"
+
 # --- Window Defaults ---
 DEFAULT_WINDOW = {
     "width": 1200,

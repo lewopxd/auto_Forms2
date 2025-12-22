@@ -1,0 +1,34 @@
+{
+    "_comment": "Navegadores compatibles con Playwright - Claves deben coincidir EXACTAMENTE con browsers_config.json",
+    "_version": "1.0.0",
+    "builtin": {
+        "chromium": {
+            "display_name": "Chromium (Playwright Native)",
+            "pw_browser_type": "chromium",
+            "requires_install": true,
+            "priority": 1
+        }
+    },
+    "channels": {
+        "chrome": {
+            "pw_channel": "chrome",
+            "pw_browser_type": "chromium",
+            "priority": 10
+        },
+        "edge": {
+            "pw_channel": "msedge",
+            "pw_browser_type": "chromium",
+            "priority": 20
+        },
+        "brave": {
+            "pw_channel": "chrome",
+            "pw_browser_type": "chromium",
+            "priority": 30
+        },
+        "ungoogled_chromium": {
+            "pw_channel": "chrome",
+            "pw_browser_type": "chromium",
+            "priority": 40
+        }
+    }
+}
