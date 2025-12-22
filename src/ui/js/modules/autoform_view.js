@@ -2871,6 +2871,73 @@ const AutoFormViewModule = (function () {
     // VIEW MODE - Complete Redesign with Flow Timeline
     // ============================================================
 
+    // Placeholder normalization configuration
+    // [0] = normalize spaces (collapse multiple to single)
+    // [1] = normalize case (case-insensitive)
+    // [2] = normalize accents (remove tildes)
+    const NORMALIZE_PLACEHOLDERS = [true, true, true];
+
+    /**
+     * Remove accents/tildes from a string
+     */
+    function removeAccents(str) {
+        return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    /**
+     * Find value in data object with progressive normalization
+     * Order: exact match -> normalize spaces -> normalize case -> normalize accents
+     * @param {string} key - The key to search for
+     * @param {object} data - The data object to search in
+     * @returns {any} The found value or undefined
+     */
+    function findNormalizedValue(key, data) {
+        if (!data || !key) return undefined;
+        const trimmedKey = key.trim();
+
+        // Step 1: Exact match (always try first)
+        if (data[trimmedKey] !== undefined) {
+            return data[trimmedKey];
+        }
+
+        const dataKeys = Object.keys(data);
+
+        // Step 2: Normalize spaces (collapse multiple spaces to single)
+        if (NORMALIZE_PLACEHOLDERS[0]) {
+            const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
+            const keyNormSpaces = normalizeSpaces(trimmedKey);
+            for (const k of dataKeys) {
+                if (normalizeSpaces(k) === keyNormSpaces) {
+                    return data[k];
+                }
+            }
+        }
+
+        // Step 3: Normalize case (case-insensitive)
+        if (NORMALIZE_PLACEHOLDERS[1]) {
+            const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
+            const keyLower = normalizeSpaces(trimmedKey).toLowerCase();
+            for (const k of dataKeys) {
+                if (normalizeSpaces(k).toLowerCase() === keyLower) {
+                    return data[k];
+                }
+            }
+        }
+
+        // Step 4: Normalize accents (remove tildes)
+        if (NORMALIZE_PLACEHOLDERS[2]) {
+            const normalizeSpaces = (s) => s.replace(/\s+/g, ' ').trim();
+            const keyNoAccents = removeAccents(normalizeSpaces(trimmedKey).toLowerCase());
+            for (const k of dataKeys) {
+                if (removeAccents(normalizeSpaces(k).toLowerCase()) === keyNoAccents) {
+                    return data[k];
+                }
+            }
+        }
+
+        return undefined;
+    }
+
     /**
      * Get concept content by title (from template_view.js logic)
      */
@@ -2901,11 +2968,8 @@ const AutoFormViewModule = (function () {
         console.log(`[DEBUG getConceptContent] ✅ FOUND! Tab: "${tab.title}", Content length: ${tab.content?.length}`);
         // Process column placeholders in concept content
         return tab.content.replace(/\{([^{}]+)\}/g, (match, key) => {
-            const trimmedKey = key.trim();
-            if (window.globalSelectedData && window.globalSelectedData[trimmedKey] !== undefined) {
-                return window.globalSelectedData[trimmedKey];
-            }
-            return match;
+            const val = findNormalizedValue(key, window.globalSelectedData);
+            return val !== undefined ? val : match;
         });
     }
 
@@ -2925,7 +2989,7 @@ const AutoFormViewModule = (function () {
         });
         // Then resolve {Column} placeholders
         result = result.replace(/\{([^{}]+)\}/g, (match, col) => {
-            const val = selectedData?.[col.trim()] ?? selectedData?.[col.trim().toLowerCase()];
+            const val = findNormalizedValue(col, selectedData);
             return val !== undefined && val !== '' ? val : match;
         });
         console.log(`[DEBUG resolveAllPlaceholders] Final result: "${result.substring(0, 100)}..."`);
@@ -2964,7 +3028,7 @@ const AutoFormViewModule = (function () {
                     // No row selected - show indigo chip with placeholder name
                     result += `<span class="afv-chip pending">{${escHtml(colName)}}</span>`;
                 } else {
-                    const val = selectedData?.[colName] ?? selectedData?.[colName.toLowerCase()];
+                    const val = findNormalizedValue(colName, selectedData);
                     if (val !== undefined && val !== '') {
                         // Resolved - show value in blue chip
                         result += `<span class="afv-chip column">${escHtml(val)}</span>`;
