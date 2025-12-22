@@ -372,9 +372,12 @@ class SeleniumHandler:
                         f"window.dispatchEvent(new CustomEvent('browser_warning', {{detail: {detail}}}));"
                     )
             
-            # === FREEZE UI before starting session ===
+            # === FREEZE UI with 1 second delay (so user sees "Conectando" first) ===
             if UIFreezeManager and self.bridge.window:
-                UIFreezeManager.freeze(self.bridge.window, "recording")
+                import threading
+                def delayed_freeze():
+                    UIFreezeManager.freeze(self.bridge.window, "recording")
+                threading.Timer(1.0, delayed_freeze).start()
             
             print(f"[SeleniumHandler] Starting session with login_mode={login_mode}")
             result = start_new_session(
