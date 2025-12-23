@@ -211,10 +211,60 @@ const VariablesModule = (function () {
 
         // Apply transformations in order
         for (const transform of variable.transforms || []) {
-            value = applyTransform(String(value), transform);
+            if (transform.type === 'mapping') {
+                // Mapping transform - lookup value in map using the source column value
+                // The source column value is already in 'value' from the source parsing above
+                const mapValue = String(value ?? '').trim();
+                const map = transform.config?.map || {};
+
+                // Find mapped value (case-insensitive)
+                let mappedValue = map[mapValue];
+                if (mappedValue === undefined) {
+                    const foundKey = Object.keys(map).find(k => k.toLowerCase() === mapValue.toLowerCase());
+                    mappedValue = foundKey ? map[foundKey] : null;
+                }
+
+                if (mappedValue) {
+                    // Resolve placeholders in mapped value
+                    value = resolvePlaceholdersInText(mappedValue, columnData);
+                } else if (transform.config?.defaultValue) {
+                    value = resolvePlaceholdersInText(transform.config.defaultValue, columnData);
+                }
+                // If no match and no default, keep original value
+            } else {
+                value = applyTransform(String(value), transform);
+            }
         }
 
         return value;
+    }
+
+    /**
+     * Resolve placeholders in text (for mapping values)
+     */
+    function resolvePlaceholdersInText(text, columnData) {
+        if (!text) return text;
+
+        let result = text;
+
+        // Resolve {$Variable}
+        result = result.replace(/\{\$([^{}]+)\}/g, (match, varName) => {
+            const resolved = resolveVariable(varName.trim(), columnData);
+            return resolved !== null ? resolved : match;
+        });
+
+        // Resolve {Column}
+        result = result.replace(/\{([^{}$]+)\}/g, (match, colName) => {
+            const value = findNormalizedValue(colName.trim(), columnData);
+            return value !== undefined ? String(value) : match;
+        });
+
+        // Resolve [[Concept]] - delegate to PlaceholderEngine if available
+        if (window.PlaceholderEngine?.resolveForExecution) {
+            result = window.PlaceholderEngine.resolveForExecution(result, columnData);
+        }
+
+        return result;
     }
 
     /**
@@ -242,6 +292,12 @@ const VariablesModule = (function () {
 
             case 'titlecase':
                 return TextTransformer.titlecase(value);
+
+            case 'mapping':
+                // For mapping, we need columnData passed in - but applyTransform signature doesn't have it
+                // So mapping is handled specially in resolveVariable
+                // Here we just return the value as-is (mapping is processed at resolution time)
+                return value;
 
             default:
                 return value;
@@ -476,6 +532,8 @@ const VariablesModule = (function () {
                     </select>
                 </div>
             `;
+        } else if (transform.type === 'mapping') {
+            configHtml = getMappingConfigHtml(variable, varIdx, transform, transformIdx);
         }
 
         return `
@@ -547,6 +605,178 @@ const VariablesModule = (function () {
     }
 
     /**
+     * Helper: Generate mapping config HTML
+     */
+    function getMappingConfigHtml(variable, varIdx, transform, transformIdx) {
+        const sourceCol = variable.source || '';
+        const mapEntries = transform.config?.map || {};
+        const defaultVal = transform.config?.defaultValue || '';
+        const mapKeys = Object.keys(mapEntries);
+        const colMatch = sourceCol.match(/^\{([^{}]+)\}$/);
+
+        if (!colMatch) {
+            return `<div style="font-size: 10px; color: #ef4444; padding: 4px;">
+                <i data-lucide="alert-triangle" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>
+                El Valor Origen debe ser {Columna}
+            </div>`;
+        }
+
+        if (mapKeys.length === 0) {
+            return `<div style="font-size: 10px; color: #6b7280; padding: 4px;">
+                <i data-lucide="loader-2" class="animate-spin" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>
+                Generando mapeo para <strong>${escHtml(colMatch[1])}</strong>...
+            </div>`;
+        }
+
+        const mapRowsHtml = mapKeys.map((key, idx) => `
+            <div class="var-map-row" style="display: flex; gap: 4px; align-items: center; margin-top: 4px;">
+                <span style="flex: 1; font-size: 10px; color: #374151; background: #f3f4f6; padding: 2px 6px; border-radius: 3px; overflow: hidden; text-overflow: ellipsis;" title="${escHtml(key)}">${escHtml(key)}</span>
+                <span style="color: #9ca3af;">→</span>
+                <div style="flex: 2; position: relative; background: white;">
+                    <div class="var-map-value-bd" id="var-map-bd-${varIdx}-${transformIdx}-${idx}"
+                         style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 2px 4px; font-size: 10px;
+                                pointer-events: none; white-space: pre; overflow: hidden; color: #111827;"></div>
+                    <input type="text" class="var-map-value-input" data-var="${varIdx}" data-transform="${transformIdx}" data-key="${escHtml(key)}"
+                           value="${escHtml(mapEntries[key] || '')}" placeholder="Valor mapeado"
+                           style="width: 100%; font-size: 10px; padding: 2px 4px; border: 1px solid #d1d5db; border-radius: 3px;
+                                  background: transparent; position: relative; color: transparent; caret-color: #111827;">
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 9px; color: #6b7280;">Columna: <strong>${escHtml(colMatch[1])}</strong></span>
+                    <button class="var-map-refresh-btn" data-var="${varIdx}" data-transform="${transformIdx}"
+                            style="font-size: 9px; padding: 2px 6px; background: #e5e7eb; color: #374151; border: none; border-radius: 3px; cursor: pointer;">
+                        <i data-lucide="refresh-cw" style="width:10px;height:10px;display:inline;vertical-align:middle;"></i>
+                    </button>
+                </div>
+                <div class="var-map-table" style="border: 1px solid #e5e7eb; border-radius: 4px; padding: 6px; background: #fafafa; max-height: 150px; overflow-y: auto;">
+                    ${mapRowsHtml}
+                    <div class="var-map-row" style="display: flex; gap: 4px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #e5e7eb;">
+                        <span style="flex: 1; font-size: 10px; color: #9ca3af; font-style: italic;">Default</span>
+                        <span style="color: #9ca3af;">→</span>
+                        <input type="text" class="var-map-default-input" data-var="${varIdx}" data-transform="${transformIdx}"
+                               value="${escHtml(defaultVal)}" placeholder="Valor por defecto"
+                               style="flex: 2; font-size: 10px; padding: 2px 4px; border: 1px solid #d1d5db; border-radius: 3px;">
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+
+    /**
+     * Generate mapping table from Excel column unique values
+     * Uses globalExcelData for robust index-based access
+     */
+    function generateMappingTable(varIdx, transformIdx, columnName) {
+        console.log('[VariablesModule] Generating mapping table for column:', columnName);
+
+        const headers = window.globalHeaders || [];
+        const data = window.globalExcelData || [];
+
+        // Find column index (exact match first, then case-insensitive trim)
+        let colIndex = headers.indexOf(columnName);
+        if (colIndex === -1) {
+            colIndex = headers.findIndex(h => h.trim().toLowerCase() === columnName.trim().toLowerCase());
+        }
+
+        if (colIndex === -1) {
+            console.warn('[VariablesModule] Column not found:', columnName);
+            return;
+        }
+
+        const uniqueValues = new Set();
+
+        // Extract unique values using index
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            // Safety check for row length
+            if (row && row.length > colIndex) {
+                const val = row[colIndex];
+                if (val !== null && val !== undefined && String(val).trim() !== '') {
+                    uniqueValues.add(String(val).trim());
+                }
+            }
+        }
+
+        console.log('[VariablesModule] Found unique values:', uniqueValues.size);
+
+        // Ensure config exists
+        if (!tempVariables[varIdx].transforms[transformIdx].config) {
+            tempVariables[varIdx].transforms[transformIdx].config = {};
+        }
+
+        // Preserve existing mapped values
+        const oldMap = tempVariables[varIdx].transforms[transformIdx].config?.map || {};
+        const newMap = {};
+        [...uniqueValues].sort().forEach(val => {
+            newMap[val] = oldMap[val] || '';
+        });
+
+        tempVariables[varIdx].transforms[transformIdx].config.map = newMap;
+
+        // Update only the config cell to avoid focus loss
+        const configCell = document.querySelector(`.var-config-cell[data-var="${varIdx}"][data-transform="${transformIdx}"]`);
+        if (configCell) {
+            const variable = tempVariables[varIdx];
+            const transform = variable.transforms[transformIdx];
+            configCell.innerHTML = getMappingConfigHtml(variable, varIdx, transform, transformIdx);
+
+            // Re-attach mapping event handlers for this cell
+            attachMappingCellEvents(configCell, varIdx, transformIdx);
+
+            if (window.lucide) lucide.createIcons();
+        } else {
+            // Fallback to full render if cell not found
+            renderVariableRows();
+        }
+    }
+
+    /**
+     * Attach events only for mapping cell elements
+     */
+    function attachMappingCellEvents(cell, varIdx, transformIdx) {
+        // Refresh button
+        cell.querySelectorAll('.var-map-refresh-btn').forEach(btn => {
+            btn.onclick = () => {
+                const sourceCol = tempVariables[varIdx]?.source || '';
+                const colMatch = sourceCol.match(/^\{([^{}]+)\}$/);
+                if (colMatch) {
+                    generateMappingTable(varIdx, transformIdx, colMatch[1].trim());
+                }
+            };
+        });
+
+        // Value inputs with backdrop
+        cell.querySelectorAll('.var-map-value-input').forEach((input, idx) => {
+            const backdrop = cell.querySelector(`#var-map-bd-${varIdx}-${transformIdx}-${idx}`);
+            const key = input.dataset.key;
+
+            input.oninput = () => {
+                if (tempVariables[varIdx]?.transforms?.[transformIdx]?.config?.map) {
+                    tempVariables[varIdx].transforms[transformIdx].config.map[key] = input.value;
+                }
+                if (backdrop) updateMappingBackdrop(input, backdrop);
+            };
+            if (backdrop) updateMappingBackdrop(input, backdrop);
+        });
+
+        // Default value input
+        cell.querySelectorAll('.var-map-default-input').forEach(input => {
+            input.oninput = () => {
+                if (!tempVariables[varIdx]?.transforms?.[transformIdx]?.config) {
+                    tempVariables[varIdx].transforms[transformIdx].config = {};
+                }
+                tempVariables[varIdx].transforms[transformIdx].config.defaultValue = input.value;
+            };
+        });
+    }
+
+    /**
      * Attach event handlers to row elements
      */
     function attachRowEventHandlers() {
@@ -560,18 +790,21 @@ const VariablesModule = (function () {
             };
         });
 
-        // Source inputs with backdrop highlighting
+        // Source inputs with backdrop highlighting + debounced auto-generation
+        let sourceDebounceTimers = {};
+
         document.querySelectorAll('.var-source-input').forEach(input => {
             const varIdx = parseInt(input.dataset.var, 10);
-            const backdrop = document.getElementById(`var-src-bd-${varIdx}`);
+            const backdrop = document.getElementById(`var-src - bd - ${varIdx} `);
 
-            const updateBackdrop = () => {
+            const updateBackdrop = (triggerAutoGenerate = false) => {
                 if (!backdrop) return;
                 const text = input.value;
                 const headers = window.globalHeaders || [];
                 const variableNames = window.VariablesModule?.getVariableNames?.() || [];
                 let html = '';
                 let lastIndex = 0;
+                let foundValidColumn = null;
                 // Combined regex: {$Variable}, [[Concept]], {Column}
                 const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
                 let match;
@@ -600,6 +833,7 @@ const VariablesModule = (function () {
                         // {Column} - GREEN
                         const colName = match[6].trim();
                         const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                        if (isValid) foundValidColumn = colName;
                         const style = isValid
                             ? 'background: #dcfce7; color: #166534;'
                             : 'background: #fee2e2; color: #dc2626;';
@@ -610,15 +844,27 @@ const VariablesModule = (function () {
                 }
                 html += escHtml(text.substring(lastIndex));
                 backdrop.innerHTML = html;
+
+                // Debounced auto-generation - ONLY on user input, not initial render
+                if (triggerAutoGenerate && foundValidColumn) {
+                    const transform = tempVariables[varIdx]?.transforms?.[0];
+                    if (transform?.type === 'mapping' && Object.keys(transform.config?.map || {}).length === 0) {
+                        // Only auto-generate if map is empty (first time)
+                        if (sourceDebounceTimers[varIdx]) clearTimeout(sourceDebounceTimers[varIdx]);
+                        sourceDebounceTimers[varIdx] = setTimeout(() => {
+                            generateMappingTable(varIdx, 0, foundValidColumn);
+                        }, 300);
+                    }
+                }
             };
 
             input.oninput = (e) => {
                 tempVariables[varIdx].source = e.target.value;
-                updateBackdrop();
+                updateBackdrop(true); // User input - allow auto-generate
             };
 
-            // Initial render
-            updateBackdrop();
+            // Initial render - NO auto-generate
+            updateBackdrop(false);
         });
 
         // Transform type selects
@@ -629,19 +875,34 @@ const VariablesModule = (function () {
 
                 if (!tempVariables[varIdx].transforms) tempVariables[varIdx].transforms = [];
 
-                // Ensure transform exists
                 while (tempVariables[varIdx].transforms.length <= transformIdx) {
                     tempVariables[varIdx].transforms.push({ type: '', config: {} });
                 }
 
                 tempVariables[varIdx].transforms[transformIdx].type = e.target.value;
 
-                // Set default config for date
+                // Set default config
                 if (e.target.value === 'date') {
                     tempVariables[varIdx].transforms[transformIdx].config = {
                         inputFormat: '',
                         outputFormat: 'day_month_year_text'
                     };
+                } else if (e.target.value === 'mapping') {
+                    // Auto-generate mapping table if source is a valid column
+                    const sourceCol = tempVariables[varIdx]?.source || '';
+                    const colMatch = sourceCol.match(/^\{([^{}]+)\}$/);
+                    if (colMatch) {
+                        const colName = colMatch[1].trim();
+                        const headers = window.globalHeaders || [];
+                        if (headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase())) {
+                            // Valid column found, generate table immediately
+                            tempVariables[varIdx].transforms[transformIdx].config = {};
+                            renderVariableRows();
+                            setTimeout(() => generateMappingTable(varIdx, transformIdx, colName), 50);
+                            return; // Skip normal render
+                        }
+                    }
+                    tempVariables[varIdx].transforms[transformIdx].config = {};
                 } else {
                     tempVariables[varIdx].transforms[transformIdx].config = {};
                 }
@@ -669,6 +930,123 @@ const VariablesModule = (function () {
                 if (tempVariables[varIdx]?.transforms?.[transformIdx]) {
                     tempVariables[varIdx].transforms[transformIdx].config.outputFormat = e.target.value;
                 }
+            };
+        });
+
+        // ========== MAPPING CONFIG HANDLERS ==========
+
+        // Helper function to update backdrop with colored placeholders
+        const updateMappingBackdrop = (input, backdrop) => {
+            if (!backdrop) return;
+            const text = input.value;
+            const headers = window.globalHeaders || [];
+            const variableNames = window.VariablesModule?.getVariableNames?.() || [];
+            let html = '';
+            let lastIndex = 0;
+            const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
+            let match;
+
+            while ((match = regex.exec(text)) !== null) {
+                html += escHtml(text.substring(lastIndex, match.index));
+
+                if (match[1]) {
+                    const varName = match[2].trim();
+                    const isValid = variableNames.length === 0 || variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
+                    const style = isValid ? 'background: #fef3c7; color: #92400e;' : 'background: #fee2e2; color: #dc2626;';
+                    html += `< span style = "${style}" > { $${escHtml(match[2])}}</span > `;
+                } else if (match[3]) {
+                    const conceptName = match[4].trim();
+                    const tabs = window.projectData?.tabs || [];
+                    const conceptExists = tabs.some(t => (t.type === 'concept' || !t.type) && t.title?.toLowerCase() === conceptName.toLowerCase());
+                    const style = conceptExists ? 'background: #cffafe; color: #0891b2;' : 'background: #fee2e2; color: #dc2626;';
+                    html += `< span style = "${style}" > [[${escHtml(match[4])}]]</span > `;
+                } else if (match[5]) {
+                    const colName = match[6].trim();
+                    const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                    const style = isValid ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #dc2626;';
+                    html += `< span style = "${style}" > { ${escHtml(match[6])}}</span > `;
+                }
+                lastIndex = regex.lastIndex;
+            }
+            html += escHtml(text.substring(lastIndex));
+            backdrop.innerHTML = html;
+        };
+
+        // Mapping: generate button - uses variable.source as the column
+        document.querySelectorAll('.var-map-generate-btn').forEach(btn => {
+            btn.onclick = () => {
+                const varIdx = parseInt(btn.dataset.var, 10);
+                const transformIdx = parseInt(btn.dataset.transform, 10);
+                const sourceCol = tempVariables[varIdx]?.source || '';
+
+                // Extract column name from {Column}
+                const colMatch = sourceCol.match(/^\{([^{}]+)\}$/);
+                if (!colMatch) {
+                    alert('El Valor Origen debe ser una columna en formato {Columna}');
+                    return;
+                }
+
+                const colName = colMatch[1].trim();
+                const excelData = window.projectData?.excelData || [];
+
+                // Get unique values from column
+                const uniqueValues = new Set();
+                excelData.forEach(row => {
+                    const value = row[colName] ?? row[Object.keys(row).find(k => k.toLowerCase() === colName.toLowerCase())];
+                    if (value !== undefined && value !== null && String(value).trim() !== '') {
+                        uniqueValues.add(String(value).trim());
+                    }
+                });
+
+                if (uniqueValues.size === 0) {
+                    alert(`No se encontraron valores en la columna "${colName}"`);
+                    return;
+                }
+
+                // Ensure config exists
+                if (!tempVariables[varIdx].transforms[transformIdx].config) {
+                    tempVariables[varIdx].transforms[transformIdx].config = {};
+                }
+
+                // Create map with unique values (preserve old values)
+                const oldMap = tempVariables[varIdx].transforms[transformIdx].config?.map || {};
+                const newMap = {};
+                [...uniqueValues].sort().forEach(val => {
+                    newMap[val] = oldMap[val] || '';
+                });
+
+                tempVariables[varIdx].transforms[transformIdx].config.map = newMap;
+                renderVariableRows();
+            };
+        });
+
+        // Mapping: value inputs
+        document.querySelectorAll('.var-map-value-input').forEach(input => {
+            const varIdx = parseInt(input.dataset.var, 10);
+            const transformIdx = parseInt(input.dataset.transform, 10);
+            const key = input.dataset.key;
+            const idx = [...document.querySelectorAll(`.var - map - value - input[data -var="${varIdx}"][data - transform="${transformIdx}"]`)].indexOf(input);
+            const backdrop = document.getElementById(`var-map - bd - ${varIdx} -${transformIdx} -${idx} `);
+
+            input.oninput = () => {
+                if (tempVariables[varIdx]?.transforms?.[transformIdx]?.config?.map) {
+                    tempVariables[varIdx].transforms[transformIdx].config.map[key] = input.value;
+                }
+                updateMappingBackdrop(input, backdrop);
+            };
+            updateMappingBackdrop(input, backdrop);
+        });
+
+        // Mapping: default value input
+        document.querySelectorAll('.var-map-default-input').forEach(input => {
+            const varIdx = parseInt(input.dataset.var, 10);
+            const transformIdx = parseInt(input.dataset.transform, 10);
+
+            input.oninput = () => {
+                if (!tempVariables[varIdx]?.transforms?.[transformIdx]?.config) {
+                    tempVariables[varIdx].transforms[transformIdx].config = {};
+                }
+                tempVariables[varIdx].transforms[transformIdx].config.defaultValue = input.value;
             };
         });
 
