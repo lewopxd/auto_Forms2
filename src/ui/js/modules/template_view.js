@@ -140,8 +140,9 @@ const TemplateViewModule = (function () {
         let result = '';
         let lastIndex = 0;
 
-        // Regex combinado para encontrar ambos tipos de placeholders
-        const regex = /(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
+        // Regex combinado: {$variable}, [[concepto]], {columna}
+        // Groups: [1]={$...} with [2]=varName, [3]=[[...]] with [4]=conceptName, [5]={...} with [6]=colName
+        const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
         let match;
 
         while ((match = regex.exec(text)) !== null) {
@@ -149,8 +150,29 @@ const TemplateViewModule = (function () {
             result += escapeHtml(text.substring(lastIndex, match.index));
 
             if (match[1]) {
+                // Es {$variable}
+                const varName = match[2].trim();
+                const isValid = window.VariablesModule?.isValidVariable(varName);
+
+                if (!isValid) {
+                    error = true;
+                    result += `<span class="smart-chip smart-chip-error" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;"><span class="line-through">{$${escapeHtml(varName)}}</span><i data-lucide="alert-circle" class="smart-chip-icon"></i></span>`;
+                } else {
+                    // Resolve variable
+                    const resolved = window.VariablesModule?.resolveVariable(varName, window.globalSelectedData);
+                    if (resolved !== null && resolved !== undefined && resolved !== '') {
+                        result += `<span class="smart-chip" style="background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1px solid #fbbf24;color:#92400e;">${escapeHtml(resolved)}<i data-lucide="variable" class="smart-chip-icon"></i></span>`;
+                    } else if (window.globalSelectedData && Object.keys(window.globalSelectedData).length > 0) {
+                        warning = true;
+                        result += `<span class="smart-chip smart-chip-warning" style="background:#fef3c7;border-color:#fbbf24;color:#92400e;">{$${escapeHtml(varName)}}<i data-lucide="triangle-alert" class="smart-chip-icon"></i></span>`;
+                    } else {
+                        // No row selected, show pending
+                        result += `<span class="smart-chip" style="background:#fef3c7;border:1px solid #fbbf24;color:#92400e;">{$${escapeHtml(varName)}}<i data-lucide="variable" class="smart-chip-icon"></i></span>`;
+                    }
+                }
+            } else if (match[3]) {
                 // Es [[concepto]]
-                const conceptName = match[2].trim();
+                const conceptName = match[4].trim();
                 const content = getConceptContent(conceptName);
                 if (content === null) {
                     error = true;
@@ -163,9 +185,9 @@ const TemplateViewModule = (function () {
                     if (processedInner.warning) warning = true;
                     result += processedInner.html;
                 }
-            } else if (match[3]) {
+            } else if (match[5]) {
                 // Es {columna}
-                const trimmedKey = match[4].trim();
+                const trimmedKey = match[6].trim();
                 const headers = window.globalHeaders || [];
 
                 if (!headers.includes(trimmedKey)) {
@@ -211,6 +233,8 @@ const TemplateViewModule = (function () {
      */
     function highlightPlaceholders(text) {
         let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        // Highlight {$variable} FIRST (before {column} to avoid conflicts)
+        html = html.replace(/\{\$([^{}]+)\}/g, '<span class="highlight-variable">{$$1}</span>');
         // Highlight [[concepto]]
         html = html.replace(/\[\[([^\[\]]+)\]\]/g, '<span class="highlight-concept">[[$1]]</span>');
         // Highlight {columna}
@@ -1180,8 +1204,14 @@ const TemplateViewModule = (function () {
     function processPlaceholdersToText(text, rowData) {
         if (!text) return '';
 
-        // First process [[concepto]] references
-        let result = text.replace(/\[\[([^\[\]]+)\]\]/g, (match, conceptName) => {
+        // First process {$variable} references
+        let result = text.replace(/\{\$([^{}]+)\}/g, (match, varName) => {
+            const resolved = window.VariablesModule?.resolveVariable(varName.trim(), rowData);
+            return resolved !== null && resolved !== undefined ? resolved : match;
+        });
+
+        // Then process [[concepto]] references
+        result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, conceptName) => {
             const tab = window.projectData.tabs.find(t => {
                 const isConceptType = t.type === 'concept' || t.type === undefined || !t.type;
                 return isConceptType && t.title && t.title.toLowerCase().trim() === conceptName.trim().toLowerCase();
@@ -1189,8 +1219,15 @@ const TemplateViewModule = (function () {
 
             if (!tab || !tab.content) return match;
 
-            // Process the concept content with rowData
-            return tab.content.replace(/\{([^{}]+)\}/g, (m, key) => {
+            // Process the concept content with rowData (including variables)
+            let conceptContent = tab.content;
+            // Resolve variables in concept content
+            conceptContent = conceptContent.replace(/\{\$([^{}]+)\}/g, (m, vn) => {
+                const res = window.VariablesModule?.resolveVariable(vn.trim(), rowData);
+                return res !== null && res !== undefined ? res : m;
+            });
+            // Resolve columns in concept content
+            return conceptContent.replace(/\{([^{}]+)\}/g, (m, key) => {
                 const trimmedKey = key.trim();
                 return rowData[trimmedKey] !== undefined ? String(rowData[trimmedKey]) : m;
             });

@@ -2657,8 +2657,9 @@ const AutoFormViewModule = (function () {
                 .filter(Boolean);
 
             let lastIndex = 0;
-            // Combined regex: matches {column} OR [[concept]]
-            const regex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+            // Combined regex: matches {$variable}, {column} OR [[concept]]
+            // Groups: [1]=variable, [2]=column, [3]=concept
+            const regex = /\{\$([^{}]+)\}|\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
             let match;
 
             while ((match = regex.exec(val)) !== null) {
@@ -2673,8 +2674,13 @@ const AutoFormViewModule = (function () {
                 chip.className = 'af-input-chip';
 
                 if (match[1] !== undefined) {
+                    // It's a {$variable} placeholder
+                    const varName = match[1].trim();
+                    const isValidVar = window.VariablesModule?.isValidVariable(varName);
+                    chip.classList.add(isValidVar ? 'valid-variable' : 'invalid');
+                } else if (match[2] !== undefined) {
                     // It's a {column} placeholder
-                    const colName = match[1];
+                    const colName = match[2];
                     const cleanName = colName.trim();
 
                     if (headers.length > 0) {
@@ -2686,9 +2692,9 @@ const AutoFormViewModule = (function () {
                     } else {
                         chip.classList.add(actionType === 'select' ? 'valid-select' : 'valid-fill');
                     }
-                } else if (match[2] !== undefined) {
+                } else if (match[3] !== undefined) {
                     // It's a [[concept]] placeholder
-                    const conceptName = match[2].trim().toLowerCase();
+                    const conceptName = match[3].trim().toLowerCase();
                     const isValidConcept = conceptTitles.includes(conceptName);
                     chip.classList.add(isValidConcept ? 'valid-concept' : 'invalid');
                 }
@@ -2974,13 +2980,20 @@ const AutoFormViewModule = (function () {
     }
 
     /**
-     * Resolve all placeholders ({Column} and [[Concept]]) in a value
+     * Resolve all placeholders ({$Variable}, {Column} and [[Concept]]) in a value
      */
     function resolveAllPlaceholders(text, selectedData) {
         console.log(`[DEBUG resolveAllPlaceholders] Input text: "${text}"`);
         if (!text) return '';
         let result = text;
-        // First resolve [[Concept]] placeholders
+
+        // First resolve {$Variable} placeholders
+        result = result.replace(/\{\$([^{}]+)\}/g, (match, varName) => {
+            const resolved = window.VariablesModule?.resolveVariable(varName.trim(), selectedData);
+            return resolved !== null && resolved !== undefined ? resolved : match;
+        });
+
+        // Then resolve [[Concept]] placeholders
         result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, name) => {
             console.log(`[DEBUG resolveAllPlaceholders] Found concept placeholder: "${match}" -> name: "${name.trim()}"`);
             const content = getConceptContent(name.trim());
@@ -3010,8 +3023,9 @@ const AutoFormViewModule = (function () {
         let result = '';
         let lastIndex = 0;
 
-        // Combined regex to match both {column} and [[concept]]
-        const combinedRegex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+        // Combined regex: {$variable}, {column}, [[concept]]
+        // Groups: [1]=variable, [2]=column, [3]=concept
+        const combinedRegex = /\{\$([^{}]+)\}|\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
         let match;
 
         while ((match = combinedRegex.exec(originalText)) !== null) {
@@ -3021,8 +3035,25 @@ const AutoFormViewModule = (function () {
             }
 
             if (match[1] !== undefined) {
+                // It's a {$Variable} placeholder
+                const varName = match[1].trim();
+
+                if (!hasRowSelected) {
+                    // No row selected - show pending chip
+                    result += `<span class="afv-chip pending">{$${escHtml(varName)}}</span>`;
+                } else {
+                    const resolved = window.VariablesModule?.resolveVariable(varName, selectedData);
+                    if (resolved !== null && resolved !== undefined && resolved !== '') {
+                        // Resolved - show value in yellow/amber chip
+                        result += `<span class="afv-chip variable">${escHtml(resolved)}</span>`;
+                    } else {
+                        // Row selected but variable not resolved - show placeholder name + alert
+                        result += `<span class="afv-chip empty">{$${escHtml(varName)}}<i data-lucide="alert-circle"></i></span>`;
+                    }
+                }
+            } else if (match[2] !== undefined) {
                 // It's a {Column} placeholder
-                const colName = match[1].trim();
+                const colName = match[2].trim();
 
                 if (!hasRowSelected) {
                     // No row selected - show indigo chip with placeholder name
@@ -3037,9 +3068,9 @@ const AutoFormViewModule = (function () {
                         result += `<span class="afv-chip empty">{${escHtml(colName)}}<i data-lucide="alert-circle"></i></span>`;
                     }
                 }
-            } else if (match[2] !== undefined) {
+            } else if (match[3] !== undefined) {
                 // It's a [[Concept]] placeholder
-                const conceptName = match[2].trim();
+                const conceptName = match[3].trim();
                 const content = getConceptContent(conceptName);
 
                 if (!hasRowSelected) {

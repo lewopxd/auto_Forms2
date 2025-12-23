@@ -928,6 +928,45 @@
     color: #ef4444;
 }
 
+/* YELLOW (Variables / Computed) */
+.af-modal-window.accent-yellow {
+    border-top: 4px solid #f59e0b;
+}
+
+.af-modal-window.accent-yellow .af-window-title i,
+.af-modal-window.accent-yellow .af-window-title svg {
+    color: #f59e0b;
+}
+
+.af-modal-window.accent-yellow .af-config-sec-title {
+    color: #f59e0b;
+}
+
+.af-modal-window.accent-yellow .af-switch input:checked+.af-switch-track {
+    background: #f59e0b;
+    border-color: #d97706;
+}
+
+.af-modal-window.accent-yellow .af-btn-primary {
+    background: #f59e0b;
+    color: white;
+}
+
+.af-modal-window.accent-yellow .af-btn-primary:hover {
+    background: #d97706;
+}
+
+.af-modal-window.accent-yellow input:focus,
+.af-modal-window.accent-yellow select:focus,
+.af-modal-window.accent-yellow textarea:focus {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1);
+}
+
+.af-modal-window.accent-yellow .text-accent {
+    color: #f59e0b;
+}
+
 /* Neutral Buttons */
 .af-btn-ghost {
     padding: 6px 12px;
@@ -1393,6 +1432,12 @@
     color: #0369a1;
 }
 
+/* Valid Variable: Yellow/Amber */
+.ac-smart-chip.valid-variable {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
+}
+
 /* =========================================
    SPINNER ANIMATION
    ========================================= */
@@ -1576,6 +1621,12 @@
 .af-input-chip.invalid {
     background-color: #ffedd5;
     color: #c2410c;
+}
+
+/* Valid - Variable (Yellow/Amber - computed value) */
+.af-input-chip.valid-variable {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    color: #92400e;
 }
 
 /* Alert icon in chip - tiny, no extra space */
@@ -2217,6 +2268,13 @@
     width: 12px;
     height: 12px;
     flex-shrink: 0;
+}
+
+/* Variable placeholder - Yellow/Amber (computed value) */
+.afv-chip.variable {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fbbf24;
+    color: #92400e;
 }
 
 /* Empty answer placeholder */

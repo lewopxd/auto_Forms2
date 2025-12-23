@@ -12,6 +12,7 @@
     /**
      * Global Smart Input setup - accessible from anywhere in the module
      * This function must be at module level to be called from renderTextRawMappings
+     * Supports [[Concept]] and {$Variable} placeholders
      */
     function globalSetupSmartInput(inputId, backdropId) {
         const input = document.getElementById(inputId);
@@ -22,8 +23,9 @@
             const text = input.value;
             let html = '';
             let lastIndex = 0;
-            // Regex for [[Concept]] only (no column analysis needed for mapping inputs)
-            const regex = /\[\[([^\[\]]+)\]\]/g;
+            // Regex for {$Variable} and [[Concept]] (no column analysis needed for mapping inputs)
+            // Groups: [1]=variable, [2]=concept
+            const regex = /\{\$([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
             let match;
 
             // Validation Data
@@ -36,16 +38,26 @@
                 // Text before match
                 html += escHtml(text.substring(lastIndex, match.index));
 
-                const content = match[1];
-                const cleanVal = content.toLowerCase().trim();
-                const isValid = conceptTitles.includes(cleanVal);
-
-                const chipClass = isValid ? 'valid-concept' : 'invalid';
-                const iconHtml = isValid
-                    ? ''
-                    : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
-
-                html += `<span class="ac-smart-chip ${chipClass}">[[${escHtml(content)}]]${iconHtml}</span>`;
+                if (match[1] !== undefined) {
+                    // It's a {$Variable}
+                    const varName = match[1].trim();
+                    const isValid = window.VariablesModule?.isValidVariable(varName);
+                    const chipClass = isValid ? 'valid-variable' : 'invalid';
+                    const iconHtml = isValid
+                        ? ''
+                        : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+                    html += `<span class="ac-smart-chip ${chipClass}">{$${escHtml(varName)}}${iconHtml}</span>`;
+                } else if (match[2] !== undefined) {
+                    // It's a [[Concept]]
+                    const content = match[2];
+                    const cleanVal = content.toLowerCase().trim();
+                    const isValid = conceptTitles.includes(cleanVal);
+                    const chipClass = isValid ? 'valid-concept' : 'invalid';
+                    const iconHtml = isValid
+                        ? ''
+                        : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+                    html += `<span class="ac-smart-chip ${chipClass}">[[${escHtml(content)}]]${iconHtml}</span>`;
+                }
                 lastIndex = regex.lastIndex;
             }
             // Text after last match (PLAIN TEXT - visible!)
@@ -505,16 +517,19 @@
 
         /**
          * Reusable logic for attaching smart chips behavior to any input
+         * For column field: blocks {$Variable} with error
          */
         function attachSmartInputBehavior(input, backdrop, triggerAnalysis = false) {
             const update = () => {
                 const text = input.value;
                 let html = '';
                 let lastIndex = 0;
-                // Combined regex for {Column} and [[Concept]]
-                const regex = /\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
+                // Combined regex: {$Variable}, {Column}, [[Concept]]
+                // Groups: [1]=variable, [2]=column, [3]=concept
+                const regex = /\{\$([^{}]+)\}|\{([^{}]+)\}|\[\[([^\[\]]+)\]\]/g;
                 let match;
                 let foundValidColumn = null;
+                let foundVariable = false;
 
                 // Validation Data
                 const headers = window.globalHeaders || [];
@@ -530,31 +545,40 @@
                     let content = '';
                     let isValid = false;
                     let isConcept = false;
+                    let isVariable = false;
 
                     if (match[1] !== undefined) {
-                        // {Column}
+                        // {$Variable} - NOT allowed in column field
                         content = match[1];
+                        isVariable = true;
+                        foundVariable = true;
+                        // Always show as invalid with special styling
+                        html += `<span class="ac-smart-chip invalid" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">{$${escHtml(content)}}<i data-lucide="x-circle" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i></span>`;
+                    } else if (match[2] !== undefined) {
+                        // {Column}
+                        content = match[2];
                         const cleanVal = content.trim();
                         isValid = headers.includes(cleanVal);
                         if (isValid && cleanVal) foundValidColumn = cleanVal;
-                    } else if (match[2] !== undefined) {
+
+                        let chipClass = isValid ? 'valid' : 'invalid';
+                        const iconHtml = isValid
+                            ? ''
+                            : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+                        html += `<span class="ac-smart-chip ${chipClass}">{${escHtml(content)}}${iconHtml}</span>`;
+                    } else if (match[3] !== undefined) {
                         // [[Concept]]
-                        content = match[2];
+                        content = match[3];
                         const cleanVal = content.toLowerCase().trim();
                         isValid = conceptTitles.includes(cleanVal);
                         isConcept = true;
+
+                        let chipClass = isValid ? 'valid-concept' : 'invalid';
+                        const iconHtml = isValid
+                            ? ''
+                            : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
+                        html += `<span class="ac-smart-chip ${chipClass}">[[${escHtml(content)}]]${iconHtml}</span>`;
                     }
-
-                    // Determine Class & Icon
-                    let chipClass = isValid ? 'valid' : 'invalid';
-                    if (isConcept && isValid) chipClass = 'valid-concept'; // Ensure you have CSS for this!
-
-                    const iconHtml = isValid
-                        ? ''
-                        : '<i data-lucide="triangle-alert" class="ac-chip-icon" style="width: 10px; height: 10px; margin-left: 8px;"></i>';
-
-                    const wrapper = isConcept ? `[[${escHtml(content)}]]` : `{${escHtml(content)}}`;
-                    html += `<span class="ac-smart-chip ${chipClass}">${wrapper}${iconHtml}</span>`;
 
                     lastIndex = regex.lastIndex;
                 }
@@ -562,6 +586,23 @@
                 html += escHtml(text.substring(lastIndex));
 
                 backdrop.innerHTML = html;
+
+                // Show variable error message if in column field
+                if (triggerAnalysis && foundVariable) {
+                    let errorEl = document.getElementById('cfg-map-col-var-error');
+                    if (!errorEl) {
+                        errorEl = document.createElement('div');
+                        errorEl.id = 'cfg-map-col-var-error';
+                        errorEl.style.cssText = 'font-size: 11px; color: #dc2626; margin-top: 4px; display: flex; align-items: center; gap: 4px;';
+                        errorEl.innerHTML = '<i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i> Las variables {$...} no están permitidas en este campo';
+                        backdrop.parentNode.appendChild(errorEl);
+                    }
+                    errorEl.style.display = 'flex';
+                } else if (triggerAnalysis) {
+                    const errorEl = document.getElementById('cfg-map-col-var-error');
+                    if (errorEl) errorEl.style.display = 'none';
+                }
+
                 if (window.lucide) lucide.createIcons();
 
                 // Logic specific to the Main Column Input (analysis trigger)
@@ -569,17 +610,17 @@
                     // Show/hide reload button based on validity
                     const reloadBtn = document.getElementById('cfg-reload-btn');
                     if (reloadBtn) {
-                        reloadBtn.style.display = foundValidColumn ? 'flex' : 'none';
+                        reloadBtn.style.display = foundValidColumn && !foundVariable ? 'flex' : 'none';
                     }
 
                     // Debounced column analysis
-                    if (foundValidColumn && foundValidColumn !== lastValidColumn) {
+                    if (foundValidColumn && !foundVariable && foundValidColumn !== lastValidColumn) {
                         lastValidColumn = foundValidColumn;
                         if (analyzeDebounceTimer) clearTimeout(analyzeDebounceTimer);
                         analyzeDebounceTimer = setTimeout(() => {
                             loadDataIntoMapping(foundValidColumn);
                         }, 300);
-                    } else if (!foundValidColumn) {
+                    } else if (!foundValidColumn || foundVariable) {
                         lastValidColumn = null;
                         columnUniqueValues = [];
                         updateMappingSelects();

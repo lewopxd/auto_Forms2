@@ -13,6 +13,7 @@
         tabs: [],
         excel: null,
         recordings: [],  // Global recordings pool (not per-tab)
+        variables: [],   // Computed variables with transformations
         defaultActionSettings: {
             fill: {
                 timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
@@ -206,6 +207,7 @@
             forms: window.projectData?.forms || [],
             tabs: window.projectData?.tabs || [],
             recordings: window.projectData?.recordings || [],  // Global recordings
+            variables: window.projectData?.variables || [],    // Computed variables
             ui: {
                 splitterPosition: getSplitterPosition(),
                 activeTab: getActiveTabId()
@@ -354,6 +356,7 @@
         window.projectData.forms = data.forms || [];
         window.projectData.excel = data.excel || null;
         window.projectData.recordings = data.recordings || [];  // Restore global recordings
+        window.projectData.variables = data.variables || [];    // Restore computed variables
 
         // Restore UI state
         if (data.ui?.splitterPosition) {
@@ -595,12 +598,20 @@
     // Setup project button handlers
     const btnOpenProject = document.getElementById('btn-open-project');
     const btnSaveProject = document.getElementById('btn-save-project');
+    const btnOpenVariables = document.getElementById('btn-open-variables');
 
     if (btnOpenProject) {
         btnOpenProject.addEventListener('click', openProject);
     }
     if (btnSaveProject) {
         btnSaveProject.addEventListener('click', saveProjectAs);
+    }
+    if (btnOpenVariables) {
+        btnOpenVariables.addEventListener('click', () => {
+            if (window.VariablesModule) {
+                window.VariablesModule.openModal();
+            }
+        });
     }
 
     // === INITIALIZATION ===

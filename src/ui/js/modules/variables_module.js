@@ -1,0 +1,711 @@
+/**
+ * Variables Module - Handles computed variables with transformations
+ * Supports: Date formatting, text case transformations
+ * Syntax: {$VariableName} for variable placeholders
+ */
+const VariablesModule = (function () {
+    'use strict';
+
+    // ================== UTILITY ==================
+    function escHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ================== DATE FORMATTER ==================
+    const DateFormatter = {
+        // Spanish month names
+        MONTHS_ES: ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'],
+        MONTHS_ES_ABBR: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+            'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+
+        // Input format patterns
+        INPUT_FORMATS: [
+            { id: 'AAAA-MM-DD', pattern: /^(\d{4})-(\d{1,2})-(\d{1,2})$/, order: ['Y', 'M', 'D'] },
+            { id: 'DD/MM/AAAA', pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ['D', 'M', 'Y'] },
+            { id: 'DD-MM-AAAA', pattern: /^(\d{1,2})-(\d{1,2})-(\d{4})$/, order: ['D', 'M', 'Y'] },
+            { id: 'DD/MM/AA', pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/, order: ['D', 'M', 'Y'], shortYear: true },
+            { id: 'MM/DD/AAAA', pattern: /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, order: ['M', 'D', 'Y'] },
+            { id: 'AAAA/MM/DD', pattern: /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/, order: ['Y', 'M', 'D'] },
+            { id: 'DD.MM.AAAA', pattern: /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/, order: ['D', 'M', 'Y'] },
+        ],
+
+        // Output format definitions
+        OUTPUT_FORMATS: [
+            { id: 'day_month_year_text', label: '23 de agosto de 2025' },
+            { id: 'full_text', label: '23 días del mes de agosto del año 2025' },
+            { id: 'dd_mm_yyyy', label: '23/08/2025' },
+            { id: 'yyyy_mm_dd', label: '2025-08-23' },
+            { id: 'dd_mm_yy', label: '23/08/25' },
+            { id: 'month_day_year', label: 'agosto 23, 2025' },
+            { id: 'day_abbr_year', label: '23 Ago 2025' },
+            { id: 'iso', label: '2025-08-23' },
+        ],
+
+        /**
+         * Detect input format from a date string
+         */
+        detect(dateStr) {
+            if (!dateStr || typeof dateStr !== 'string') return null;
+            const trimmed = dateStr.trim();
+
+            for (const fmt of this.INPUT_FORMATS) {
+                if (fmt.pattern.test(trimmed)) {
+                    return fmt.id;
+                }
+            }
+            return null;
+        },
+
+        /**
+         * Parse date string using specified format
+         * Returns { year, month, day } or null
+         */
+        parse(dateStr, formatId) {
+            if (!dateStr || typeof dateStr !== 'string') return null;
+            const trimmed = dateStr.trim();
+
+            // Find format
+            const fmt = this.INPUT_FORMATS.find(f => f.id === formatId);
+            if (!fmt) {
+                // Try auto-detect
+                const detected = this.detect(trimmed);
+                if (!detected) return null;
+                return this.parse(trimmed, detected);
+            }
+
+            const match = trimmed.match(fmt.pattern);
+            if (!match) return null;
+
+            const parts = {};
+            fmt.order.forEach((key, idx) => {
+                parts[key] = parseInt(match[idx + 1], 10);
+            });
+
+            // Handle short year (e.g., 25 -> 2025)
+            if (fmt.shortYear && parts.Y < 100) {
+                parts.Y += parts.Y > 50 ? 1900 : 2000;
+            }
+
+            // Validate ranges
+            if (parts.M < 1 || parts.M > 12) return null;
+            if (parts.D < 1 || parts.D > 31) return null;
+            if (parts.Y < 1900 || parts.Y > 2100) return null;
+
+            return { year: parts.Y, month: parts.M, day: parts.D };
+        },
+
+        /**
+         * Format date object to output string
+         */
+        format(dateObj, outputFormatId) {
+            if (!dateObj || !dateObj.year) return '';
+
+            const { year, month, day } = dateObj;
+            const pad2 = n => String(n).padStart(2, '0');
+            const monthName = this.MONTHS_ES[month - 1] || '';
+            const monthAbbr = this.MONTHS_ES_ABBR[month - 1] || '';
+
+            switch (outputFormatId) {
+                case 'day_month_year_text':
+                    return `${day} de ${monthName} de ${year}`;
+                case 'full_text':
+                    return `${day} días del mes de ${monthName} del año ${year}`;
+                case 'dd_mm_yyyy':
+                    return `${pad2(day)}/${pad2(month)}/${year}`;
+                case 'yyyy_mm_dd':
+                case 'iso':
+                    return `${year}-${pad2(month)}-${pad2(day)}`;
+                case 'dd_mm_yy':
+                    return `${pad2(day)}/${pad2(month)}/${String(year).slice(-2)}`;
+                case 'month_day_year':
+                    return `${monthName} ${day}, ${year}`;
+                case 'day_abbr_year':
+                    return `${day} ${monthAbbr} ${year}`;
+                default:
+                    return `${pad2(day)}/${pad2(month)}/${year}`;
+            }
+        }
+    };
+
+    // ================== TEXT TRANSFORMER ==================
+    const TextTransformer = {
+        uppercase: (str) => String(str).toUpperCase(),
+        lowercase: (str) => String(str).toLowerCase(),
+        titlecase: (str) => {
+            return String(str).toLowerCase().replace(/(^|[.!?]\s+)([a-záéíóúñü])/gi,
+                (match, delimiter, char) => delimiter + char.toUpperCase()
+            );
+        },
+        trim: (str) => String(str).trim(),
+        removeSpaces: (str) => String(str).replace(/\s+/g, '')
+    };
+
+    // ================== TRANSFORM DEFINITIONS ==================
+    const TRANSFORM_TYPES = [
+        { id: 'date', label: 'Formato Fecha', hasConfig: true },
+        { id: 'uppercase', label: 'MAYÚSCULAS', hasConfig: false },
+        { id: 'lowercase', label: 'minúsculas', hasConfig: false },
+        { id: 'titlecase', label: 'Tipo Oración', hasConfig: false },
+    ];
+
+    // ================== CORE RESOLUTION ==================
+
+    /**
+     * Find value in data object with case-insensitive key matching
+     */
+    function findNormalizedValue(key, data) {
+        if (!data || !key) return undefined;
+        const trimmedKey = key.trim().toLowerCase();
+
+        // Direct match first
+        if (data[key] !== undefined) return data[key];
+
+        // Case-insensitive search
+        for (const k of Object.keys(data)) {
+            if (k.toLowerCase().trim() === trimmedKey) {
+                return data[k];
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Resolve a variable by name, applying all transformations
+     * @param {string} varName - Variable name (without {$ })
+     * @param {Object} columnData - Row data from Excel
+     * @returns {string|null} Resolved value or null if not found
+     */
+    function resolveVariable(varName, columnData) {
+        const variables = window.projectData?.variables || [];
+        const variable = variables.find(v =>
+            v.name.toLowerCase().trim() === varName.toLowerCase().trim()
+        );
+
+        if (!variable) {
+            console.warn(`[VariablesModule] Variable not found: "${varName}"`);
+            return null;
+        }
+
+        // Get base value from source
+        let value;
+        const sourceMatch = variable.source.match(/^\{([^{}]+)\}$/);
+
+        if (sourceMatch) {
+            // Source is a column reference like {ColumnName}
+            const colName = sourceMatch[1].trim();
+            value = findNormalizedValue(colName, columnData);
+
+            if (value === undefined) {
+                console.warn(`[VariablesModule] Column "${colName}" not found for variable "${varName}"`);
+                return null;
+            }
+        } else {
+            // Source is a static value
+            value = variable.source;
+        }
+
+        if (value === undefined || value === null) return null;
+
+        // Apply transformations in order
+        for (const transform of variable.transforms || []) {
+            value = applyTransform(String(value), transform);
+        }
+
+        return value;
+    }
+
+    /**
+     * Apply a single transformation to a value
+     */
+    function applyTransform(value, transform) {
+        if (!value || !transform || !transform.type) return value;
+
+        switch (transform.type) {
+            case 'date':
+                const inputFormat = transform.config?.inputFormat || null;
+                const outputFormat = transform.config?.outputFormat || 'dd_mm_yyyy';
+                const parsed = DateFormatter.parse(value, inputFormat);
+                if (parsed) {
+                    return DateFormatter.format(parsed, outputFormat);
+                }
+                console.warn(`[VariablesModule] Could not parse date: "${value}"`);
+                return value;
+
+            case 'uppercase':
+                return TextTransformer.uppercase(value);
+
+            case 'lowercase':
+                return TextTransformer.lowercase(value);
+
+            case 'titlecase':
+                return TextTransformer.titlecase(value);
+
+            default:
+                return value;
+        }
+    }
+
+    /**
+     * Check if a variable name exists
+     */
+    function isValidVariable(varName) {
+        const variables = window.projectData?.variables || [];
+        return variables.some(v =>
+            v.name.toLowerCase().trim() === varName.toLowerCase().trim()
+        );
+    }
+
+    /**
+     * Get all variable names for autocomplete/validation
+     */
+    function getVariableNames() {
+        return (window.projectData?.variables || []).map(v => v.name);
+    }
+
+    // ================== VARIABLES MODAL ==================
+
+    let modalOverlay = null;
+    let tempVariables = []; // Working copy while editing
+
+    function generateVarId() {
+        return 'var-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
+    }
+
+    /**
+     * Open the variables management modal
+     */
+    function openModal() {
+        // Clone current variables for editing
+        tempVariables = JSON.parse(JSON.stringify(window.projectData?.variables || []));
+
+        modalOverlay = getOrCreateModal();
+        renderModalContent();
+
+        if (window.ModalManager) {
+            window.ModalManager.openModal(modalOverlay);
+        } else {
+            modalOverlay.style.display = 'flex';
+            requestAnimationFrame(() => modalOverlay.classList.add('open'));
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * Close the modal
+     */
+    function closeModal() {
+        if (window.ModalManager) {
+            window.ModalManager.closeModal(modalOverlay);
+        } else if (modalOverlay) {
+            modalOverlay.classList.remove('open');
+            setTimeout(() => { if (!modalOverlay.classList.contains('open')) modalOverlay.style.display = 'none'; }, 250);
+        }
+        tempVariables = [];
+    }
+
+    /**
+     * Get or create modal overlay element
+     */
+    function getOrCreateModal() {
+        let el = document.getElementById('af-variables-modal-overlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'af-variables-modal-overlay';
+            el.className = 'af-modal-overlay';
+            el.innerHTML = `
+                <div class="af-modal-window accent-yellow" id="af-variables-modal-window" style="width: 700px; max-height: 80vh;">
+                    <div class="af-window-header">
+                        <div class="af-window-title">
+                            <i data-lucide="variable" class="w-5 h-5"></i>
+                            <span>Variables Computadas</span>
+                        </div>
+                        <div class="af-window-close" id="var-modal-close-btn">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="af-window-body" id="var-modal-body" style="overflow-y: auto; max-height: calc(80vh - 120px);">
+                        <!-- Dynamic content -->
+                    </div>
+                    
+                    <div class="af-window-footer">
+                        <button class="af-btn-ghost" id="var-modal-cancel-btn">Cancelar</button>
+                        <button class="af-btn-primary" id="var-modal-save-btn">Guardar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(el);
+
+            // Make draggable
+            const win = el.querySelector('.af-modal-window');
+            const header = el.querySelector('.af-window-header');
+            if (window.ModalManager) {
+                window.ModalManager.makeDraggable(win, header);
+            }
+
+            // Event handlers
+            el.querySelector('#var-modal-close-btn').onclick = closeModal;
+            el.querySelector('#var-modal-cancel-btn').onclick = closeModal;
+            el.querySelector('#var-modal-save-btn').onclick = saveVariables;
+
+            // Close on backdrop click
+            el.onmousedown = (e) => {
+                if (e.target === el) closeModal();
+            };
+        }
+        return el;
+    }
+
+    /**
+     * Render modal body content
+     */
+    function renderModalContent() {
+        const body = document.getElementById('var-modal-body');
+        if (!body) return;
+
+        let html = `
+            <div class="var-modal-info" style="font-size: 12px; color: #6b7280; margin-bottom: 16px; padding: 8px; background: #f9fafb; border-radius: 6px;">
+                <div>Crea variables computadas que aplican transformaciones a datos de columnas Excel.</div>
+                <div style="margin-top: 4px;"><strong>Uso:</strong> <code style="background:#e5e7eb;padding:2px 6px;border-radius:3px;">{$NombreVariable}</code> en conceptos o tarjetas.</div>
+            </div>
+            
+            <div class="var-table-wrapper" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <div class="var-table-header" style="display: grid; grid-template-columns: 140px 150px 140px 1fr 50px; gap: 0; background: #f3f4f6; font-size: 11px; font-weight: 600; color: #374151;">
+                    <div style="padding: 10px 12px; border-right: 1px solid #e5e7eb;">Nombre Variable</div>
+                    <div style="padding: 10px 12px; border-right: 1px solid #e5e7eb;">Valor Origen</div>
+                    <div style="padding: 10px 12px; border-right: 1px solid #e5e7eb;">Transformación</div>
+                    <div style="padding: 10px 12px; border-right: 1px solid #e5e7eb;">Configuración</div>
+                    <div style="padding: 10px 12px; text-align: center;"></div>
+                </div>
+                <div id="var-table-body" style="max-height: 350px; overflow-y: auto;">
+                    <!-- Rows will be rendered here -->
+                </div>
+            </div>
+            
+            <button id="var-add-new-btn" class="af-btn-ghost" style="margin-top: 12px; width: 100%; border: 2px dashed #d1d5db; justify-content: center;">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Nueva Variable</span>
+            </button>
+        `;
+
+        body.innerHTML = html;
+
+        // Render existing variables
+        renderVariableRows();
+
+        // Add new variable button handler
+        document.getElementById('var-add-new-btn').onclick = addNewVariable;
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * Render all variable rows
+     */
+    function renderVariableRows() {
+        const container = document.getElementById('var-table-body');
+        if (!container) return;
+
+        if (tempVariables.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 24px; text-align: center; color: #9ca3af; font-size: 13px;">
+                    No hay variables definidas. Haz clic en "Nueva Variable" para crear una.
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        tempVariables.forEach((variable, varIdx) => {
+            const transforms = variable.transforms || [];
+
+            // Main variable row (first transform or empty)
+            const firstTransform = transforms[0] || { type: '', config: {} };
+
+            html += renderVariableRow(variable, varIdx, 0, firstTransform, true);
+
+            // Additional transform rows
+            for (let tIdx = 1; tIdx < transforms.length; tIdx++) {
+                html += renderVariableRow(variable, varIdx, tIdx, transforms[tIdx], false);
+            }
+        });
+
+        container.innerHTML = html;
+        attachRowEventHandlers();
+        if (window.lucide) lucide.createIcons();
+    }
+
+    /**
+     * Render a single row (variable or additional transform)
+     */
+    function renderVariableRow(variable, varIdx, transformIdx, transform, isMainRow) {
+        const rowId = `var-row-${varIdx}-${transformIdx}`;
+        const isFirstTransform = transformIdx === 0;
+
+        // Transform type options
+        const transformOptions = TRANSFORM_TYPES.map(t =>
+            `<option value="${t.id}" ${transform.type === t.id ? 'selected' : ''}>${t.label}</option>`
+        ).join('');
+
+        // Config cell content (depends on transform type)
+        let configHtml = '<span style="color:#9ca3af;">—</span>';
+        if (transform.type === 'date') {
+            const inputFormats = DateFormatter.INPUT_FORMATS.map(f =>
+                `<option value="${f.id}" ${transform.config?.inputFormat === f.id ? 'selected' : ''}>${f.id}</option>`
+            ).join('');
+            const outputFormats = DateFormatter.OUTPUT_FORMATS.map(f =>
+                `<option value="${f.id}" ${transform.config?.outputFormat === f.id ? 'selected' : ''}>${f.label}</option>`
+            ).join('');
+
+            configHtml = `
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <select class="var-config-input-format" data-var="${varIdx}" data-transform="${transformIdx}" 
+                            style="flex: 1; min-width: 90px; font-size: 10px; padding: 2px 4px; border: 1px solid #d1d5db; border-radius: 4px;">
+                        <option value="">Auto</option>
+                        ${inputFormats}
+                    </select>
+                    <span style="color:#9ca3af;">→</span>
+                    <select class="var-config-output-format" data-var="${varIdx}" data-transform="${transformIdx}"
+                            style="flex: 2; min-width: 120px; font-size: 10px; padding: 2px 4px; border: 1px solid #d1d5db; border-radius: 4px;">
+                        ${outputFormats}
+                    </select>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="var-table-row" id="${rowId}" data-var="${varIdx}" data-transform="${transformIdx}"
+                 style="display: grid; grid-template-columns: 140px 150px 140px 1fr 50px; gap: 0; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                
+                <!-- Name -->
+                <div style="padding: 8px 10px; border-right: 1px solid #e5e7eb; ${!isMainRow ? 'background: #f9fafb;' : ''}">
+                    ${isMainRow ? `
+                        <input type="text" class="var-name-input" data-var="${varIdx}" 
+                               value="${escHtml(variable.name)}" 
+                               placeholder="MiVariable"
+                               style="width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 6px; font-size: 11px;">
+                    ` : ''}
+                </div>
+                
+                <!-- Source Value -->
+                <div style="padding: 8px 10px; border-right: 1px solid #e5e7eb; ${!isMainRow ? 'background: #f9fafb;' : ''}">
+                    ${isMainRow ? `
+                        <input type="text" class="var-source-input" data-var="${varIdx}"
+                               value="${escHtml(variable.source)}" 
+                               placeholder="{Columna}"
+                               style="width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 6px; font-size: 11px;">
+                    ` : ''}
+                </div>
+                
+                <!-- Transform Type -->
+                <div style="padding: 8px 10px; border-right: 1px solid #e5e7eb;">
+                    <select class="var-transform-type" data-var="${varIdx}" data-transform="${transformIdx}"
+                            style="width: 100%; border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 6px; font-size: 11px;">
+                        <option value="">Sin transformación</option>
+                        ${transformOptions}
+                    </select>
+                </div>
+                
+                <!-- Config -->
+                <div class="var-config-cell" data-var="${varIdx}" data-transform="${transformIdx}" 
+                     style="padding: 8px 10px; border-right: 1px solid #e5e7eb; display: flex; align-items: center;">
+                    ${configHtml}
+                </div>
+                
+                <!-- Actions -->
+                <div style="padding: 8px 6px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                    ${isMainRow ? `
+                        <button class="var-add-transform-btn" data-var="${varIdx}" title="Añadir transformación"
+                                style="padding: 4px; border: none; background: #10b981; color: white; border-radius: 4px; cursor: pointer; display: flex;">
+                            <i data-lucide="plus" style="width: 12px; height: 12px;"></i>
+                        </button>
+                        <button class="var-delete-btn" data-var="${varIdx}" title="Eliminar variable"
+                                style="padding: 4px; border: none; background: #ef4444; color: white; border-radius: 4px; cursor: pointer; display: flex;">
+                            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                        </button>
+                    ` : `
+                        <button class="var-remove-transform-btn" data-var="${varIdx}" data-transform="${transformIdx}" title="Eliminar transformación"
+                                style="padding: 4px; border: none; background: #f97316; color: white; border-radius: 4px; cursor: pointer; display: flex;">
+                            <i data-lucide="minus" style="width: 12px; height: 12px;"></i>
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Attach event handlers to row elements
+     */
+    function attachRowEventHandlers() {
+        // Name inputs
+        document.querySelectorAll('.var-name-input').forEach(input => {
+            input.oninput = (e) => {
+                const varIdx = parseInt(e.target.dataset.var, 10);
+                // Remove spaces and special chars for variable name
+                tempVariables[varIdx].name = e.target.value.replace(/[^a-zA-Z0-9_áéíóúñÁÉÍÓÚÑ]/g, '');
+                e.target.value = tempVariables[varIdx].name;
+            };
+        });
+
+        // Source inputs
+        document.querySelectorAll('.var-source-input').forEach(input => {
+            input.oninput = (e) => {
+                const varIdx = parseInt(e.target.dataset.var, 10);
+                tempVariables[varIdx].source = e.target.value;
+            };
+        });
+
+        // Transform type selects
+        document.querySelectorAll('.var-transform-type').forEach(select => {
+            select.onchange = (e) => {
+                const varIdx = parseInt(e.target.dataset.var, 10);
+                const transformIdx = parseInt(e.target.dataset.transform, 10);
+
+                if (!tempVariables[varIdx].transforms) tempVariables[varIdx].transforms = [];
+
+                // Ensure transform exists
+                while (tempVariables[varIdx].transforms.length <= transformIdx) {
+                    tempVariables[varIdx].transforms.push({ type: '', config: {} });
+                }
+
+                tempVariables[varIdx].transforms[transformIdx].type = e.target.value;
+
+                // Set default config for date
+                if (e.target.value === 'date') {
+                    tempVariables[varIdx].transforms[transformIdx].config = {
+                        inputFormat: '',
+                        outputFormat: 'day_month_year_text'
+                    };
+                } else {
+                    tempVariables[varIdx].transforms[transformIdx].config = {};
+                }
+
+                renderVariableRows();
+            };
+        });
+
+        // Date config: input format
+        document.querySelectorAll('.var-config-input-format').forEach(select => {
+            select.onchange = (e) => {
+                const varIdx = parseInt(e.target.dataset.var, 10);
+                const transformIdx = parseInt(e.target.dataset.transform, 10);
+                if (tempVariables[varIdx]?.transforms?.[transformIdx]) {
+                    tempVariables[varIdx].transforms[transformIdx].config.inputFormat = e.target.value;
+                }
+            };
+        });
+
+        // Date config: output format
+        document.querySelectorAll('.var-config-output-format').forEach(select => {
+            select.onchange = (e) => {
+                const varIdx = parseInt(e.target.dataset.var, 10);
+                const transformIdx = parseInt(e.target.dataset.transform, 10);
+                if (tempVariables[varIdx]?.transforms?.[transformIdx]) {
+                    tempVariables[varIdx].transforms[transformIdx].config.outputFormat = e.target.value;
+                }
+            };
+        });
+
+        // Add transform buttons
+        document.querySelectorAll('.var-add-transform-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const varIdx = parseInt(e.currentTarget.dataset.var, 10);
+                if (!tempVariables[varIdx].transforms) tempVariables[varIdx].transforms = [];
+                tempVariables[varIdx].transforms.push({ type: '', config: {} });
+                renderVariableRows();
+            };
+        });
+
+        // Remove transform buttons
+        document.querySelectorAll('.var-remove-transform-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const varIdx = parseInt(e.currentTarget.dataset.var, 10);
+                const transformIdx = parseInt(e.currentTarget.dataset.transform, 10);
+                if (tempVariables[varIdx]?.transforms) {
+                    tempVariables[varIdx].transforms.splice(transformIdx, 1);
+                    renderVariableRows();
+                }
+            };
+        });
+
+        // Delete variable buttons
+        document.querySelectorAll('.var-delete-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                const varIdx = parseInt(e.currentTarget.dataset.var, 10);
+                tempVariables.splice(varIdx, 1);
+                renderVariableRows();
+            };
+        });
+    }
+
+    /**
+     * Add a new empty variable
+     */
+    function addNewVariable() {
+        tempVariables.push({
+            id: generateVarId(),
+            name: '',
+            source: '',
+            transforms: [{ type: '', config: {} }]
+        });
+        renderVariableRows();
+
+        // Focus on the new name input
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('.var-name-input');
+            if (inputs.length > 0) {
+                inputs[inputs.length - 1].focus();
+            }
+        }, 50);
+    }
+
+    /**
+     * Save variables to projectData
+     */
+    function saveVariables() {
+        // Validate and clean
+        const validVariables = tempVariables.filter(v => v.name && v.name.trim() !== '');
+
+        // Clean empty transforms
+        validVariables.forEach(v => {
+            v.transforms = (v.transforms || []).filter(t => t.type && t.type !== '');
+        });
+
+        // Save to global state
+        if (!window.projectData) window.projectData = {};
+        window.projectData.variables = validVariables;
+
+        // Trigger autosave
+        if (window.triggerAutoSave) window.triggerAutoSave();
+
+        console.log('[VariablesModule] Saved variables:', validVariables);
+
+        closeModal();
+    }
+
+    // ================== EXPORTS ==================
+    return {
+        // Formatters
+        DateFormatter,
+        TextTransformer,
+        TRANSFORM_TYPES,
+
+        // Resolution
+        resolveVariable,
+        isValidVariable,
+        applyTransform,
+        getVariableNames,
+
+        // Modal
+        openModal,
+        closeModal
+    };
+})();
+
+// Expose globally
+window.VariablesModule = VariablesModule;

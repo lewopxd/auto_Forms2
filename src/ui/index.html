@@ -58,6 +58,12 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span id="file-name" class="text-xs text-gray-500 font-medium hidden md:block"></span>
+                    <button id="btn-open-variables"
+                        class="cursor-pointer bg-amber-100 hover:bg-amber-200 text-amber-700 text-sm font-medium py-2 px-3 rounded shadow-sm transition-all flex items-center gap-1"
+                        title="Variables Computadas">
+                        <i data-lucide="variable" class="w-4 h-4"></i>
+                        <span class="hidden lg:inline">Variables</span>
+                    </button>
                     <button id="reload-excel-btn"
                         class="hidden cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium py-2 px-3 rounded shadow-sm transition-all flex items-center gap-1"
                         title="Recargar archivo">
@@ -216,6 +222,7 @@
 
     <!-- Application modules -->
     <script src="js/modules/modal_manager.js"></script>
+    <script src="js/modules/variables_module.js"></script>
     <script src="js/modules/action_config_modal.js"></script>
     <script src="js/modules/automation_config_modal.js"></script>
     <script src="js/modules/export_modal.js"></script>

@@ -937,6 +937,13 @@
     color: #166534;
 }
 
+/* Highlight for {$variable} placeholder - Yellow/Amber */
+.highlight-variable {
+    background-color: #fef3c7;
+    border-radius: 2px;
+    color: #92400e;
+}
+
 /* =========================================
    EXPORT BUTTON & MODAL
    ========================================= */
