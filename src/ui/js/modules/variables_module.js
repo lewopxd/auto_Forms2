@@ -148,6 +148,7 @@ const VariablesModule = (function () {
         { id: 'uppercase', label: 'MAYÚSCULAS', hasConfig: false },
         { id: 'lowercase', label: 'minúsculas', hasConfig: false },
         { id: 'titlecase', label: 'Tipo Oración', hasConfig: false },
+        { id: 'mapping', label: 'Mapeo', hasConfig: true },
     ];
 
     // ================== CORE RESOLUTION ==================
@@ -491,13 +492,20 @@ const VariablesModule = (function () {
                     ` : ''}
                 </div>
                 
-                <!-- Source Value -->
+                <!-- Source Value with Backdrop -->
                 <div style="padding: 8px 10px; border-right: 1px solid #e5e7eb; ${!isMainRow ? 'background: #f9fafb;' : ''}">
                     ${isMainRow ? `
-                        <input type="text" class="var-source-input" data-var="${varIdx}"
-                               value="${escHtml(variable.source)}" 
-                               placeholder="{Columna}"
-                               style="width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 6px; font-size: 11px;">
+                        <div class="var-source-container" style="position: relative; background: white;">
+                            <div class="var-source-backdrop" id="var-src-bd-${varIdx}" 
+                                 style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; padding: 4px 6px; font-size: 11px; font-family: inherit;
+                                        pointer-events: none; white-space: pre; overflow: hidden; border: 1px solid transparent; border-radius: 4px;
+                                        color: #111827;"></div>
+                            <input type="text" class="var-source-input" data-var="${varIdx}" id="var-src-input-${varIdx}"
+                                   value="${escHtml(variable.source)}" 
+                                   placeholder="{Columna}"
+                                   style="width: 100%; border: 1px solid #e5e7eb; border-radius: 4px; padding: 4px 6px; font-size: 11px; font-family: inherit;
+                                          background: transparent; position: relative; z-index: 1; color: transparent; caret-color: #111827;">
+                        </div>
                     ` : ''}
                 </div>
                 
@@ -552,12 +560,65 @@ const VariablesModule = (function () {
             };
         });
 
-        // Source inputs
+        // Source inputs with backdrop highlighting
         document.querySelectorAll('.var-source-input').forEach(input => {
-            input.oninput = (e) => {
-                const varIdx = parseInt(e.target.dataset.var, 10);
-                tempVariables[varIdx].source = e.target.value;
+            const varIdx = parseInt(input.dataset.var, 10);
+            const backdrop = document.getElementById(`var-src-bd-${varIdx}`);
+
+            const updateBackdrop = () => {
+                if (!backdrop) return;
+                const text = input.value;
+                const headers = window.globalHeaders || [];
+                const variableNames = window.VariablesModule?.getVariableNames?.() || [];
+                let html = '';
+                let lastIndex = 0;
+                // Combined regex: {$Variable}, [[Concept]], {Column}
+                const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
+                let match;
+
+                while ((match = regex.exec(text)) !== null) {
+                    html += escHtml(text.substring(lastIndex, match.index));
+
+                    if (match[1]) {
+                        // {$Variable} - YELLOW
+                        const varName = match[2].trim();
+                        const isValid = variableNames.length === 0 || variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
+                        const style = isValid
+                            ? 'background: #fef3c7; color: #92400e;'
+                            : 'background: #fee2e2; color: #dc2626;';
+                        html += `<span style="${style}">{$${escHtml(match[2])}}</span>`;
+                    } else if (match[3]) {
+                        // [[Concept]] - CYAN
+                        const conceptName = match[4].trim();
+                        const tabs = window.projectData?.tabs || [];
+                        const conceptExists = tabs.some(t => (t.type === 'concept' || !t.type) && t.title?.toLowerCase() === conceptName.toLowerCase());
+                        const style = conceptExists
+                            ? 'background: #cffafe; color: #0891b2;'
+                            : 'background: #fee2e2; color: #dc2626;';
+                        html += `<span style="${style}">[[${escHtml(match[4])}]]</span>`;
+                    } else if (match[5]) {
+                        // {Column} - GREEN
+                        const colName = match[6].trim();
+                        const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                        const style = isValid
+                            ? 'background: #dcfce7; color: #166534;'
+                            : 'background: #fee2e2; color: #dc2626;';
+                        html += `<span style="${style}">{${escHtml(match[6])}}</span>`;
+                    }
+
+                    lastIndex = regex.lastIndex;
+                }
+                html += escHtml(text.substring(lastIndex));
+                backdrop.innerHTML = html;
             };
+
+            input.oninput = (e) => {
+                tempVariables[varIdx].source = e.target.value;
+                updateBackdrop();
+            };
+
+            // Initial render
+            updateBackdrop();
         });
 
         // Transform type selects
