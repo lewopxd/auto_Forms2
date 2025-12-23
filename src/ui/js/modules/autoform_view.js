@@ -3206,12 +3206,12 @@ const AutoFormViewModule = (function () {
                 console.log(`[Mapping] Lookup Key: "${colStr}" | Match: "${mappedText}"`);
 
                 if (mappedText !== null) {
-                    return resolveAllPlaceholders(mappedText, selectedData);
+                    return window.PlaceholderEngine.resolveForExecution(mappedText, selectedData);
                 }
 
                 // If no match, try default value
                 if (question.config.mapping.defaultValue) {
-                    return resolveAllPlaceholders(question.config.mapping.defaultValue, selectedData);
+                    return window.PlaceholderEngine.resolveForExecution(question.config.mapping.defaultValue, selectedData);
                 }
 
                 // If mapping enabled but no match found:
@@ -3224,7 +3224,7 @@ const AutoFormViewModule = (function () {
         }
 
         // Standard behavior (no mapping or fallback)
-        return resolveAllPlaceholders(question.response || '', selectedData);
+        return window.PlaceholderEngine.resolveForExecution(question.response || '', selectedData);
     }
 
     /**
@@ -3315,18 +3315,33 @@ const AutoFormViewModule = (function () {
         } else {
             // Fill action - show the response with chips for placeholders
             const isMapped = question.config?.mapping?.enabled;
-            let originalText = question.response || '';
+            let displayText = question.response || '';
 
-            // If mapped, use the resolved value (Effective Preview)
-            // Note: resolvedValue has placeholders expanded, so processTextWithChips won't show concept chips, 
-            // but will show the actual concept text. This is desired for "Preview".
-            if (isMapped && resolvedValue !== null && resolvedValue !== undefined) {
-                originalText = resolvedValue;
+            // If mapping is enabled, apply mapping to get the correct concept/text
+            if (isMapped && question.config?.mapping?.placeholder) {
+                const placeholder = question.config.mapping.placeholder;
+                // Extract column name from placeholder {COLUMN}
+                const colMatch = placeholder.match(/\{([^{}]+)\}/);
+                if (colMatch) {
+                    const colName = colMatch[1].trim();
+                    const colValue = window.DataResolver?.getColumnValue(colName, selectedData);
+                    const map = question.config.mapping.map || {};
+
+                    // Lookup mapped value
+                    const colStr = String(colValue ?? '').trim();
+                    const mappedText = map[colStr] ?? map[Object.keys(map).find(k => String(k).trim() === colStr)];
+
+                    if (mappedText) {
+                        displayText = mappedText;  // This is the concept placeholder e.g. [[Concepto_X]]
+                    } else if (question.config.mapping.defaultValue) {
+                        displayText = question.config.mapping.defaultValue;
+                    }
+                }
             }
 
             const answerClass = isLongText ? 'afv-answer paragraph' : 'afv-answer';
-            // Use processTextWithChips to render placeholders (if any remain) as colored chips
-            const chipHtml = processTextWithChips(originalText, selectedData);
+            // Use PlaceholderEngine to render placeholders as colored chips
+            const chipHtml = window.PlaceholderEngine.resolveForView(displayText, selectedData);
             answerHtml = `<div class="${answerClass}">${chipHtml}</div>`;
 
             // Add mapping chip if mapping is enabled

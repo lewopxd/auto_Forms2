@@ -235,68 +235,9 @@ const TemplateViewModule = (function () {
      * @returns {object} { html, hasConceptError }
      */
     function highlightPlaceholders(text, isConceptTab = false) {
-        let html = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        let hasConceptError = false;
-
-        const headers = window.globalHeaders || [];
-        const variableNames = window.VariablesModule?.getVariableNames?.() || [];
-
-        // Combined regex: {$var}, [[concept]], {col}
-        const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
-        let result = '';
-        let lastIndex = 0;
-        let match;
-
-        while ((match = regex.exec(html)) !== null) {
-            result += html.substring(lastIndex, match.index);
-
-            if (match[1]) {
-                // {$Variable} - EDIT MODE: yellow for syntax, red only if module exists and variable missing
-                const varName = match[2].trim();
-                if (variableNames.length === 0) {
-                    // No hay variables definidas - mostrar amarillo (sintaxis válida)
-                    result += `<span class="highlight-variable">{$${varName}}</span>`;
-                } else {
-                    const isValid = variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
-                    if (isValid) {
-                        result += `<span class="highlight-variable">{$${varName}}</span>`;
-                    } else {
-                        result += `<span class="highlight-error" title="Variable no existe: ${varName}">{$${varName}}</span>`;
-                    }
-                }
-            } else if (match[3]) {
-                // [[Concept]]
-                const conceptName = match[4];
-                if (isConceptTab) {
-                    // PROHIBIDO en pestaña Conceptos
-                    hasConceptError = true;
-                    result += `<span class="highlight-forbidden" title="No se pueden usar [[Conceptos]] dentro de conceptos">[[${conceptName}]]</span>`;
-                } else {
-                    result += `<span class="highlight-concept">[[${conceptName}]]</span>`;
-                }
-            } else if (match[5]) {
-                // {Column} - EDIT MODE: always green for syntax, red only if Excel loaded and column missing
-                const colName = match[6].trim();
-                if (headers.length === 0) {
-                    // No Excel cargado - mostrar verde (sintaxis válida, no podemos validar)
-                    result += `<span class="highlight-column">{${colName}}</span>`;
-                } else {
-                    const isValid = headers.some(h => h.toLowerCase() === colName.toLowerCase());
-                    if (isValid) {
-                        result += `<span class="highlight-column">{${colName}}</span>`;
-                    } else {
-                        result += `<span class="highlight-error" title="Columna no existe: ${colName}">{${colName}}</span>`;
-                    }
-                }
-            }
-
-            lastIndex = regex.lastIndex;
-        }
-
-        result += html.substring(lastIndex);
-        if (text.endsWith('\n')) result += '\n';
-
-        return { html: result, hasConceptError };
+        // Use PlaceholderEngine for highlighting
+        const result = window.PlaceholderEngine.highlightForEdit(text, { isConceptTab });
+        return { html: result.html, hasConceptError: result.hasError };
     }
 
     // === MODAL FUNCTIONS ===

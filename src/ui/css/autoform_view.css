@@ -2287,23 +2287,33 @@
    Only left border cyan, text stays black
    ======================================== */
 .afv-concept-wrapper {
-    display: inline;
-    border-left: 2px solid var(--concept-resolved-border);
-    padding-left: 6px;
+    display: block;
+    border-left: 3px solid #06b6d4;
+    /* cyan-500 */
+    padding-left: 10px;
+    margin: 4px 0;
     color: inherit;
+    line-height: 1.6;
 }
 
-/* Chips inside concept wrapper maintain their colors */
+/* Chips inside concept wrapper - smaller padding */
+.afv-concept-wrapper .afv-chip {
+    padding: 0px 4px !important;
+    font-size: inherit;
+    line-height: inherit;
+    vertical-align: baseline;
+}
+
 .afv-concept-wrapper .afv-chip.column {
-    background: var(--chip-column-bg);
-    border: 1px solid var(--chip-column-border);
-    color: var(--chip-column-text);
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #166534;
 }
 
 .afv-concept-wrapper .afv-chip.variable {
-    background: var(--chip-variable-bg);
-    border: 1px solid var(--chip-variable-border);
-    color: var(--chip-variable-text);
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
 }
 
 /* Empty answer placeholder */
