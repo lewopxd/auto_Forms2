@@ -301,35 +301,34 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
 }
 
-/* Left Accent Colors */
+/* Left Accent Colors - Using CSS Variables */
 .af-action-card.fill {
-    border-left-color: #3b82f6;
+    border-left-color: var(--card-fill-accent);
 }
 
-/* Blue */
+/* Purple - Select */
 .af-action-card.select {
-    border-left-color: #8b5cf6;
+    border-left-color: var(--card-select-accent);
 }
 
-/* Click / Navigation */
+/* Click / Navigation - ORANGE (changed from green) */
 .af-action-card.click {
-    border-left-color: #10b981;
+    border-left-color: var(--card-action-accent);
 }
 
 .af-action-card.click .af-question-title {
-    color: #15803d;
-    /* Dark green text */
+    color: var(--card-action-dark);
     font-weight: 700;
 }
 
-/* Inner Dotted Box for Selector */
+/* Inner Dotted Box for Selector - ORANGE */
 .af-action-card.click .af-card-body>div:last-child {
-    border: 1px dashed #10b981 !important;
-    background: #f0fdf4 !important;
-    color: #15803d;
+    border: 1px dashed var(--card-action-accent) !important;
+    background: var(--card-action-bg) !important;
+    color: var(--card-action-dark);
 }
 
-/* Green */
+/* Action Type */
 
 /* Action Header */
 .af-card-header {
@@ -399,11 +398,10 @@
     /* Purple 800 */
 }
 
-/* CLICK: Matching Pastel Green */
+/* CLICK: ORANGE (changed from green) */
 .af-type-chip.click {
-    background: #c3fce1;
-    color: #065f46;
-    /* Green 800 - Used mouse icon */
+    background: var(--card-action-bg);
+    color: var(--card-action-dark);
 }
 
 /* Body */
@@ -450,8 +448,8 @@
 }
 
 .af-action-card.click .af-input:focus {
-    border-color: #10b981;
-    /* Green for Click (if any input exists) */
+    border-color: var(--card-action-accent);
+    /* Orange for Click */
 }
 
 /* Remove Spinners from Number Inputs */
@@ -588,13 +586,13 @@
     display: flex;
 }
 
-/* Click Action Details */
+/* Click Action Details - ORANGE */
 .af-click-display {
     padding: 8px 10px;
-    background: #f0fdf4;
-    border: 1px dashed #86efac;
+    background: var(--card-action-bg);
+    border: 1px dashed var(--card-action-accent);
     border-radius: 4px;
-    color: #15803d;
+    color: var(--card-action-dark);
     font-size: 12px;
     font-weight: 500;
     display: flex;
@@ -1601,32 +1599,39 @@
 
 /* Valid - Select (Purple) */
 .af-input-chip.valid-select {
-    background-color: #f3e8ff;
-    color: #7e22ce;
+    background-color: var(--card-select-bg);
+    color: var(--card-select-dark);
 }
 
-/* Valid - Fill (Indigo) */
-.af-input-chip.valid-fill {
-    background-color: #e0e7ff;
-    color: #4338ca;
+/* Valid - Column (GREEN) */
+.af-input-chip.valid-fill,
+.af-input-chip.valid-column {
+    background-color: var(--chip-column-bg);
+    color: var(--chip-column-text);
 }
 
-/* Valid - Concept (Sky Blue - vibrant) */
+/* Valid - Concept (CYAN) */
 .af-input-chip.valid-concept {
-    background-color: #e0f2fe;
-    color: #0284c7;
+    background-color: var(--chip-concept-bg);
+    color: var(--chip-concept-text);
 }
 
-/* Invalid (Orange) */
+/* Invalid (RED) */
 .af-input-chip.invalid {
-    background-color: #ffedd5;
-    color: #c2410c;
+    background-color: var(--chip-error-bg);
+    color: var(--chip-error-text);
 }
 
-/* Valid - Variable (Yellow/Amber - computed value) */
+/* Valid - Variable (YELLOW/Amber) */
 .af-input-chip.valid-variable {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    color: #92400e;
+    background-color: var(--chip-variable-bg);
+    color: var(--chip-variable-text);
+}
+
+/* Pending - no row selected (INDIGO) */
+.af-input-chip.pending {
+    background-color: var(--chip-pending-bg);
+    color: var(--chip-pending-text);
 }
 
 /* Alert icon in chip - tiny, no extra space */
@@ -2031,8 +2036,8 @@
 }
 
 .afv-flow-num.click {
-    border-color: #10b981;
-    color: #10b981;
+    border-color: var(--card-action-accent);
+    color: var(--card-action-accent);
 }
 
 /* Line segment for separators - connects to dots */
@@ -2123,8 +2128,8 @@
 }
 
 .afv-card-accent.click {
-    background: #d1fae5;
-    color: #059669;
+    background: var(--card-action-bg);
+    color: var(--card-action-dark);
 }
 
 .afv-card-accent i,
@@ -2232,35 +2237,35 @@
     line-height: inherit;
 }
 
-/* Column placeholder - Blue (fill emphasis) */
+/* Column placeholder - GREEN (resolved value) */
 .afv-chip.column {
-    background: #dbeafe;
-    border: 1px solid #93c5fd;
-    color: #1e40af;
+    background: var(--chip-column-bg);
+    border: 1px solid var(--chip-column-border);
+    color: var(--chip-column-text);
 }
 
-/* Concept placeholder - Light blue/cyan */
+/* Concept placeholder - CYAN (unresolved) */
 .afv-chip.concept {
-    background: #e0f2fe;
-    border: 1px solid #7dd3fc;
-    color: #0369a1;
+    background: var(--chip-concept-bg);
+    border: 1px solid var(--chip-concept-border);
+    color: var(--chip-concept-text);
 }
 
-/* Pending - No row selected yet - Indigo */
+/* Pending - No row selected yet - INDIGO */
 .afv-chip.pending {
-    background: #e0e7ff;
-    border: 1px solid #a5b4fc;
-    color: #4338ca;
+    background: var(--chip-pending-bg);
+    border: 1px solid var(--chip-pending-border);
+    color: var(--chip-pending-text);
 }
 
-/* Empty value - Row selected but value is empty - Red with alert */
+/* Empty value - Row selected but value is empty - RED with alert */
 .afv-chip.empty {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #b91c1c;
+    background: var(--chip-error-bg);
+    border: 1px solid var(--chip-error-border);
+    color: var(--chip-error-text);
 }
 
 .afv-chip.empty i,
@@ -2270,11 +2275,35 @@
     flex-shrink: 0;
 }
 
-/* Variable placeholder - Yellow/Amber (computed value) */
+/* Variable placeholder - YELLOW/Amber (resolved value) */
 .afv-chip.variable {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #fbbf24;
-    color: #92400e;
+    background: var(--chip-variable-bg);
+    border: 1px solid var(--chip-variable-border);
+    color: var(--chip-variable-text);
+}
+
+/* ========================================
+   CONCEPT WRAPPER - Resolved [[Concept]]
+   Only left border cyan, text stays black
+   ======================================== */
+.afv-concept-wrapper {
+    display: inline;
+    border-left: 2px solid var(--concept-resolved-border);
+    padding-left: 6px;
+    color: inherit;
+}
+
+/* Chips inside concept wrapper maintain their colors */
+.afv-concept-wrapper .afv-chip.column {
+    background: var(--chip-column-bg);
+    border: 1px solid var(--chip-column-border);
+    color: var(--chip-column-text);
+}
+
+.afv-concept-wrapper .afv-chip.variable {
+    background: var(--chip-variable-bg);
+    border: 1px solid var(--chip-variable-border);
+    color: var(--chip-variable-text);
 }
 
 /* Empty answer placeholder */

@@ -2946,6 +2946,7 @@ const AutoFormViewModule = (function () {
 
     /**
      * Get concept content by title (from template_view.js logic)
+     * Returns RAW content with placeholders UNRESOLVED so chips can be rendered
      */
     function getConceptContent(conceptTitle) {
         console.log(`[DEBUG getConceptContent] Input: "${conceptTitle}"`);
@@ -2956,7 +2957,6 @@ const AutoFormViewModule = (function () {
         const searchTitle = conceptTitle.toLowerCase().trim();
         console.log(`[DEBUG getConceptContent] Searching for: "${searchTitle}"`);
 
-        // Log all available concept tabs for comparison
         const conceptTabs = window.projectData.tabs.filter(t =>
             t.type === 'concept' || t.type === undefined || !t.type
         );
@@ -2972,11 +2972,8 @@ const AutoFormViewModule = (function () {
             return null;
         }
         console.log(`[DEBUG getConceptContent] ✅ FOUND! Tab: "${tab.title}", Content length: ${tab.content?.length}`);
-        // Process column placeholders in concept content
-        return tab.content.replace(/\{([^{}]+)\}/g, (match, key) => {
-            const val = findNormalizedValue(key, window.globalSelectedData);
-            return val !== undefined ? val : match;
-        });
+        // Return RAW content - chips will be rendered by processConceptContentForChips
+        return tab.content;
     }
 
     /**
@@ -2993,7 +2990,7 @@ const AutoFormViewModule = (function () {
             return resolved !== null && resolved !== undefined ? resolved : match;
         });
 
-        // Then resolve [[Concept]] placeholders
+        // Then resolve [[Concept]] placeholders - resolve the content but keep placeholders for chip rendering
         result = result.replace(/\[\[([^\[\]]+)\]\]/g, (match, name) => {
             console.log(`[DEBUG resolveAllPlaceholders] Found concept placeholder: "${match}" -> name: "${name.trim()}"`);
             const content = getConceptContent(name.trim());
@@ -3006,6 +3003,60 @@ const AutoFormViewModule = (function () {
             return val !== undefined && val !== '' ? val : match;
         });
         console.log(`[DEBUG resolveAllPlaceholders] Final result: "${result.substring(0, 100)}..."`);
+        return result;
+    }
+
+    /**
+     * Process concept content and generate chips for internal placeholders
+     * Used when [[Concept]] is resolved - processes {col} and {$var} within
+     * @param {string} content - Resolved concept content
+     * @param {object} selectedData - Row data
+     * @returns {string} HTML with green/yellow chips for placeholders
+     */
+    function processConceptContentForChips(content, selectedData) {
+        if (!content) return '';
+
+        let result = '';
+        let lastIndex = 0;
+
+        // Regex for {$variable} and {column} only (no [[concept]] recursion)
+        const regex = /\{\$([^{}]+)\}|\{([^{}]+)\}/g;
+        let match;
+
+        while ((match = regex.exec(content)) !== null) {
+            // Add text before match
+            if (match.index > lastIndex) {
+                result += escHtml(content.substring(lastIndex, match.index));
+            }
+
+            if (match[1] !== undefined) {
+                // {$Variable}
+                const varName = match[1].trim();
+                const resolved = window.VariablesModule?.resolveVariable(varName, selectedData);
+                if (resolved !== null && resolved !== undefined && resolved !== '') {
+                    result += `<span class="afv-chip variable">${escHtml(resolved)}</span>`;
+                } else {
+                    result += `<span class="afv-chip empty">{$${escHtml(varName)}}<i data-lucide="alert-circle"></i></span>`;
+                }
+            } else if (match[2] !== undefined) {
+                // {Column}
+                const colName = match[2].trim();
+                const val = findNormalizedValue(colName, selectedData);
+                if (val !== undefined && val !== '') {
+                    result += `<span class="afv-chip column">${escHtml(val)}</span>`;
+                } else {
+                    result += `<span class="afv-chip empty">{${escHtml(colName)}}<i data-lucide="alert-circle"></i></span>`;
+                }
+            }
+
+            lastIndex = regex.lastIndex;
+        }
+
+        // Add remaining text
+        if (lastIndex < content.length) {
+            result += escHtml(content.substring(lastIndex));
+        }
+
         return result;
     }
 
@@ -3077,8 +3128,10 @@ const AutoFormViewModule = (function () {
                     // No row selected - show indigo chip with placeholder name
                     result += `<span class="afv-chip pending">[[${escHtml(conceptName)}]]</span>`;
                 } else if (content !== null && content !== '') {
-                    // Resolved - show content in cyan chip
-                    result += `<span class="afv-chip concept">${escHtml(content)}</span>`;
+                    // Resolved - wrap with concept-wrapper (left cyan border, black text)
+                    // Process internal placeholders ({col}, {$var}) within the content
+                    const processedContent = processConceptContentForChips(content, selectedData);
+                    result += `<span class="afv-concept-wrapper">${processedContent}</span>`;
                 } else {
                     // Row selected but concept not found/empty - show placeholder name + alert
                     result += `<span class="afv-chip empty">[[${escHtml(conceptName)}]]<i data-lucide="alert-circle"></i></span>`;

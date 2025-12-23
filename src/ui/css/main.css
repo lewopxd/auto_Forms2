@@ -2,6 +2,56 @@
    MAIN.CSS - Global Styles for FormFlow
    ===================================== */
 
+/* =====================================
+   COLOR SYSTEM - CSS Variables
+   ===================================== */
+:root {
+    /* === PLACEHOLDER CHIPS === */
+    /* Variable {$var} - AMARILLO */
+    --chip-variable-bg: #fef9c3;
+    --chip-variable-border: #fde047;
+    --chip-variable-text: #92400e;
+
+    /* Columna {col} - VERDE */
+    --chip-column-bg: #dcfce7;
+    --chip-column-border: #86efac;
+    --chip-column-text: #166534;
+
+    /* Concepto [[concept]] - CYAN */
+    --chip-concept-bg: #e0f2fe;
+    --chip-concept-border: #7dd3fc;
+    --chip-concept-text: #0369a1;
+
+    /* Error/Inválido - ROJO */
+    --chip-error-bg: #fef2f2;
+    --chip-error-border: #fecaca;
+    --chip-error-text: #991b1b;
+
+    /* Pendiente (sin fila/valor) - INDIGO */
+    --chip-pending-bg: #e0e7ff;
+    --chip-pending-border: #a5b4fc;
+    --chip-pending-text: #4338ca;
+
+    /* === TARJETA ACCENTS === */
+    /* Fill - AZUL PURO */
+    --card-fill-accent: #3b82f6;
+    --card-fill-bg: #dbeafe;
+    --card-fill-dark: #1e40af;
+
+    /* Select - PÚRPURA */
+    --card-select-accent: #8b5cf6;
+    --card-select-bg: #ede9fe;
+    --card-select-dark: #6b21a8;
+
+    /* Action/Click - NARANJA */
+    --card-action-accent: #f97316;
+    --card-action-bg: #ffedd5;
+    --card-action-dark: #c2410c;
+
+    /* === RESOLVED CONCEPT WRAPPER === */
+    --concept-resolved-border: var(--chip-concept-border);
+}
+
 /* --- Core Layout --- */
 body,
 html {

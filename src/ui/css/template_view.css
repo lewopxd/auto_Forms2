@@ -186,12 +186,60 @@
     color: #9ca3af;
 }
 
-/* --- Highlight Mark (Edit Mode) --- 
+/* --- Highlight Chips (Edit Mode) --- 
    NO padding/margin to keep sync with textarea cursor */
-.highlight-mark {
-    background-color: #fef08a;
+
+/* Column {col} - GREEN (valid) */
+.highlight-column {
+    background-color: var(--chip-column-bg);
     border-radius: 2px;
-    color: #1f2937;
+    color: var(--chip-column-text);
+}
+
+/* Variable {$var} - YELLOW (valid) */
+.highlight-variable {
+    background-color: var(--chip-variable-bg);
+    border-radius: 2px;
+    color: var(--chip-variable-text);
+}
+
+/* Concept [[concept]] - CYAN (valid) */
+.highlight-concept {
+    background-color: var(--chip-concept-bg);
+    border-radius: 2px;
+    color: var(--chip-concept-text);
+}
+
+/* Pending (no Excel loaded) - INDIGO */
+.highlight-pending {
+    background-color: var(--chip-pending-bg);
+    border-radius: 2px;
+    color: var(--chip-pending-text);
+}
+
+/* Error (invalid column/variable) - RED with border */
+.highlight-error {
+    background-color: var(--chip-error-bg);
+    border: 1px solid var(--chip-error-border);
+    border-radius: 2px;
+    color: var(--chip-error-text);
+    cursor: help;
+}
+
+/* Forbidden [[Concept]] in Concept tab - transparent with tooltip */
+.highlight-forbidden {
+    background: transparent;
+    border: none;
+    text-decoration: underline wavy var(--chip-error-border);
+    color: var(--chip-error-text);
+    cursor: not-allowed;
+}
+
+/* Legacy fallback */
+.highlight-mark {
+    background-color: var(--chip-column-bg);
+    border-radius: 2px;
+    color: var(--chip-column-text);
 }
 
 /* --- View Container --- */
@@ -222,30 +270,30 @@
 
 /* Error chip */
 .smart-chip-error {
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #991b1b;
+    background-color: var(--chip-error-bg);
+    border: 1px solid var(--chip-error-border);
+    color: var(--chip-error-text);
 }
 
 /* Warning chip */
 .smart-chip-warning {
-    background-color: #fffbeb;
-    border: 1px solid #fed7aa;
-    color: #92400e;
+    background-color: var(--chip-pending-bg);
+    border: 1px solid var(--chip-pending-border);
+    color: var(--chip-pending-text);
 }
 
-/* Value chip */
+/* Value chip - Used for resolved {Column} values - GREEN */
 .smart-chip-value {
-    background-color: #fef9c3;
-    border: 1px solid #fde047;
-    color: #1f2937;
+    background-color: var(--chip-column-bg);
+    border: 1px solid var(--chip-column-border);
+    color: var(--chip-column-text);
 }
 
-/* Field chip */
+/* Field chip - Used for pending placeholders - INDIGO */
 .smart-chip-field {
-    background-color: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
+    background-color: var(--chip-pending-bg);
+    border: 1px solid var(--chip-pending-border);
+    color: var(--chip-pending-text);
 }
 
 /* Icon as superscript - very small at end */
@@ -258,11 +306,11 @@
     opacity: 0.8;
 }
 
-/* Concept Reference Chip [[]] - Green */
+/* Concept Reference Chip [[]] - CYAN */
 .smart-chip-concept {
-    background-color: #dcfce7;
-    border: 1px solid #86efac;
-    color: #166534;
+    background-color: var(--chip-concept-bg);
+    border: 1px solid var(--chip-concept-border);
+    color: var(--chip-concept-text);
 }
 
 /* --- Tab Type Icons --- */
