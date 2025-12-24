@@ -21,22 +21,37 @@ const ProgressIndicator = (function () {
 
         const css = `
             .afp-indicator {
-                position: absolute;
-                top: 12px;
-                right: 16px;
-                z-index: 100;
+                position: sticky;
+                top: 0;
+                /* Compensate for parent container padding (~16px) */
+                width: calc(100% + 32px); 
+                margin-left: -16px;
+                margin-right: -16px;
+                margin-top: -16px;
+                
+                height: 0;
+                z-index: 1000;
+                display: flex;
+                justify-content: flex-end;
+                pointer-events: none;
+            }
+
+            /* Container for the actual widget content */
+            .afp-ring-wrapper {
                 pointer-events: auto;
+                margin-top: 8px;  /* Desired visual margin */
+                margin-right: 8px; /* Desired visual margin */
             }
 
             .afp-ring-container {
                 position: relative;
-                width: 48px;
-                height: 48px;
+                width: 56px;
+                height: 56px;
             }
 
             .afp-ring {
-                width: 48px;
-                height: 48px;
+                width: 56px;
+                height: 56px;
                 position: relative;
             }
 
@@ -48,10 +63,10 @@ const ProgressIndicator = (function () {
 
             .afp-ring-inner {
                 position: absolute;
-                top: 5px;
-                left: 5px;
-                right: 5px;
-                bottom: 5px;
+                top: 4px;
+                left: 4px;
+                right: 4px;
+                bottom: 4px;
                 background: white;
                 border-radius: 50%;
                 display: flex;
@@ -79,8 +94,11 @@ const ProgressIndicator = (function () {
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                border: 1px solid #f97316;
+                border: 1px solid currentColor;
             }
+
+            .afp-status.warning { color: #ef4444; border-color: #ef4444; }
+            .afp-status.success { color: #f97316; border-color: #f97316; }
 
             .afp-status-icon {
                 transition: transform 0.15s ease;
@@ -217,18 +235,19 @@ const ProgressIndicator = (function () {
     // ========================================
 
     function buildRingSVG(answered, total) {
-        const cx = 24, cy = 24, radius = 20, strokeWidth = 4;
+        // Radius 24px, stroke 4px
+        const cx = 28, cy = 28, radius = 24, strokeWidth = 4;
         const circumference = 2 * Math.PI * radius;
 
         if (total === 0) {
-            return `<svg viewBox="0 0 48 48"><circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="${strokeWidth}"/></svg>`;
+            return `<svg viewBox="0 0 56 56"><circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="${strokeWidth}"/></svg>`;
         }
 
         const progress = answered / total;
         const progressLength = circumference * progress;
         const remainingLength = circumference - progressLength;
 
-        return `<svg viewBox="0 0 48 48">
+        return `<svg viewBox="0 0 56 56">
             <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#e5e7eb" stroke-width="${strokeWidth}"/>
             <circle cx="${cx}" cy="${cy}" r="${radius}" fill="none" stroke="#f97316" stroke-width="${strokeWidth}" stroke-dasharray="${progressLength} ${remainingLength}" stroke-linecap="round"/>
         </svg>`;
@@ -258,19 +277,23 @@ const ProgressIndicator = (function () {
         if (stats.total === 0) return; // No questions to show
 
         // Build status icon and card
-        let statusIcon, cardContent, cardClass;
+        let statusIcon, cardContent, cardClass, statusClass;
         if (stats.requiredUnanswered > 0) {
-            statusIcon = `<svg class="afp-status-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+            // Alert icon: Red (#ef4444)
+            statusIcon = `<svg class="afp-status-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
             const plural = stats.requiredUnanswered > 1;
             const header = `<strong>${stats.requiredUnanswered} pregunta${plural ? 's' : ''} obligatoria${plural ? 's' : ''} sin responder</strong>`;
             const list = stats.unansweredList.slice(0, 5).map(q => `<div style="margin-top:4px;font-size:10px;opacity:0.9;">${q.num}. ${q.text}</div>`).join('');
             const more = stats.unansweredList.length > 5 ? `<div style="margin-top:4px;font-size:10px;opacity:0.7;">...y ${stats.unansweredList.length - 5} más</div>` : '';
             cardContent = header + list + more;
             cardClass = '';
+            statusClass = 'warning';
         } else {
-            statusIcon = `<svg class="afp-status-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+            // Check icon: Orange (#f97316)
+            statusIcon = `<svg class="afp-status-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
             cardContent = 'Todas las obligatorias respondidas';
             cardClass = 'success';
+            statusClass = 'success';
         }
 
         // Create indicator element
@@ -279,22 +302,24 @@ const ProgressIndicator = (function () {
         indicator.dataset.tab = tabId;
 
         indicator.innerHTML = `
-            <div class="afp-ring-container">
-                <div class="afp-ring">
-                    ${buildRingSVG(stats.answered, stats.total)}
-                    <div class="afp-ring-inner">
-                        <span class="afp-ring-text">${stats.answered}/${stats.total}</span>
+            <div class="afp-ring-wrapper">
+                <div class="afp-ring-container">
+                    <div class="afp-ring">
+                        ${buildRingSVG(stats.answered, stats.total)}
+                        <div class="afp-ring-inner">
+                            <span class="afp-ring-text">${stats.answered}/${stats.total}</span>
+                        </div>
                     </div>
-                </div>
-                <div class="afp-status">
-                    ${statusIcon}
-                    <div class="afp-card ${cardClass}">${cardContent}</div>
+                    <div class="afp-status ${statusClass}">
+                        ${statusIcon}
+                        <div class="afp-card ${cardClass}">${cardContent}</div>
+                    </div>
                 </div>
             </div>
         `;
 
-        // Append INSIDE the container
-        container.appendChild(indicator);
+        // Prepend INSIDE the container to make sticky work from the start
+        container.prepend(indicator);
     }
 
     function destroy(tabId) {

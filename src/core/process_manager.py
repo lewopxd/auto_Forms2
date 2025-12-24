@@ -19,6 +19,8 @@ from ctypes import wintypes
 from typing import List, Optional, Tuple
 import os
 import atexit
+import threading
+import time
 
 # ============================================
 # WINDOWS API SETUP
@@ -29,6 +31,16 @@ try:
     ntdll = ctypes.WinDLL('ntdll', use_last_error=True)
     kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
     psapi = ctypes.WinDLL('psapi', use_last_error=True)
+    
+    # Toolhelp32 prototypes for robustness
+    kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+    kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    
+    kernel32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.c_void_p]
+    kernel32.Process32FirstW.restype = wintypes.BOOL
+    
+    kernel32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.c_void_p]
+    kernel32.Process32NextW.restype = wintypes.BOOL
 except OSError as e:
     print(f"[ProcessManager] Warning: Could not load Windows DLLs: {e}")
     ntdll = None
@@ -52,6 +64,23 @@ REALTIME_PRIORITY_CLASS = 0x00000100
 # NTSTATUS codes
 STATUS_SUCCESS = 0
 
+# Toolhelp32 constants
+TH32CS_SNAPPROCESS = 0x00000002
+
+class PROCESSENTRY32(ctypes.Structure):
+    _fields_ = [
+        ("dwSize", wintypes.DWORD),
+        ("cntUsage", wintypes.DWORD),
+        ("th32ProcessID", wintypes.DWORD),
+        ("th32DefaultHeapID", ctypes.POINTER(wintypes.ULONG)),
+        ("th32ModuleID", wintypes.DWORD),
+        ("cntThreads", wintypes.DWORD),
+        ("th32ParentProcessID", wintypes.DWORD),
+        ("pcPriClassBase", wintypes.LONG),
+        ("dwFlags", wintypes.DWORD),
+        ("szExeFile", wintypes.WCHAR * 260)
+    ]
+
 
 class ProcessManager:
     """
@@ -73,6 +102,8 @@ class ProcessManager:
     _original_priority: Optional[int] = None
     _is_hibernating: bool = False
     _atexit_registered: bool = False
+    _boost_monitor_running: bool = False
+    _boosted_pids: List[int] = []
     
     # ============================================
     # LOW-LEVEL WINDOWS API
@@ -210,7 +241,50 @@ class ProcessManager:
             finally:
                 kernel32.CloseHandle(handle)
         except Exception:
-            return None
+            pass
+        
+        return None
+    @classmethod
+    def _get_child_pids(cls, parent_pid: int) -> List[int]:
+        """Obtiene todos los PIDs hijos directos de un padre usando Toolhelp32."""
+        if not kernel32:
+            return []
+        
+        children = []
+        hSnapshot = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+        if hSnapshot == -1:
+            return []
+            
+        try:
+            pe = PROCESSENTRY32()
+            pe.dwSize = ctypes.sizeof(PROCESSENTRY32)
+            
+            if kernel32.Process32FirstW(hSnapshot, ctypes.byref(pe)):
+                while True:
+                    if pe.th32ParentProcessID == parent_pid:
+                        children.append(pe.th32ProcessID)
+                    if not kernel32.Process32NextW(hSnapshot, ctypes.byref(pe)):
+                        break
+        finally:
+            kernel32.CloseHandle(hSnapshot)
+            
+        return children
+
+    @classmethod
+    def get_all_descendants(cls, parent_pid: int) -> List[int]:
+        """Obtiene todos los descendientes (hijos, nietos...) de forma recursiva."""
+        descendants = []
+        to_process = [parent_pid]
+        
+        while to_process:
+            current_parent = to_process.pop(0)
+            children = cls._get_child_pids(current_parent)
+            for child_pid in children:
+                if child_pid not in descendants:
+                    descendants.append(child_pid)
+                    to_process.append(child_pid)
+                    
+        return descendants
     
     # ============================================
     # ANTIGRAVITY DETECTION
@@ -361,6 +435,53 @@ class ProcessManager:
         else:
             print(f"[ProcessManager] ✗ Failed to boost current process priority")
             return False
+            
+    @classmethod
+    def boost_webview_monitor(cls):
+        """
+        Lanza un monitor en segundo plano para dar boost a los procesos de WebView2.
+        Infalible: Busca por árbol de procesos de forma recursiva.
+        """
+        if cls._boost_monitor_running:
+            return
+            
+        def monitor_task():
+            cls._boost_monitor_running = True
+            cls._boosted_pids = []
+            my_pid = os.getpid()
+            
+            print("[ProcessManager] Boost monitor started (targeting WebView2 children)")
+            
+            # Patrones de procesos de renderizado
+            webview_patterns = ['msedgewebview2', 'msedge', 'webview2']
+            
+            # Monitorear intensamente los primeros 15 segundos
+            start_time = time.time()
+            while time.time() - start_time < 15:
+                # Obtener descendientes directos e indirectos
+                descendants = cls.get_all_descendants(my_pid)
+                
+                for pid in descendants:
+                    if pid in cls._boosted_pids:
+                        continue
+                        
+                    name = cls._get_process_name(pid)
+                    if name:
+                        name_lower = name.lower()
+                        is_webview = any(p in name_lower for p in webview_patterns)
+                        
+                        if is_webview:
+                            if cls._set_priority(pid, HIGH_PRIORITY_CLASS):
+                                cls._boosted_pids.append(pid)
+                                print(f"[ProcessManager] 🚀 BOOSTED WebView2 process: {name} (PID {pid})")
+                
+                time.sleep(1.0) # Escanear cada segundo
+                
+            cls._boost_monitor_running = False
+            print(f"[ProcessManager] Boost monitor finished. Boosted {len(cls._boosted_pids)} child processes.")
+
+        thread = threading.Thread(target=monitor_task, daemon=True)
+        thread.start()
     
     @classmethod
     def wake_antigravity(cls) -> bool:

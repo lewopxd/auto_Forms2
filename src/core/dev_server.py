@@ -639,6 +639,8 @@ class DevServer:
                 from core.process_manager import ProcessManager
                 if ProcessManager.boost_current_process():
                     self.console.info("✓ pywebview priority set to HIGH")
+                    # Lanza el monitor para los subprocesos (Renderer, GPU, etc.)
+                    ProcessManager.boost_webview_monitor()
             except Exception as e:
                 self.console.warn(f"Could not boost priority: {e}")
         
@@ -676,6 +678,8 @@ class DevServer:
                     try:
                         from core.process_manager import ProcessManager
                         ProcessManager.boost_current_process()
+                        # Lanza el monitor para los subprocesos
+                        ProcessManager.boost_webview_monitor()
                     except Exception:
                         pass
                 
