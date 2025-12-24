@@ -2160,6 +2160,11 @@ const AutoFormViewModule = (function () {
         // Initialize smart inputs for chip rendering
         initSmartInputs();
         initSmartTextareas();
+
+        // Initialize progress indicator (after all cards rendered)
+        if (window.ProgressIndicator) {
+            ProgressIndicator.init(`af-container-edit-${tabId}`, tabId, state.formData);
+        }
     }
 
     function createCard(tabId, pKey, qKey, q, num, isViewMode, selectedData = {}) {
@@ -3826,6 +3831,11 @@ const AutoFormViewModule = (function () {
 
 
         if (window.lucide) lucide.createIcons();
+
+        // Initialize progress indicator (after all cards rendered)
+        if (window.ProgressIndicator) {
+            ProgressIndicator.init(`af-container-view-${tabId}`, tabId, state.formData);
+        }
 
         // Attach config button handler
         const configBtn = document.getElementById(`afv-config-${tabId}`);

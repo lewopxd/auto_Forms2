@@ -490,12 +490,35 @@ class DevServer:
         self.console.webview("Page loaded and ready")
     
     def on_webview_closing(self):
-        self.console.webview("Browser closed. Run 'python main.py' to reopen.")
+        self.console.webview("Browser closed.")
         self._window_open = False
         self.webview_ready = False
+        
+        # Wake Antigravity when browser closes
+        try:
+            from core.process_manager import ProcessManager
+            if ProcessManager.is_hibernating():
+                self.console.info("Waking Antigravity IDE...")
+                ProcessManager.wake_antigravity()
+                self.console.info("✓ Antigravity resumed with HIGH priority")
+        except Exception as e:
+            self.console.warn(f"Could not wake Antigravity: {e}")
+        
+        self.console.webview("Run 'python main.py' to reopen.")
     
     def shutdown(self):
         self._shutdown_initiated = True
+        
+        # Wake Antigravity before shutdown
+        try:
+            from core.process_manager import ProcessManager
+            if ProcessManager.is_hibernating():
+                self.console.info("Waking Antigravity IDE before shutdown...")
+                ProcessManager.wake_antigravity()
+                self.console.info("✓ Antigravity resumed")
+        except Exception as e:
+            self.console.warn(f"Could not wake Antigravity: {e}")
+        
         time.sleep(0.3)
         self.running = False
         release_lock()
@@ -594,10 +617,30 @@ class DevServer:
     
     def run_webview_loop(self):
         """Main webview loop - creates windows on demand."""
-        from core.config import DEBUG_MODE, LIGHT_UI_MODE
+        from core.config import DEBUG_MODE, LIGHT_UI_MODE, HIBERNATE_ANTIGRAVITY_ENABLED, BOOST_PYWEBVIEW_PRIORITY
         
         # Light UI Mode: disable devtools for better performance
         use_debug = DEBUG_MODE and not LIGHT_UI_MODE
+        
+        # === HIBERNATE ANTIGRAVITY & BOOST PYWEBVIEW ===
+        if HIBERNATE_ANTIGRAVITY_ENABLED:
+            try:
+                from core.process_manager import ProcessManager
+                self.console.info("Hibernating Antigravity IDE...")
+                if ProcessManager.hibernate_antigravity():
+                    self.console.info("✓ Antigravity suspended (~875MB freed)")
+                else:
+                    self.console.warn("No Antigravity processes found to hibernate")
+            except Exception as e:
+                self.console.warn(f"Could not hibernate Antigravity: {e}")
+        
+        if BOOST_PYWEBVIEW_PRIORITY:
+            try:
+                from core.process_manager import ProcessManager
+                if ProcessManager.boost_current_process():
+                    self.console.info("✓ pywebview priority set to HIGH")
+            except Exception as e:
+                self.console.warn(f"Could not boost priority: {e}")
         
         self.console.info(f"Creating initial browser window... (debug={use_debug}, lightUI={LIGHT_UI_MODE})")
         self.create_window()

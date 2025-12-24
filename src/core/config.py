@@ -48,3 +48,7 @@ FREEZE_UI_ENABLED = True              # Master switch for UI freeze during recor
 FREEZE_UI_MINIMIZE = True             # Minimize window when recording starts
 FREEZE_UI_HIDE = False                # Hide window completely (more aggressive)
 FREEZE_UI_PAUSE_ANIMATIONS = True     # Pause CSS animations/transitions
+
+# --- Antigravity IDE Hibernation (Resource Management) ---
+HIBERNATE_ANTIGRAVITY_ENABLED = True  # Suspend Antigravity IDE when pywebview starts
+BOOST_PYWEBVIEW_PRIORITY = True       # Set pywebview to HIGH priority for max performance
