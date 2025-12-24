@@ -57,7 +57,8 @@
     display: flex;
     align-items: center;
     overflow: hidden;
-    white-space: nowrap;
+    white-space: pre;
+    /* Preserve multiple spaces */
 }
 
 /* ==================== GRID CONTAINER ==================== */
@@ -111,7 +112,8 @@
     font-weight: 600;
     font-size: 13px;
     color: #ffffff;
-    white-space: nowrap;
+    white-space: pre;
+    /* Preserve multiple spaces in headers */
     overflow: hidden;
     vertical-align: middle;
     user-select: text;
@@ -209,7 +211,8 @@
     border-right: 1px solid #e0e0e0;
     border-bottom: 1px solid #e0e0e0;
     padding: 2px 6px;
-    white-space: nowrap;
+    white-space: pre;
+    /* Preserve multiple spaces in data cells */
     overflow: hidden;
     vertical-align: middle;
     color: #000000;

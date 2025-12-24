@@ -154,16 +154,20 @@ const VariablesModule = (function () {
     // ================== CORE RESOLUTION ==================
 
     /**
-     * Find value in data object with case-insensitive key matching
+     * Find value in data object using Utils for proper normalization
      */
     function findNormalizedValue(key, data) {
         if (!data || !key) return undefined;
-        const trimmedKey = key.trim().toLowerCase();
 
-        // Direct match first
+        // Use Utils.findInObject for proper normalization (including collapse)
+        if (window.Utils) {
+            const result = window.Utils.findInObject(key, data);
+            return result.value;
+        }
+
+        // Fallback without Utils
         if (data[key] !== undefined) return data[key];
-
-        // Case-insensitive search
+        const trimmedKey = key.trim().toLowerCase();
         for (const k of Object.keys(data)) {
             if (k.toLowerCase().trim() === trimmedKey) {
                 return data[k];
@@ -180,8 +184,12 @@ const VariablesModule = (function () {
      */
     function resolveVariable(varName, columnData) {
         const variables = window.projectData?.variables || [];
+
+        // Use Utils.equals for variable name matching
         const variable = variables.find(v =>
-            v.name.toLowerCase().trim() === varName.toLowerCase().trim()
+            window.Utils
+                ? window.Utils.equals(v.name, varName)
+                : v.name.toLowerCase().trim() === varName.toLowerCase().trim()
         );
 
         if (!variable) {
@@ -223,12 +231,19 @@ const VariablesModule = (function () {
                     map
                 });
 
-                // Find mapped value (case-insensitive)
-                let mappedValue = map[mapValue];
-                if (mappedValue === undefined) {
-                    const foundKey = Object.keys(map).find(k => k.toLowerCase() === mapValue.toLowerCase());
-                    mappedValue = foundKey ? map[foundKey] : null;
-                    console.log('[VariablesModule] Case-insensitive search:', { foundKey, mappedValue });
+                // Find mapped value using Utils for proper normalization
+                let mappedValue;
+                if (window.Utils) {
+                    const result = window.Utils.findInObject(mapValue, map);
+                    mappedValue = result.value;
+                    console.log('[VariablesModule] Utils lookup:', { foundKey: result.foundKey, matchType: result.matchType, mappedValue });
+                } else {
+                    mappedValue = map[mapValue];
+                    if (mappedValue === undefined) {
+                        const foundKey = Object.keys(map).find(k => k.toLowerCase() === mapValue.toLowerCase());
+                        mappedValue = foundKey ? map[foundKey] : null;
+                        console.log('[VariablesModule] Fallback search:', { foundKey, mappedValue });
+                    }
                 }
 
                 if (mappedValue !== undefined && mappedValue !== null) {
@@ -687,9 +702,12 @@ const VariablesModule = (function () {
         const headers = window.globalHeaders || [];
         const data = window.globalExcelData || [];
 
-        // Find column index (exact match first, then case-insensitive trim)
+        // Find column index using Utils for proper normalization
         let colIndex = headers.indexOf(columnName);
-        if (colIndex === -1) {
+        if (colIndex === -1 && window.Utils) {
+            colIndex = headers.findIndex(h => window.Utils.equals(h, columnName));
+        } else if (colIndex === -1) {
+            // Fallback without Utils
             colIndex = headers.findIndex(h => h.trim().toLowerCase() === columnName.trim().toLowerCase());
         }
 
@@ -870,7 +888,10 @@ const VariablesModule = (function () {
                     if (match[1]) {
                         // {$Variable} - YELLOW
                         const varName = match[2].trim();
-                        const isValid = variableNames.length === 0 || variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
+                        const isValid = variableNames.length === 0 ||
+                            (window.Utils
+                                ? variableNames.some(v => window.Utils.equals(v, varName))
+                                : variableNames.some(v => v.toLowerCase() === varName.toLowerCase()));
                         const style = isValid
                             ? 'background: #fef3c7; color: #92400e;'
                             : 'background: #fee2e2; color: #dc2626;';
@@ -879,7 +900,11 @@ const VariablesModule = (function () {
                         // [[Concept]] - CYAN
                         const conceptName = match[4].trim();
                         const tabs = window.projectData?.tabs || [];
-                        const conceptExists = tabs.some(t => (t.type === 'concept' || !t.type) && t.title?.toLowerCase() === conceptName.toLowerCase());
+                        const conceptExists = tabs.some(t =>
+                            (t.type === 'concept' || !t.type) &&
+                            (window.Utils
+                                ? window.Utils.equals(t.title, conceptName)
+                                : t.title?.toLowerCase() === conceptName.toLowerCase()));
                         const style = conceptExists
                             ? 'background: #cffafe; color: #0891b2;'
                             : 'background: #fee2e2; color: #dc2626;';
@@ -887,7 +912,10 @@ const VariablesModule = (function () {
                     } else if (match[5]) {
                         // {Column} - GREEN
                         const colName = match[6].trim();
-                        const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                        const isValid = headers.length === 0 ||
+                            (window.Utils
+                                ? headers.some(h => window.Utils.equals(h, colName))
+                                : headers.some(h => h.toLowerCase() === colName.toLowerCase()));
                         if (isValid) foundValidColumn = colName;
                         const style = isValid
                             ? 'background: #dcfce7; color: #166534;'
@@ -1006,18 +1034,28 @@ const VariablesModule = (function () {
 
                 if (match[1]) {
                     const varName = match[2].trim();
-                    const isValid = variableNames.length === 0 || variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
+                    const isValid = variableNames.length === 0 ||
+                        (window.Utils
+                            ? variableNames.some(v => window.Utils.equals(v, varName))
+                            : variableNames.some(v => v.toLowerCase() === varName.toLowerCase()));
                     const style = isValid ? 'background: #fef3c7; color: #92400e;' : 'background: #fee2e2; color: #dc2626;';
                     html += `< span style = "${style}" > { $${escHtml(match[2])}}</span > `;
                 } else if (match[3]) {
                     const conceptName = match[4].trim();
                     const tabs = window.projectData?.tabs || [];
-                    const conceptExists = tabs.some(t => (t.type === 'concept' || !t.type) && t.title?.toLowerCase() === conceptName.toLowerCase());
+                    const conceptExists = tabs.some(t =>
+                        (t.type === 'concept' || !t.type) &&
+                        (window.Utils
+                            ? window.Utils.equals(t.title, conceptName)
+                            : t.title?.toLowerCase() === conceptName.toLowerCase()));
                     const style = conceptExists ? 'background: #cffafe; color: #0891b2;' : 'background: #fee2e2; color: #dc2626;';
                     html += `< span style = "${style}" > [[${escHtml(match[4])}]]</span > `;
                 } else if (match[5]) {
                     const colName = match[6].trim();
-                    const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                    const isValid = headers.length === 0 ||
+                        (window.Utils
+                            ? headers.some(h => window.Utils.equals(h, colName))
+                            : headers.some(h => h.toLowerCase() === colName.toLowerCase()));
                     const style = isValid ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #dc2626;';
                     html += `< span style = "${style}" > { ${escHtml(match[6])}}</span > `;
                 }
@@ -1047,7 +1085,10 @@ const VariablesModule = (function () {
                 // Get unique values from column
                 const uniqueValues = new Set();
                 excelData.forEach(row => {
-                    const value = row[colName] ?? row[Object.keys(row).find(k => k.toLowerCase() === colName.toLowerCase())];
+                    const value = row[colName] ??
+                        (window.Utils
+                            ? row[Object.keys(row).find(k => window.Utils.equals(k, colName))]
+                            : row[Object.keys(row).find(k => k.toLowerCase() === colName.toLowerCase())]);
                     if (value !== undefined && value !== null && String(value).trim() !== '') {
                         uniqueValues.add(String(value).trim());
                     }

@@ -6,29 +6,14 @@
  * - Conceptos: projectData.tabs (type: 'concept')
  * - Variables: VariablesModule
  * - Headers: window.globalHeaders
+ * 
+ * Usa Utils.normalize() y Utils.compare() para comparaciones centralizadas
  */
 const DataResolver = (function () {
     'use strict';
 
     /**
-     * Normaliza string para comparación
-     */
-    function normalize(str, level = 3) {
-        if (!str) return '';
-        let result = String(str).trim();
-
-        // Level 1: Espacios
-        if (level >= 1) result = result.replace(/\s+/g, ' ');
-        // Level 2: Case
-        if (level >= 2) result = result.toLowerCase();
-        // Level 3: Acentos
-        if (level >= 3) result = result.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-        return result;
-    }
-
-    /**
-     * Obtiene valor de columna Excel con normalización progresiva
+     * Obtiene valor de columna Excel usando Utils.findInObject
      * @param {string} columnName - Nombre de la columna
      * @param {object} rowData - Datos de la fila
      * @returns {any} Valor o undefined
@@ -36,28 +21,20 @@ const DataResolver = (function () {
     function getColumnValue(columnName, rowData) {
         if (!rowData || !columnName) return undefined;
 
-        const trimmed = columnName.trim();
-        const keys = Object.keys(rowData);
+        // Usar Utils para búsqueda con normalización configurable
+        if (window.Utils) {
+            const result = window.Utils.findInObject(columnName, rowData);
+            return result.value;
+        }
 
-        // 1. Match exacto
+        // Fallback si Utils no está disponible
+        const trimmed = columnName.trim();
         if (rowData[trimmed] !== undefined) return rowData[trimmed];
 
-        // 2. Normalizar espacios
-        const norm1 = normalize(trimmed, 1);
-        for (const k of keys) {
-            if (normalize(k, 1) === norm1) return rowData[k];
-        }
-
-        // 3. Case-insensitive
-        const norm2 = normalize(trimmed, 2);
-        for (const k of keys) {
-            if (normalize(k, 2) === norm2) return rowData[k];
-        }
-
-        // 4. Sin acentos
-        const norm3 = normalize(trimmed, 3);
-        for (const k of keys) {
-            if (normalize(k, 3) === norm3) return rowData[k];
+        // Case-insensitive fallback
+        const lowerKey = trimmed.toLowerCase();
+        for (const k of Object.keys(rowData)) {
+            if (k.toLowerCase() === lowerKey) return rowData[k];
         }
 
         return undefined;
@@ -72,13 +49,18 @@ const DataResolver = (function () {
         if (!conceptName) return null;
 
         const tabs = window.projectData?.tabs || [];
-        const search = normalize(conceptName, 2);
 
-        const tab = tabs.find(t =>
-            (t.type === 'concept' || !t.type) &&
-            normalize(t.title, 2) === search &&
-            t.content !== undefined
-        );
+        // Buscar concepto usando Utils.compare si disponible
+        const tab = tabs.find(t => {
+            if (t.type !== 'concept' && t.type !== undefined) return false;
+            if (t.content === undefined) return false;
+
+            if (window.Utils) {
+                return window.Utils.equals(t.title, conceptName);
+            }
+            // Fallback
+            return t.title?.toLowerCase().trim() === conceptName.toLowerCase().trim();
+        });
 
         return tab?.content ?? null;
     }
@@ -128,8 +110,14 @@ const DataResolver = (function () {
         const headers = getHeaders();
         if (headers.length === 0) return true; // Sin Excel cargado, asumir válido
 
-        const search = normalize(columnName, 3);
-        return headers.some(h => normalize(h, 3) === search);
+        // Usar Utils.equals para comparación
+        if (window.Utils) {
+            return headers.some(h => window.Utils.equals(h, columnName));
+        }
+
+        // Fallback
+        const search = columnName.toLowerCase().trim();
+        return headers.some(h => h.toLowerCase().trim() === search);
     }
 
     /**
@@ -142,8 +130,14 @@ const DataResolver = (function () {
         const vars = window.projectData?.variables || [];
         if (vars.length === 0) return true; // Sin variables definidas, asumir válido
 
-        const search = normalize(varName, 2);
-        return vars.some(v => normalize(v.name, 2) === search);
+        // Usar Utils.equals para comparación
+        if (window.Utils) {
+            return vars.some(v => window.Utils.equals(v.name, varName));
+        }
+
+        // Fallback
+        const search = varName.toLowerCase().trim();
+        return vars.some(v => v.name?.toLowerCase().trim() === search);
     }
 
     /**
@@ -186,8 +180,7 @@ const DataResolver = (function () {
         variableExists,
         conceptExists,
         getConceptNames,
-        getVariableNames,
-        normalize
+        getVariableNames
     };
 })();
 

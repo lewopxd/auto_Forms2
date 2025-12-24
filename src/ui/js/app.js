@@ -14,6 +14,17 @@
         excel: null,
         recordings: [],  // Global recordings pool (not per-tab)
         variables: [],   // Computed variables with transformations
+        settings: {      // Application settings (per-project)
+            normalization: {
+                enabled: true,
+                flags: {
+                    trim: true,
+                    collapse: true,
+                    lowercase: true,
+                    accents: true
+                }
+            }
+        },
         defaultActionSettings: {
             fill: {
                 timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 },
@@ -208,6 +219,7 @@
             tabs: window.projectData?.tabs || [],
             recordings: window.projectData?.recordings || [],  // Global recordings
             variables: window.projectData?.variables || [],    // Computed variables
+            settings: window.projectData?.settings || {},      // Application settings
             ui: {
                 splitterPosition: getSplitterPosition(),
                 activeTab: getActiveTabId()
@@ -357,6 +369,7 @@
         window.projectData.excel = data.excel || null;
         window.projectData.recordings = data.recordings || [];  // Restore global recordings
         window.projectData.variables = data.variables || [];    // Restore computed variables
+        window.projectData.settings = data.settings || window.projectData.settings;  // Restore settings
 
         // Restore UI state
         if (data.ui?.splitterPosition) {
@@ -599,6 +612,7 @@
     const btnOpenProject = document.getElementById('btn-open-project');
     const btnSaveProject = document.getElementById('btn-save-project');
     const btnOpenVariables = document.getElementById('btn-open-variables');
+    const btnProjectSettings = document.getElementById('btn-project-settings');
 
     if (btnOpenProject) {
         btnOpenProject.addEventListener('click', openProject);
@@ -610,6 +624,13 @@
         btnOpenVariables.addEventListener('click', () => {
             if (window.VariablesModule) {
                 window.VariablesModule.openModal();
+            }
+        });
+    }
+    if (btnProjectSettings) {
+        btnProjectSettings.addEventListener('click', () => {
+            if (window.ProjectSettingsModal) {
+                window.ProjectSettingsModal.openModal();
             }
         });
     }

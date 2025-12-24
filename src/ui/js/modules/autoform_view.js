@@ -3165,9 +3165,14 @@ const AutoFormViewModule = (function () {
             const placeholder = question.config.mapping.placeholder;
             console.log(`[Mapping DEBUG] Raw placeholder: "${placeholder}" | JSON: ${JSON.stringify(placeholder)}`);
             const columnName = placeholder.replace(/^\{|\}$/g, '').trim();
-
-            // Get the current row's value
-            const columnValue = selectedData?.[columnName] ?? selectedData?.[columnName.toLowerCase()];
+            // Get the current row's value - use Utils for normalization
+            let columnValue;
+            if (window.Utils) {
+                const result = window.Utils.findInObject(columnName, selectedData);
+                columnValue = result.value;
+            } else {
+                columnValue = selectedData?.[columnName] ?? selectedData?.[columnName.toLowerCase()];
+            }
             console.log(`[Mapping] Q: "${question.text}" | Col: "${columnName}" | ExcelVal: "${columnValue}"`);
             const map = question.config.mapping.map || {};
 
@@ -3193,14 +3198,17 @@ const AutoFormViewModule = (function () {
                 // We stringify both to ensure "1" matches 1, etc.
                 const colStr = (columnValue !== undefined && columnValue !== null) ? String(columnValue).trim() : '';
 
-                // First try exact key match (fastest)
-                if (map[colStr] !== undefined) {
-                    mappedText = map[colStr];
+                // Use Utils for proper normalization with fallback
+                if (window.Utils) {
+                    const result = window.Utils.findInObject(colStr, map);
+                    mappedText = result.value !== undefined ? result.value : null;
                 } else {
-                    // Try to find if any key matches the column string
-                    // This handles potential whitespace diffs if key wasn't trimmed
-                    const foundKey = Object.keys(map).find(k => String(k).trim() === colStr);
-                    if (foundKey) mappedText = map[foundKey];
+                    if (map[colStr] !== undefined) {
+                        mappedText = map[colStr];
+                    } else {
+                        const foundKey = Object.keys(map).find(k => String(k).trim() === colStr);
+                        if (foundKey) mappedText = map[foundKey];
+                    }
                 }
 
                 console.log(`[Mapping] Lookup Key: "${colStr}" | Match: "${mappedText}"`);
@@ -3509,7 +3517,11 @@ const AutoFormViewModule = (function () {
      */
     function getColumnValue(columnName, selectedData) {
         const headers = window.globalHeaders || [];
-        const colIndex = headers.indexOf(columnName);
+        // Use Utils for normalized column finding
+        let colIndex = headers.indexOf(columnName);
+        if (colIndex === -1 && window.Utils) {
+            colIndex = headers.findIndex(h => window.Utils.equals(h, columnName));
+        }
         if (colIndex === -1 || !selectedData?.rowData) return '';
         return selectedData.rowData[colIndex] || '';
     }

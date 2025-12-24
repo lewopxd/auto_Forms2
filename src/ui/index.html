@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="css/template_view.css">
     <link rel="stylesheet" href="css/autoform_view.css">
     <link rel="stylesheet" href="css/export_modal.css">
+    <link rel="stylesheet" href="css/project_settings_modal.css">
 </head>
 
 <body class="bg-gray-100 flex flex-row overflow-hidden h-full">
@@ -38,6 +39,10 @@
             <button id="btn-save-project" class="sidebar-btn" title="Guardar Proyecto">
                 <i data-lucide="save" class="w-5 h-5"></i>
                 <span>Guardar</span>
+            </button>
+            <button id="btn-project-settings" class="sidebar-btn" title="Configuración">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                <span>Config</span>
             </button>
         </div>
 
@@ -221,7 +226,9 @@
     <script src="js/bridge.js"></script>
 
     <!-- Application modules -->
-    <!-- Core Modules - MUST load first -->
+    <!-- Core Modules - MUST load first (in dependency order) -->
+    <script src="js/core/utils.js"></script>
+    <script src="js/core/app_config.js"></script>
     <script src="js/core/data_resolver.js"></script>
     <script src="js/core/placeholder_engine.js"></script>
 
@@ -230,6 +237,7 @@
     <script src="js/modules/action_config_modal.js"></script>
     <script src="js/modules/automation_config_modal.js"></script>
     <script src="js/modules/export_modal.js"></script>
+    <script src="js/modules/project_settings_modal.js"></script>
     <script src="js/modules/sheet_view.js"></script>
     <script src="js/modules/template_view.js"></script>
     <script src="js/modules/autoform_view.js"></script>
