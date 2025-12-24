@@ -403,19 +403,18 @@
                     </div>
                 </div>
             `;
-        } else if (type !== 'click') {
-            // Generic fallback
         }
 
-        // 2.5 SELECTOR/LOCATOR (For CLICK actions with custom actions)
+        // 2.5 TEXT & SELECTOR (For CLICK actions with custom actions)
         if (type === 'click' && ctx?.isCustomAction) {
-            const isLocked = currentCardData.isLocked !== false; // Default: locked for existing, unlocked for new
+            const isLocked = currentCardData.isLocked !== false;
+            const currentText = currentCardData.text || '';
             const currentSelector = currentCardData.selector || '';
 
             html += `
                 <div class="af-config-section">
-                    <div class="af-config-sec-title">Selector / Locator</div>
-                    <div class="af-config-row" style="flex-direction:column; gap:12px;">
+                    <div class="af-config-sec-title">Text & Selector</div>
+                    <div class="af-config-row" style="flex-direction:column; gap:16px;">
                         <!-- Lock Toggle -->
                         <div class="flex items-center gap-2">
                             <div class="af-config-label" style="min-width:auto;">Edición Bloqueada</div>
@@ -428,11 +427,20 @@
                                style="width:16px;height:16px;color:${isLocked ? '#9ca3af' : '#f97316'};margin-left:8px;"></i>
                         </div>
                         
+                        <!-- Text Input -->
+                        <div class="af-selector-edit-wrapper ${isLocked ? 'locked' : ''}">
+                            <label class="af-config-label" style="font-size:11px;color:#6b7280;margin-bottom:4px;display:block;">Text:</label>
+                            <input type="text" id="cfg-text-value" class="af-config-input af-click-field-input" 
+                                   value="${escHtml(currentText)}"
+                                   placeholder="Guardar y enviar otra respuesta"
+                                   ${isLocked ? 'readonly' : ''}>
+                        </div>
+                        
                         <!-- Selector Input -->
                         <div class="af-selector-edit-wrapper ${isLocked ? 'locked' : ''}">
-                            <label class="af-config-label" style="font-size:11px;color:#6b7280;margin-bottom:4px;display:block;">Selector CSS / XPath:</label>
-                            <input type="text" id="cfg-selector-value" class="af-config-input" 
-                                   style="font-family:'Monaco','Consolas',monospace; font-size:11px; width:100%;"
+                            <label class="af-config-label" style="font-size:11px;color:#6b7280;margin-bottom:4px;display:block;">Selector:</label>
+                            <input type="text" id="cfg-selector-value" class="af-config-input af-click-field-input" 
+                                   style="font-family:'Monaco','Consolas',monospace;"
                                    value="${escHtml(currentSelector)}"
                                    placeholder='[data-automation-id="buttonId"]'
                                    ${isLocked ? 'readonly' : ''}>
@@ -684,20 +692,27 @@
     }
 
     /**
-     * Toggle selector lock state for click actions
-     * @param {boolean} isLocked - Whether the selector should be locked
+     * Toggle selector lock state for click actions (locks both Text and Selector)
+     * @param {boolean} isLocked - Whether the fields should be locked
      */
     function toggleSelectorLock(isLocked) {
-        const input = document.getElementById('cfg-selector-value');
-        const wrapper = input?.closest('.af-selector-edit-wrapper');
+        const textInput = document.getElementById('cfg-text-value');
+        const selectorInput = document.getElementById('cfg-selector-value');
         const icon = document.getElementById('cfg-lock-icon');
 
-        if (input) {
-            input.readOnly = isLocked;
+        // Toggle both inputs
+        if (textInput) {
+            textInput.readOnly = isLocked;
+            const wrapper = textInput.closest('.af-selector-edit-wrapper');
+            if (wrapper) wrapper.classList.toggle('locked', isLocked);
         }
-        if (wrapper) {
-            wrapper.classList.toggle('locked', isLocked);
+        if (selectorInput) {
+            selectorInput.readOnly = isLocked;
+            const wrapper = selectorInput.closest('.af-selector-edit-wrapper');
+            if (wrapper) wrapper.classList.toggle('locked', isLocked);
         }
+
+        // Update lock icon
         if (icon) {
             icon.setAttribute('data-lucide', isLocked ? 'lock' : 'lock-open');
             icon.style.color = isLocked ? '#9ca3af' : '#f97316';
@@ -948,11 +963,15 @@
                 }
             }
 
-            // Click-specific: Save selector and lock state for custom actions
+            // Click-specific: Save text, selector and lock state for custom actions
             if (currentActionType === 'click') {
+                const textEl = document.getElementById('cfg-text-value');
                 const selectorEl = document.getElementById('cfg-selector-value');
                 const lockedEl = document.getElementById('cfg-selector-locked');
 
+                if (textEl) {
+                    newConfig.text = textEl.value || '';
+                }
                 if (selectorEl) {
                     newConfig.selector = selectorEl.value || '';
                 }

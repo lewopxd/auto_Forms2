@@ -338,10 +338,12 @@ const AutoFormViewModule = (function () {
         if (tab.loadedRecordingId && window.projectData?.recordings) {
             const recording = window.projectData.recordings.find(r => r.id === tab.loadedRecordingId);
             if (recording && recording.data && state.formData?.pages) {
-                // Sync config from formData to recording.data
+                // Sync config from formData to recording.data for questions
                 Object.keys(state.formData.pages).forEach(pageKey => {
                     const srcPage = state.formData.pages[pageKey];
                     const destPage = recording.data.pages?.[pageKey];
+
+                    // Sync question configs
                     if (srcPage?.questions && destPage?.questions) {
                         Object.keys(srcPage.questions).forEach(qKey => {
                             const srcQ = srcPage.questions[qKey];
@@ -351,7 +353,60 @@ const AutoFormViewModule = (function () {
                             }
                         });
                     }
+
+                    // Sync navigation configs (next, submit)
+                    if (srcPage?.navigation && destPage) {
+                        if (!destPage.navigation) destPage.navigation = {};
+                        if (srcPage.navigation.next?.config) {
+                            if (!destPage.navigation.next) destPage.navigation.next = {};
+                            destPage.navigation.next.config = JSON.parse(JSON.stringify(srcPage.navigation.next.config));
+                        }
+                        if (srcPage.navigation.submit?.config) {
+                            if (!destPage.navigation.submit) destPage.navigation.submit = {};
+                            destPage.navigation.submit.config = JSON.parse(JSON.stringify(srcPage.navigation.submit.config));
+                        }
+                    }
                 });
+
+                // CRITICAL: Sync page_postSubmit section (create if doesn't exist)
+                if (state.formData.pages.page_postSubmit) {
+                    const srcPostSubmit = state.formData.pages.page_postSubmit;
+
+                    // Create or update page_postSubmit in recording.data
+                    if (!recording.data.pages.page_postSubmit) {
+                        recording.data.pages.page_postSubmit = {
+                            questions: {},
+                            pageInfo: { current: 1, text: '', total: 1 },
+                            navigation: { back: null, next: null, submit: null },
+                            isPostSubmitPage: true,
+                            postSubmitActions: {}
+                        };
+                    }
+
+                    const destPostSubmit = recording.data.pages.page_postSubmit;
+
+                    // Sync customActions array
+                    if (srcPostSubmit.customActions) {
+                        destPostSubmit.customActions = JSON.parse(JSON.stringify(srcPostSubmit.customActions));
+                    }
+
+                    // Sync postSubmitActions configs
+                    if (srcPostSubmit.postSubmitActions) {
+                        if (!destPostSubmit.postSubmitActions) destPostSubmit.postSubmitActions = {};
+                        Object.keys(srcPostSubmit.postSubmitActions).forEach(actionKey => {
+                            const srcAction = srcPostSubmit.postSubmitActions[actionKey];
+                            if (srcAction) {
+                                if (!destPostSubmit.postSubmitActions[actionKey]) {
+                                    destPostSubmit.postSubmitActions[actionKey] = {};
+                                }
+                                destPostSubmit.postSubmitActions[actionKey] = JSON.parse(JSON.stringify(srcAction));
+                            }
+                        });
+                    }
+
+                    // Sync isPostSubmitPage flag
+                    destPostSubmit.isPostSubmitPage = true;
+                }
             }
         }
 
@@ -2554,9 +2609,9 @@ const AutoFormViewModule = (function () {
                 </div>
             </div>
             <div class="af-card-body">
-                <div class="af-question-title">Acción: ${label}</div>
+                <div class="af-question-title">Text: ${label || '<span style="color:#9ca3af;font-style:italic;">(Sin definir)</span>'}</div>
                 <div style="font-size:11px; color:#6b7280; margin-top:4px; font-family:monospace; background:#f3f4f6; padding:4px; border-radius:4px;">
-                    ${escHtml(selectorText)}
+                    ${selectorText ? escHtml(selectorText) : '<span style="color:#9ca3af;font-style:italic;">(Sin selector)</span>'}
                 </div>
             </div>
         `;
@@ -2572,6 +2627,9 @@ const AutoFormViewModule = (function () {
                     ActionConfigModal.open(navObj, 'click', { isCustomAction }, (newConfig) => {
                         // Merge config and selector changes back to navObj
                         navObj.config = newConfig;
+                        if (newConfig.text !== undefined) {
+                            navObj.text = newConfig.text;
+                        }
                         if (newConfig.selector !== undefined) {
                             navObj.selector = newConfig.selector;
                         }
@@ -2645,9 +2703,9 @@ const AutoFormViewModule = (function () {
         postSubmit.customActions.push({
             id: actionId,
             action: 'click',
-            text: `postSubmit Action ${actionNum}`,
-            selector: '',           // Empty, editable in modal
-            isLocked: false,        // Unlocked by default (new action)
+            text: '',                // Empty, user must enter via modal
+            selector: '',            // Empty, editable in modal
+            isLocked: false,         // Unlocked by default (new action)
             config: {}
         });
 
@@ -3966,6 +4024,16 @@ const AutoFormViewModule = (function () {
                     const isLast = globalActionIndex === totalGlobalActions;
                     gridContainer.appendChild(createViewClickRow(actions.submitAnother.text || 'Enviar otra respuesta', actions.submitAnother, globalActionIndex, isFirst, isLast));
                 }
+            }
+
+            // Render custom post-submit actions as click rows
+            if (isPostSubmit && page.customActions?.length) {
+                page.customActions.forEach((customAction) => {
+                    globalActionIndex++;
+                    const isFirst = globalActionIndex === 1;
+                    const isLast = globalActionIndex === totalGlobalActions;
+                    gridContainer.appendChild(createViewClickRow(customAction.text || '(Sin Text)', customAction, globalActionIndex, isFirst, isLast));
+                });
             }
         });
 

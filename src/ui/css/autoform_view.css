@@ -2930,3 +2930,24 @@
     color: #9ca3af;
     cursor: not-allowed;
 }
+
+/* Full-width inputs for Click action configuration */
+.af-click-field-input {
+    width: 100% !important;
+    font-size: 12px;
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.af-click-field-input:focus {
+    border-color: #f97316;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+}
+
+.af-click-field-input::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
