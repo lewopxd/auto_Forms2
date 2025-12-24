@@ -217,18 +217,27 @@ const VariablesModule = (function () {
                 const mapValue = String(value ?? '').trim();
                 const map = transform.config?.map || {};
 
+                console.log('[VariablesModule] Mapping lookup:', {
+                    mapValue,
+                    mapKeys: Object.keys(map),
+                    map
+                });
+
                 // Find mapped value (case-insensitive)
                 let mappedValue = map[mapValue];
                 if (mappedValue === undefined) {
                     const foundKey = Object.keys(map).find(k => k.toLowerCase() === mapValue.toLowerCase());
                     mappedValue = foundKey ? map[foundKey] : null;
+                    console.log('[VariablesModule] Case-insensitive search:', { foundKey, mappedValue });
                 }
 
-                if (mappedValue) {
+                if (mappedValue !== undefined && mappedValue !== null) {
                     // Resolve placeholders in mapped value
                     value = resolvePlaceholdersInText(mappedValue, columnData);
+                    console.log('[VariablesModule] Mapped to:', value);
                 } else if (transform.config?.defaultValue) {
                     value = resolvePlaceholdersInText(transform.config.defaultValue, columnData);
+                    console.log('[VariablesModule] Using default:', value);
                 }
                 // If no match and no default, keep original value
             } else {
@@ -737,6 +746,52 @@ const VariablesModule = (function () {
     }
 
     /**
+     * Update backdrop for mapping value inputs (placeholder highlighting)
+     */
+    function updateMappingBackdrop(input, backdrop) {
+        if (!backdrop) return;
+        const text = input.value;
+        const headers = window.globalHeaders || [];
+        const variableNames = window.VariablesModule?.getVariableNames?.() || [];
+        const conceptTitles = (window.projectData?.tabs || [])
+            .filter(t => t.type === 'concept' || (!t.type && t.content !== undefined))
+            .map(t => t.title?.toLowerCase().trim())
+            .filter(Boolean);
+
+        let html = '';
+        let lastIndex = 0;
+        const regex = /(\{\$([^{}]+)\})|(\[\[([^\[\]]+)\]\])|(\{([^{}]+)\})/g;
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+            html += escHtml(text.substring(lastIndex, match.index));
+
+            if (match[1]) {
+                // {$Variable} - YELLOW
+                const varName = match[2].trim();
+                const isValid = variableNames.length === 0 || variableNames.some(v => v.toLowerCase() === varName.toLowerCase());
+                const style = isValid ? 'background:#fef3c7;color:#92400e;' : 'background:#fee2e2;color:#dc2626;';
+                html += `<span style="${style}">{$${escHtml(match[2])}}</span>`;
+            } else if (match[3]) {
+                // [[Concept]] - CYAN
+                const conceptName = match[4].trim().toLowerCase();
+                const isValid = conceptTitles.includes(conceptName);
+                const style = isValid ? 'background:#cffafe;color:#0891b2;' : 'background:#fee2e2;color:#dc2626;';
+                html += `<span style="${style}">[[${escHtml(match[4])}]]</span>`;
+            } else if (match[5]) {
+                // {Column} - GREEN
+                const colName = match[6].trim();
+                const isValid = headers.length === 0 || headers.some(h => h.toLowerCase() === colName.toLowerCase());
+                const style = isValid ? 'background:#dcfce7;color:#166534;' : 'background:#fee2e2;color:#dc2626;';
+                html += `<span style="${style}">{${escHtml(match[6])}}</span>`;
+            }
+            lastIndex = regex.lastIndex;
+        }
+        html += escHtml(text.substring(lastIndex));
+        backdrop.innerHTML = html;
+    }
+
+    /**
      * Attach events only for mapping cell elements
      */
     function attachMappingCellEvents(cell, varIdx, transformIdx) {
@@ -795,7 +850,7 @@ const VariablesModule = (function () {
 
         document.querySelectorAll('.var-source-input').forEach(input => {
             const varIdx = parseInt(input.dataset.var, 10);
-            const backdrop = document.getElementById(`var-src - bd - ${varIdx} `);
+            const backdrop = document.getElementById(`var-src-bd-${varIdx}`);
 
             const updateBackdrop = (triggerAutoGenerate = false) => {
                 if (!backdrop) return;
@@ -1025,8 +1080,8 @@ const VariablesModule = (function () {
             const varIdx = parseInt(input.dataset.var, 10);
             const transformIdx = parseInt(input.dataset.transform, 10);
             const key = input.dataset.key;
-            const idx = [...document.querySelectorAll(`.var - map - value - input[data -var="${varIdx}"][data - transform="${transformIdx}"]`)].indexOf(input);
-            const backdrop = document.getElementById(`var-map - bd - ${varIdx} -${transformIdx} -${idx} `);
+            const idx = [...document.querySelectorAll(`.var-map-value-input[data-var="${varIdx}"][data-transform="${transformIdx}"]`)].indexOf(input);
+            const backdrop = document.getElementById(`var-map-bd-${varIdx}-${transformIdx}-${idx}`);
 
             input.oninput = () => {
                 if (tempVariables[varIdx]?.transforms?.[transformIdx]?.config?.map) {
