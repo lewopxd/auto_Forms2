@@ -258,7 +258,7 @@
 
             <!-- OPTIONS -->
             <div class="af-config-section">
-                <div class="af-config-sec-title">Opciones</div>
+                <div class="af-config-sec-title">Opciones de Datos</div>
                 
                 <label class="export-option-row">
                     <input type="checkbox" id="export-use-automation" class="af-checkbox-blue" checked>
@@ -271,6 +271,51 @@
                     <span>Incluir columna de estado del filtro</span>
                     <span class="export-option-hint">(Ej: ESTADO=ACTIVO & TRABAJOS=SI)</span>
                 </label>
+            </div>
+            
+            <!-- EXCEL OPTIONS -->
+            <div class="af-config-section">
+                <div class="af-config-sec-title">Opciones de Excel</div>
+                
+                <div class="af-config-row" style="gap:8px; margin-bottom:8px; align-items:center;">
+                    <span style="min-width:100px; font-size:12px;">Nombre hoja:</span>
+                    <input type="text" id="export-sheet-name" class="af-config-input" 
+                           style="flex:1;" value="${escHtml(window.projectData?.tabs?.find(t => t.id === currentTabId)?.title || 'Respuestas')}" placeholder="Respuestas">
+                </div>
+                
+                <label class="export-option-row">
+                    <input type="checkbox" id="export-as-table" class="af-checkbox-blue" checked>
+                    <span>Crear como Tabla Excel</span>
+                </label>
+                
+                <div class="af-config-row" style="gap:8px; margin-bottom:8px; margin-left:24px; align-items:center;" id="export-table-name-row">
+                    <span style="min-width:80px; font-size:12px;">Nombre tabla:</span>
+                    <input type="text" id="export-table-name" class="af-config-input" 
+                           style="flex:1; max-width:150px;" value="Table_1" placeholder="Table_1">
+                </div>
+                
+                <label class="export-option-row">
+                    <input type="checkbox" id="export-truncate-text" class="af-checkbox-blue" checked>
+                    <span>Recortar texto</span>
+                    <span class="export-option-hint">(Altura fija, una línea)</span>
+                </label>
+                
+                <label class="export-option-row">
+                    <input type="checkbox" id="export-freeze-panes" class="af-checkbox-blue" checked>
+                    <span>Congelar fila de encabezados</span>
+                </label>
+                
+                <label class="export-option-row">
+                    <input type="checkbox" id="export-auto-width" class="af-checkbox-blue" checked>
+                    <span>Ancho de columnas automático</span>
+                </label>
+                
+                <div class="af-config-row" style="gap:8px; margin-bottom:8px; margin-left:24px; align-items:center; display:none;" id="export-column-width-row">
+                    <span style="min-width:80px; font-size:12px;">Ancho máx:</span>
+                    <input type="number" id="export-column-width" class="af-config-input" 
+                           style="width:70px;" value="30" min="10" max="100">
+                    <span style="font-size:11px; color:#6b7280;">caracteres</span>
+                </div>
             </div>
         `;
 
@@ -297,6 +342,24 @@
         document.querySelectorAll('#export-columns-container input[type="checkbox"]').forEach(cb => {
             cb.onchange = updateToggleLabel;
         });
+
+        // Toggle table name row visibility based on "Create as Table" checkbox
+        const tableCheckbox = body.querySelector('#export-as-table');
+        const tableNameRow = body.querySelector('#export-table-name-row');
+        if (tableCheckbox && tableNameRow) {
+            tableCheckbox.onchange = () => {
+                tableNameRow.style.display = tableCheckbox.checked ? 'flex' : 'none';
+            };
+        }
+
+        // Toggle column width row visibility based on "Auto width" checkbox
+        const autoWidthCheckbox = body.querySelector('#export-auto-width');
+        const columnWidthRow = body.querySelector('#export-column-width-row');
+        if (autoWidthCheckbox && columnWidthRow) {
+            autoWidthCheckbox.onchange = () => {
+                columnWidthRow.style.display = autoWidthCheckbox.checked ? 'none' : 'flex';
+            };
+        }
 
         // Initial preview
         updateHeaderPreview();
@@ -453,6 +516,15 @@
         const useAutomation = document.getElementById('export-use-automation')?.checked ?? true;
         const includeFilterStatus = document.getElementById('export-include-filter-status')?.checked ?? false;
 
+        // Get Excel options
+        const sheetName = document.getElementById('export-sheet-name')?.value?.trim() || 'Respuestas';
+        const createAsTable = document.getElementById('export-as-table')?.checked ?? true;
+        const tableName = document.getElementById('export-table-name')?.value?.trim() || 'Table_1';
+        const truncateText = document.getElementById('export-truncate-text')?.checked ?? true;
+        const freezePanes = document.getElementById('export-freeze-panes')?.checked ?? true;
+        const autoWidth = document.getElementById('export-auto-width')?.checked ?? true;
+        const columnWidth = parseInt(document.getElementById('export-column-width')?.value) || 30;
+
         // Get automation config
         const automationConfig = currentFormData?.automationConfig || {};
 
@@ -481,12 +553,21 @@
                 return;
             }
 
-            // Send to backend
+            // Send to backend with Excel options
             const result = await window.bridgePy.send('export_form_responses', {
                 filename: filename + '.xlsx',
                 output_path: outputPath,
                 headers: exportData.headers,
-                rows: exportData.rows
+                rows: exportData.rows,
+                options: {
+                    sheetName,
+                    createAsTable,
+                    tableName,
+                    wrapText: !truncateText,  // Inverted: truncate = no wrap
+                    freezePanes,
+                    autoWidth,
+                    columnWidth: autoWidth ? 50 : columnWidth  // Default max if auto
+                }
             });
 
             hideProgress();

@@ -561,15 +561,28 @@ class ExcelHandler:
         - output_path: str - Directory path for output
         - headers: List[str] - Column headers
         - rows: List[List[str]] - Row data
+        - options: Dict with Excel options (sheetName, createAsTable, tableName, wrapText, freezePanes, autoWidth, columnWidth)
         """
         try:
             import openpyxl
+            import re
             from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.worksheet.table import Table, TableStyleInfo
             
             filename = content.get("filename", "export.xlsx")
             output_path = content.get("output_path", "")
             headers = content.get("headers", [])
             rows = content.get("rows", [])
+            
+            # Get Excel options with defaults
+            options = content.get("options", {})
+            sheet_name = options.get("sheetName", "Respuestas")
+            create_as_table = options.get("createAsTable", True)
+            table_name = options.get("tableName", "Table_1")
+            wrap_text = options.get("wrapText", False)  # Default: no wrap (truncate)
+            freeze_panes = options.get("freezePanes", True)
+            auto_width = options.get("autoWidth", True)
+            column_width = options.get("columnWidth", 50)
             
             if not output_path:
                 return {"success": False, "error": "No output path provided"}
@@ -586,12 +599,13 @@ class ExcelHandler:
             # Create workbook
             wb = openpyxl.Workbook()
             ws = wb.active
-            ws.title = "Respuestas"
+            ws.title = sheet_name[:31]  # Excel sheet name max 31 chars
             
             # Style definitions
             header_font = Font(bold=True, color="FFFFFF")
             header_fill = PatternFill(start_color="F97316", end_color="F97316", fill_type="solid")
             header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell_alignment = Alignment(vertical="center", wrap_text=wrap_text)
             thin_border = Border(
                 left=Side(style='thin', color='E5E7EB'),
                 right=Side(style='thin', color='E5E7EB'),
@@ -612,23 +626,55 @@ class ExcelHandler:
                 for col_idx, value in enumerate(row_data, 1):
                     cell = ws.cell(row=row_idx, column=col_idx, value=value)
                     cell.border = thin_border
-                    cell.alignment = Alignment(vertical="center", wrap_text=True)
+                    cell.alignment = cell_alignment
             
-            # Auto-adjust column widths (with max limit)
+            # Auto-adjust column widths
             for col_idx, header in enumerate(headers, 1):
-                max_length = len(str(header))
-                for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
-                    for cell in row:
-                        try:
-                            if cell.value:
-                                max_length = max(max_length, min(len(str(cell.value)), 50))
-                        except:
-                            pass
-                adjusted_width = min(max_length + 2, 50)
+                if auto_width:
+                    max_length = len(str(header))
+                    for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                        for cell in row:
+                            try:
+                                if cell.value:
+                                    # For auto-width, consider first line only if wrap is off
+                                    value_str = str(cell.value)
+                                    if not wrap_text:
+                                        value_str = value_str.split('\n')[0]
+                                    max_length = max(max_length, min(len(value_str), column_width))
+                            except:
+                                pass
+                    adjusted_width = min(max_length + 2, column_width)
+                else:
+                    adjusted_width = column_width
                 ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = adjusted_width
             
+            # Create as Excel Table
+            if create_as_table and rows:
+                last_col = openpyxl.utils.get_column_letter(len(headers))
+                last_row = len(rows) + 1  # +1 for header
+                table_ref = f"A1:{last_col}{last_row}"
+                
+                # Sanitize table name (no spaces, must start with letter/underscore)
+                safe_table_name = re.sub(r'[^a-zA-Z0-9_]', '_', table_name)
+                if safe_table_name and not safe_table_name[0].isalpha() and safe_table_name[0] != '_':
+                    safe_table_name = 'T_' + safe_table_name
+                if not safe_table_name:
+                    safe_table_name = 'Table_1'
+                
+                table = Table(displayName=safe_table_name, ref=table_ref)
+                style = TableStyleInfo(
+                    name="TableStyleMedium9",
+                    showFirstColumn=False,
+                    showLastColumn=False,
+                    showRowStripes=True,
+                    showColumnStripes=False
+                )
+                table.tableStyleInfo = style
+                ws.add_table(table)
+            
             # Freeze header row
-            ws.freeze_panes = 'A2'
+            if freeze_panes:
+                ws.freeze_panes = 'A2'
             
             # Build full path
             full_path = output_dir / filename
