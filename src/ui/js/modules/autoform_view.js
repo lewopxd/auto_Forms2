@@ -2153,7 +2153,46 @@ const AutoFormViewModule = (function () {
                     pageBody.appendChild(createClickCard(tabId, globalActionIndex, actions.submitAnother.text || 'Enviar otra respuesta', actions.submitAnother));
                 }
             }
+
+            // Render custom post-submit actions
+            if (isPostSubmit && page.customActions?.length) {
+                page.customActions.forEach((customAction) => {
+                    globalActionIndex++;
+                    pageBody.appendChild(createClickCard(tabId, globalActionIndex, customAction.text, customAction, true)); // true = isCustomAction
+                });
+            }
+
+            // Add "Add Action" button for post-submit section (max 3 custom actions)
+            if (isPostSubmit) {
+                const customCount = page.customActions?.length || 0;
+                if (customCount < 3) {
+                    const addActionBtn = document.createElement('button');
+                    addActionBtn.className = 'af-add-action-btn';
+                    addActionBtn.innerHTML = `
+                        <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                        Agregar Acción Click
+                    `;
+                    addActionBtn.onclick = () => addCustomClickAction(tabId);
+                    pageBody.appendChild(addActionBtn);
+                }
+            }
         });
+
+        // Check if post-submit section exists, if not show "Add Post-Submit Section" button
+        const hasPostSubmit = Object.keys(pages).some(k =>
+            k === 'page_postSubmit' || pages[k].isPostSubmitPage
+        );
+
+        if (!hasPostSubmit && state.formData) {
+            const addPostSubmitBtn = document.createElement('button');
+            addPostSubmitBtn.className = 'af-add-postsubmit-btn';
+            addPostSubmitBtn.innerHTML = `
+                <i data-lucide="plus-circle" style="width:18px;height:18px;"></i>
+                Agregar Sección Post-Submit
+            `;
+            addPostSubmitBtn.onclick = () => addPostSubmitSection(tabId);
+            container.appendChild(addPostSubmitBtn);
+        }
 
         if (window.lucide) lucide.createIcons();
 
@@ -2470,7 +2509,7 @@ const AutoFormViewModule = (function () {
         return card;
     }
 
-    function createClickCard(tabId, num, label, navObj) {
+    function createClickCard(tabId, num, label, navObj, isCustomAction = false) {
         const card = document.createElement('div');
         const action = 'click';
 
@@ -2487,6 +2526,13 @@ const AutoFormViewModule = (function () {
         }
         const cardId = `af-click-${tabId}-${num}`;
 
+        // Delete button HTML for custom actions only
+        const deleteBtn = isCustomAction ? `
+            <button class="af-delete-action-btn" title="Eliminar acción" data-action-id="${navObj.id}">
+                <i data-lucide="trash-2" style="width:14px;height:14px;color:#ef4444;"></i>
+            </button>
+        ` : '';
+
         card.innerHTML = `
             <div class="af-card-header">
                 <div style="display:flex;align-items:center">
@@ -2496,12 +2542,15 @@ const AutoFormViewModule = (function () {
                         CLICK
                     </span>
                 </div>
-                 <div class="af-config-wrapper ${navObj.config?.isCustomized ? 'customized' : ''} accent-green">
-                    <button class="af-settings-btn" style="border:none;background:transparent;cursor:pointer;padding:4px" 
-                            title="Configurar Navegación" id="${cardId}">
-                        <i data-lucide="settings-2" style="width:14px"></i>
-                    </button>
-                    ${navObj.config?.isCustomized ? '<span class="af-config-check"><i data-lucide="check"></i></span>' : ''}
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="af-config-wrapper ${navObj.config?.isCustomized ? 'customized' : ''} accent-green">
+                        <button class="af-settings-btn" style="border:none;background:transparent;cursor:pointer;padding:4px" 
+                                title="Configurar Navegación" id="${cardId}">
+                            <i data-lucide="settings-2" style="width:14px"></i>
+                        </button>
+                        ${navObj.config?.isCustomized ? '<span class="af-config-check"><i data-lucide="check"></i></span>' : ''}
+                    </div>
+                    ${deleteBtn}
                 </div>
             </div>
             <div class="af-card-body">
@@ -2512,22 +2561,113 @@ const AutoFormViewModule = (function () {
             </div>
         `;
 
-        // Attach event
+        // Attach events
         setTimeout(() => {
+            // Config button
             const btn = card.querySelector(`#${cardId}`);
             if (btn) {
                 btn.onclick = (e) => {
                     e.stopPropagation();
-                    ActionConfigModal.open(navObj, 'click', {}, (newConfig) => {
+                    // Pass isCustomAction in context so modal knows to show selector editing
+                    ActionConfigModal.open(navObj, 'click', { isCustomAction }, (newConfig) => {
+                        // Merge config and selector changes back to navObj
                         navObj.config = newConfig;
+                        if (newConfig.selector !== undefined) {
+                            navObj.selector = newConfig.selector;
+                        }
+                        if (newConfig.isLocked !== undefined) {
+                            navObj.isLocked = newConfig.isLocked;
+                        }
                         syncToProjectData(tabId);
                         renderEdit(tabId);
                     });
                 }
             }
+
+            // Delete button (custom actions only)
+            if (isCustomAction) {
+                const delBtn = card.querySelector('.af-delete-action-btn');
+                if (delBtn) {
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        deleteCustomAction(tabId, navObj.id);
+                    };
+                }
+            }
         }, 0);
 
         return card;
+    }
+
+    // ============================================================
+    // 3.5 POST-SUBMIT SECTION MANAGEMENT
+    // ============================================================
+
+    /**
+     * Add a new post-submit section to the form data
+     * @param {string} tabId - The tab ID
+     */
+    function addPostSubmitSection(tabId) {
+        const state = tabs.get(tabId);
+        if (!state?.formData?.pages) return;
+
+        // Create empty post-submit page
+        state.formData.pages.page_postSubmit = {
+            questions: {},
+            pageInfo: { current: 1, text: '', total: 1 },
+            navigation: { back: null, next: null, submit: null },
+            isPostSubmitPage: true,
+            postSubmitActions: {},
+            customActions: [] // Array for manual actions
+        };
+
+        syncToProjectData(tabId);
+        renderEdit(tabId);
+    }
+
+    /**
+     * Add a custom click action to the post-submit section
+     * @param {string} tabId - The tab ID
+     */
+    function addCustomClickAction(tabId) {
+        const state = tabs.get(tabId);
+        const postSubmit = state?.formData?.pages?.page_postSubmit;
+        if (!postSubmit) return;
+
+        if (!postSubmit.customActions) postSubmit.customActions = [];
+
+        // Max 3 actions limit
+        if (postSubmit.customActions.length >= 3) return;
+
+        const actionNum = postSubmit.customActions.length + 1;
+        const actionId = `custom_${Date.now()}`;
+
+        postSubmit.customActions.push({
+            id: actionId,
+            action: 'click',
+            text: `postSubmit Action ${actionNum}`,
+            selector: '',           // Empty, editable in modal
+            isLocked: false,        // Unlocked by default (new action)
+            config: {}
+        });
+
+        syncToProjectData(tabId);
+        renderEdit(tabId);
+    }
+
+    /**
+     * Delete a custom click action from the post-submit section
+     * @param {string} tabId - The tab ID
+     * @param {string} actionId - The action ID to delete
+     */
+    function deleteCustomAction(tabId, actionId) {
+        const state = tabs.get(tabId);
+        const postSubmit = state?.formData?.pages?.page_postSubmit;
+        if (postSubmit?.customActions) {
+            postSubmit.customActions = postSubmit.customActions.filter(a => a.id !== actionId);
+            syncToProjectData(tabId);
+            renderEdit(tabId);
+        }
     }
 
     // ============================================================
@@ -4219,7 +4359,11 @@ const AutoFormViewModule = (function () {
         // Events
         initRecordingEvents,
         // Export Helper
-        buildRowDataForExport
+        buildRowDataForExport,
+        // Post-Submit Section Management
+        addPostSubmitSection,
+        addCustomClickAction,
+        deleteCustomAction
     };
 })();
 

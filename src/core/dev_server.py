@@ -660,6 +660,25 @@ class DevServer:
                     break
                 
                 self.console.webview("Restarting browser window...")
+                
+                # === RE-HIBERNATE ANTIGRAVITY BEFORE REOPENING ===
+                if HIBERNATE_ANTIGRAVITY_ENABLED:
+                    try:
+                        from core.process_manager import ProcessManager
+                        if not ProcessManager.is_hibernating():
+                            self.console.info("Re-hibernating Antigravity IDE...")
+                            if ProcessManager.hibernate_antigravity():
+                                self.console.info("✓ Antigravity suspended again")
+                    except Exception as e:
+                        self.console.warn(f"Could not re-hibernate Antigravity: {e}")
+                
+                if BOOST_PYWEBVIEW_PRIORITY:
+                    try:
+                        from core.process_manager import ProcessManager
+                        ProcessManager.boost_current_process()
+                    except Exception:
+                        pass
+                
                 self.create_window()
                 self.webview_module.start(debug=use_debug)
                 self.console.webview("Webview engine stopped again")

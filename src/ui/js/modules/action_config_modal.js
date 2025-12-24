@@ -407,6 +407,41 @@
             // Generic fallback
         }
 
+        // 2.5 SELECTOR/LOCATOR (For CLICK actions with custom actions)
+        if (type === 'click' && ctx?.isCustomAction) {
+            const isLocked = currentCardData.isLocked !== false; // Default: locked for existing, unlocked for new
+            const currentSelector = currentCardData.selector || '';
+
+            html += `
+                <div class="af-config-section">
+                    <div class="af-config-sec-title">Selector / Locator</div>
+                    <div class="af-config-row" style="flex-direction:column; gap:12px;">
+                        <!-- Lock Toggle -->
+                        <div class="flex items-center gap-2">
+                            <div class="af-config-label" style="min-width:auto;">Edición Bloqueada</div>
+                            <label class="af-switch">
+                                <input type="checkbox" id="cfg-selector-locked" ${isLocked ? 'checked' : ''}
+                                       onchange="ActionConfigModal.toggleSelectorLock(this.checked)">
+                                <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
+                            </label>
+                            <i data-lucide="${isLocked ? 'lock' : 'lock-open'}" id="cfg-lock-icon" 
+                               style="width:16px;height:16px;color:${isLocked ? '#9ca3af' : '#f97316'};margin-left:8px;"></i>
+                        </div>
+                        
+                        <!-- Selector Input -->
+                        <div class="af-selector-edit-wrapper ${isLocked ? 'locked' : ''}">
+                            <label class="af-config-label" style="font-size:11px;color:#6b7280;margin-bottom:4px;display:block;">Selector CSS / XPath:</label>
+                            <input type="text" id="cfg-selector-value" class="af-config-input" 
+                                   style="font-family:'Monaco','Consolas',monospace; font-size:11px; width:100%;"
+                                   value="${escHtml(currentSelector)}"
+                                   placeholder='[data-automation-id="buttonId"]'
+                                   ${isLocked ? 'readonly' : ''}>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         // 3. MAPPING (For SELECT & TEXT)
         if (type === 'select' || type === 'fill' || type === 'text' || type === 'number') {
             const mapEnabled = config.mapping?.enabled || false;
@@ -646,6 +681,28 @@
         const rndOpts = document.getElementById('cfg-rnd-opts');
         if (fixedOpts) fixedOpts.style.display = isRandom ? 'none' : 'flex';
         if (rndOpts) rndOpts.style.display = isRandom ? 'flex' : 'none';
+    }
+
+    /**
+     * Toggle selector lock state for click actions
+     * @param {boolean} isLocked - Whether the selector should be locked
+     */
+    function toggleSelectorLock(isLocked) {
+        const input = document.getElementById('cfg-selector-value');
+        const wrapper = input?.closest('.af-selector-edit-wrapper');
+        const icon = document.getElementById('cfg-lock-icon');
+
+        if (input) {
+            input.readOnly = isLocked;
+        }
+        if (wrapper) {
+            wrapper.classList.toggle('locked', isLocked);
+        }
+        if (icon) {
+            icon.setAttribute('data-lucide', isLocked ? 'lock' : 'lock-open');
+            icon.style.color = isLocked ? '#9ca3af' : '#f97316';
+            if (window.lucide) lucide.createIcons();
+        }
     }
 
     // Store unique column values for dropdowns
@@ -891,6 +948,19 @@
                 }
             }
 
+            // Click-specific: Save selector and lock state for custom actions
+            if (currentActionType === 'click') {
+                const selectorEl = document.getElementById('cfg-selector-value');
+                const lockedEl = document.getElementById('cfg-selector-locked');
+
+                if (selectorEl) {
+                    newConfig.selector = selectorEl.value || '';
+                }
+                if (lockedEl) {
+                    newConfig.isLocked = lockedEl.checked;
+                }
+            }
+
             // Determine if config differs from default
             newConfig.isCustomized = isConfigCustomized(newConfig, currentActionType);
 
@@ -953,6 +1023,7 @@
         close,
         toggleFillOpts,
         toggleTimingMode,
+        toggleSelectorLock,
         loadExcelValues,
         resetToDefault
     };
