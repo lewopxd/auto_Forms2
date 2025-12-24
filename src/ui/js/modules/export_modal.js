@@ -614,54 +614,72 @@
 
         // Build output rows
         const outputRows = [];
+        const errors = []; // Collect errors per row
 
         for (let idx = 0; idx < rowsToProcess.length; idx++) {
             const rowIndex = rowsToProcess[idx];
+            const excelRowNum = rowIndex + 2; // Excel row number (1-indexed, +1 for header)
             const rawRowData = excelData[rowIndex];
-            if (!rawRowData) continue;
 
-            // Build selectedData object for this row
-            const selectedData = buildSelectedDataFromRow(headers, rawRowData, rowIndex);
-
-            // Use AutoFormViewModule to resolve values (SAME logic as tarjetas!)
-            const resolvedRow = window.AutoFormViewModule?.buildRowDataForExport?.(currentTabId, selectedData);
-
-            if (!resolvedRow) continue;
-
-            // Skip if filter doesn't pass and we're using automation
-            if (useAutomation && automationConfig.filter?.enabled && !resolvedRow.filterPasses) {
-                // Update progress even when skipping
-                updateProgress(idx + 1, rowsToProcess.length);
-                continue;
-            }
-
-            // Build row data
-            const outputRow = [];
-
-            // 1. Selected columns from source
-            selectedColumns.forEach(col => {
-                outputRow.push(rawRowData[col.index] ?? '');
-            });
-
-            // 2. Resolved question answers (from the resolved row - SAME as tarjetas!)
-            resolvedRow.questions.forEach(q => {
-                outputRow.push(q.resolvedValue ?? '');
-            });
-
-            // 3. Filter status (if enabled)
-            if (includeFilterStatus) {
-                outputRow.push(resolvedRow.filterPasses ? 'PASS' : 'FAIL');
-            }
-
-            outputRows.push(outputRow);
-
-            // Update progress
+            // Update progress IMMEDIATELY before processing
             updateProgress(idx + 1, rowsToProcess.length);
 
-            // Yield to UI every 50 rows
-            if (idx % 50 === 0) {
-                await new Promise(r => setTimeout(r, 0));
+            // Yield to UI to display progress update
+            await new Promise(r => setTimeout(r, 0));
+
+            if (!rawRowData) continue;
+
+            try {
+                // Build selectedData object for this row
+                const selectedData = buildSelectedDataFromRow(headers, rawRowData, rowIndex);
+
+                // Use AutoFormViewModule to resolve values (SAME logic as tarjetas!)
+                const resolvedRow = window.AutoFormViewModule?.buildRowDataForExport?.(currentTabId, selectedData);
+
+                if (!resolvedRow) {
+                    errors.push({ row: excelRowNum, error: 'No se pudo resolver la fila' });
+                    continue;
+                }
+
+                // Skip if filter doesn't pass and we're using automation
+                if (useAutomation && automationConfig.filter?.enabled && !resolvedRow.filterPasses) {
+                    continue; // Skip filtered rows (not an error)
+                }
+
+                // Build row data
+                const outputRow = [];
+
+                // 1. Selected columns from source
+                selectedColumns.forEach(col => {
+                    outputRow.push(rawRowData[col.index] ?? '');
+                });
+
+                // 2. Resolved question answers (from the resolved row - SAME as tarjetas!)
+                resolvedRow.questions.forEach(q => {
+                    outputRow.push(q.resolvedValue ?? '');
+                });
+
+                // 3. Filter status (if enabled)
+                if (includeFilterStatus) {
+                    outputRow.push(resolvedRow.filterPasses ? 'PASS' : 'FAIL');
+                }
+
+                outputRows.push(outputRow);
+
+            } catch (rowError) {
+                console.error(`[Export] Error processing row ${excelRowNum}:`, rowError);
+                errors.push({
+                    row: excelRowNum,
+                    error: rowError.message || String(rowError)
+                });
             }
+        }
+
+        // If there were errors, throw to stop export
+        if (errors.length > 0) {
+            const errorDetails = errors.slice(0, 5).map(e => `Fila ${e.row}: ${e.error}`).join('\n');
+            const moreText = errors.length > 5 ? `\n...y ${errors.length - 5} errores más` : '';
+            throw new Error(`Error al procesar filas:\n${errorDetails}${moreText}`);
         }
 
         return {
