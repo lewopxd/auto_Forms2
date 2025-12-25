@@ -73,94 +73,86 @@ Este documento contiene el desglose de las preguntas extraídas del archivo de g
 ---
 
 ### Página 12
-9. **Pregunta 9**
+
+9. **Pregunta 9** 🔀 **BRANCH**
    - **Texto:** Contacto Presencial- Virtual (Si/No)
    - **Tipo:** select (choice)
    - **Requisito:** Obligatoria
-   - **Especial:** **BRANCH** (Ramificación)
    - **Opciones:**
-     - 1. Virtual (Activa ramas)
+     - 1. Virtual → Revela preguntas 10, 11, 12
      - 2. Presencial
-     - 3. Hibrido (Activa ramas)
-     - 4. No contactado (Activa rama específica)
+     - 3. Hibrido → Revela preguntas 10, 11, 12
+     - 4. No contactado → Salta a otra sección (Q24 en original)
 
-10. **Pregunta 10**
-    - **Texto:** Contacto Telefónico (Si/No)
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Opciones:** [1. SI, 2. NO]
+   **↳ 10. Pregunta 10** (Si Q9 = Virtual o Hibrido)
+   - **Texto:** Contacto Telefónico (Si/No)
+   - **Tipo:** select (choice)
+   - **Requisito:** Obligatoria
+   - **Opciones:** [1. SI, 2. NO]
 
-11. **Pregunta 11**
-    - **Texto:** Operador que brinda la Intermediación al/a Joven
-    - **Tipo:** fill (text)
-    - **Requisito:** Obligatoria
+   **↳ 11. Pregunta 11** (Si Q9 = Virtual o Hibrido)
+   - **Texto:** Operador que brinda la Intermediación al/a Joven
+   - **Tipo:** fill (text)
+   - **Requisito:** Obligatoria
 
-12. **Pregunta 12**
-    - **Texto:** ¿El/la joven desistió del proceso de intermediación laboral?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Especial:** **BRANCH**
-    - **Opciones:**
-      - 1. SI
-      - 2. NO (Activa ramas)
+   **↳ 12. Pregunta 12** 🔀 **BRANCH** (Si Q9 = Virtual o Hibrido)
+   - **Texto:** ¿El/la joven desistió del proceso de intermediación laboral?
+   - **Tipo:** select (choice)
+   - **Requisito:** Obligatoria
+   - **Opciones:**
+     - 1. SI
+     - 2. NO → Revela pregunta 13
 
-13. **Pregunta 13**
-    - **Texto:** ¿El/la joven presentó inconvenientes para registrarse en la plataforma de empleo del operador o entidad con quien se encuentra realizando el proceso de Intermediación Laboral?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Especial:** **BRANCH**
-    - **Opciones:**
-      - 1. SI
-      - 2. NO (Activa ramas)
+   **↳ 13. Pregunta 13** 🔀 **BRANCH** (Si Q12 = NO)
+   - **Texto:** ¿El/la joven presentó inconvenientes para registrarse en la plataforma de empleo...?
+   - **Tipo:** select (choice)
+   - **Requisito:** Obligatoria
+   - **Opciones:**
+     - 1. SI
+     - 2. NO → Revela pregunta 14
 
-14. **Pregunta 14**
-    - **Texto:** ¿El/la joven participó de las sesiones de habilidades blandas?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Especial:** **BRANCH**
-    - **Opciones:**
-      - 1. SI (Activa ramas)
-      - 2. NO
+   **↳ 14. Pregunta 14** 🔀 **BRANCH** (Si Q13 = NO)
+   - **Texto:** ¿El/la joven participó de las sesiones de habilidades blandas?
+   - **Tipo:** select (choice)
+   - **Requisito:** Obligatoria
+   - **Opciones:**
+     - 1. SI → Revela preguntas 15-21
+     - 2. NO
 
-15. **Pregunta 15**
-    - **Texto:** ¿En qué modalidad tomó las sesiones de habilidades blandas? (Virtual/Presencial/3. Hibrido)
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Opciones:** [1. Virtual, 2. Presencial, 3. Hibrido]
+   **↳ 15. Pregunta 15** (Si Q14 = SI)
+   - **Texto:** ¿En qué modalidad tomó las sesiones de habilidades blandas?
+   - **Tipo:** select (choice)
+   - **Opciones:** [1. Virtual, 2. Presencial, 3. Hibrido]
 
-16. **Pregunta 16**
-    - **Texto:** ¿Los temas abordados en las sesiones de habilidades blandas fueron de interés del /la joven?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Opciones:** [1. SI, 2. NO]
+   **↳ 16. Pregunta 16** (Si Q14 = SI)
+   - **Texto:** ¿Los temas abordados... fueron de interés del /la joven?
+   - **Tipo:** select (choice)
+   - **Opciones:** [1. SI, 2. NO]
 
-17. **Pregunta 17**
-    - **Texto:** Concepto Psicosocial U Observaciones: Describa el proceso de desarrollo de las sesiones de habilidades blandas.
-    - **Tipo:** fill (long_text)
-    - **Requisito:** Obligatoria
+   **↳ 17. Pregunta 17** (Si Q14 = SI)
+   - **Texto:** Concepto Psicosocial U Observaciones: Describa el proceso...
+   - **Tipo:** fill (long_text)
 
-18. **Pregunta 18**
-    - **Texto:** ¿El/la joven realizó alguna autopostulación en vacantes laborales a través de la Plataforma?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Opciones:** [1. SI, 2. NO]
+   **↳ 18. Pregunta 18** (Si Q14 = SI)
+   - **Texto:** ¿El/la joven realizó alguna autopostulación...?
+   - **Tipo:** select (choice)
+   - **Opciones:** [1. SI, 2. NO]
 
-19. **Pregunta 19**
-    - **Texto:** ¿El/la joven participó en ferias de empleo?
-    - **Tipo:** select (choice)
-    - **Requisito:** Obligatoria
-    - **Opciones:** [1. SI, 2. NO]
+   **↳ 19. Pregunta 19** (Si Q14 = SI)
+   - **Texto:** ¿El/la joven participó en ferias de empleo?
+   - **Tipo:** select (choice)
+   - **Opciones:** [1. SI, 2. NO]
 
-20. **Pregunta 20**
-    - **Texto:** Concepto Psicosocial U Observaciones: Describa el proceso de autopostulación y ferias de empleo del joven durante el proceso de intermediación laboral.
-    - **Tipo:** fill (long_text)
-    - **Requisito:** Obligatoria
+   **↳ 20. Pregunta 20** (Si Q14 = SI)
+   - **Texto:** Concepto Psicosocial U Observaciones: Describa el proceso de autopostulación...
+   - **Tipo:** fill (long_text)
 
-21. **Pregunta 21**
-    - **Texto:** ¿El beneficiario solicita actualización de datos personales ?
-    - **Tipo:** select (choice)
-    - **Requisito:** Opcional
-    - **Opciones:** [1. SI, 2. NO]
+   **↳ 21. Pregunta 21** (Si Q14 = SI)
+   - **Texto:** ¿El beneficiario solicita actualización de datos personales ?
+   - **Tipo:** select (choice)
+   - **Requisito:** Opcional
+   - **Opciones:** [1. SI, 2. NO]
 
 ---
-**Nota Técnica:** El formulario grabado muestra un salto directo de la página 3 a la 12, lo que indica que las preguntas de la 9 a la 21 se encuentran lógicamente agrupadas en la página 12 o se activaron mediante lógica de saltos (skip logic).
+
+**Nota Técnica:** El formulario grabado muestra un salto directo de la página 3 a la 12. Esto indica que se aplicó lógica de saltos (skip logic) durante la grabación, omitiendo las páginas intermedias según las respuestas dadas.

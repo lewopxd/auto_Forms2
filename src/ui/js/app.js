@@ -41,7 +41,11 @@
             click: {
                 timing: { preDelay: 0, randomize: false, minDelay: 0, maxDelay: 100 }
             }
-        }
+        },
+
+        // === USER SAVE TRACKING ===
+        currentProjectPath: null,  // Path where user saved/opened the project
+        lastSavedHash: null        // Hash of project state at last user save
     };
 
     // === HELPERS ===
@@ -57,6 +61,78 @@
             window.triggerAutoSave();
         }
     };
+
+    // === HASH UTILITIES FOR DIRTY STATE DETECTION ===
+
+    /**
+     * Stable JSON serialization with sorted keys for consistent hashing
+     */
+    function stableStringify(obj) {
+        if (obj === null || typeof obj !== 'object') {
+            return JSON.stringify(obj);
+        }
+        if (Array.isArray(obj)) {
+            return '[' + obj.map(stableStringify).join(',') + ']';
+        }
+        const keys = Object.keys(obj).sort();
+        const pairs = keys.map(key =>
+            JSON.stringify(key) + ':' + stableStringify(obj[key])
+        );
+        return '{' + pairs.join(',') + '}';
+    }
+
+    /**
+     * cyrb53 hash - 53-bit hash with very low collision probability
+     */
+    function cyrb53(str, seed = 0) {
+        let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+        for (let i = 0, ch; i < str.length; i++) {
+            ch = str.charCodeAt(i);
+            h1 = Math.imul(h1 ^ ch, 2654435761);
+            h2 = Math.imul(h2 ^ ch, 1597334677);
+        }
+        h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+        h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+        h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+        h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+        return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+    }
+
+    /**
+     * Compute hash of project content (excluding volatile UI state)
+     */
+    function computeProjectHash() {
+        const data = collectProjectData();
+        const hashableData = {
+            name: data.name,
+            excel: data.excel,
+            forms: data.forms,
+            tabs: data.tabs,
+            recordings: data.recordings,
+            variables: data.variables,
+            settings: data.settings
+            // Excluded: ui (splitterPosition, activeTab) - volatile state
+        };
+        return cyrb53(stableStringify(hashableData)).toString(16);
+    }
+
+    /**
+     * Check if there are unsaved changes compared to last user save
+     */
+    function hasUnsavedChanges() {
+        // Never saved manually - check if there's any content
+        if (!window.projectData.lastSavedHash) {
+            const data = collectProjectData();
+            return (data.tabs?.length > 0) ||
+                (data.excel != null) ||
+                (data.recordings?.length > 0);
+        }
+        // Compare current hash with saved hash
+        return computeProjectHash() !== window.projectData.lastSavedHash;
+    }
+
+    // Expose for external use
+    window.hasUnsavedChanges = hasUnsavedChanges;
 
     // === REUSABLE ALERT MODAL ===
 
@@ -540,6 +616,10 @@
             // Restore project data
             restoreProjectData(result.data);
 
+            // Track user save state
+            window.projectData.currentProjectPath = result.path;
+            window.projectData.lastSavedHash = computeProjectHash();
+
             // Show success notification
             window.showAlert({
                 icon: 'check-circle',
@@ -587,6 +667,10 @@
                 return;
             }
 
+            // Track user save state
+            window.projectData.currentProjectPath = result.path;
+            window.projectData.lastSavedHash = computeProjectHash();
+
             // Show success notification
             window.showAlert({
                 icon: 'check-circle',
@@ -608,9 +692,133 @@
         }
     }
 
+    /**
+     * Smart Save - saves to existing path or opens Save As dialog
+     */
+    async function saveProject() {
+        if (window.projectData.currentProjectPath) {
+            // Save directly to existing path
+            try {
+                const data = collectProjectData();
+                const result = await window.bridgePy.send('save_project', {
+                    path: window.projectData.currentProjectPath,
+                    data: data
+                });
+
+                if (result.success) {
+                    window.projectData.lastSavedHash = computeProjectHash();
+                    updateSaveStatus('saved', 'Guardado');
+                    console.log('[App] Project saved to:', result.path);
+                } else {
+                    window.showAlert({
+                        icon: 'alert-circle',
+                        iconColor: 'text-red-500',
+                        title: 'Error al guardar',
+                        message: result.error || 'No se pudo guardar',
+                        confirmText: 'Aceptar'
+                    });
+                }
+            } catch (e) {
+                console.error('[App] Save project error:', e);
+                window.showAlert({
+                    icon: 'alert-circle',
+                    iconColor: 'text-red-500',
+                    title: 'Error',
+                    message: 'Error al guardar: ' + e.message,
+                    confirmText: 'Aceptar'
+                });
+            }
+        } else {
+            // No existing path, use Save As
+            await saveProjectAs();
+        }
+    }
+
+    /**
+     * New Project - clears all state with confirmation if unsaved changes
+     */
+    async function newProject() {
+        if (hasUnsavedChanges()) {
+            window.showAlert({
+                icon: 'alert-triangle',
+                iconColor: 'text-orange-500',
+                title: 'Cambios sin guardar',
+                message: '¿Deseas guardar los cambios antes de crear un nuevo proyecto?',
+                confirmText: 'Guardar',
+                cancelText: 'Descartar',
+                onConfirm: async () => {
+                    await saveProject();
+                    performNewProject();
+                },
+                onCancel: () => {
+                    performNewProject();
+                }
+            });
+        } else {
+            performNewProject();
+        }
+    }
+
+    /**
+     * Actually reset the project state
+     */
+    function performNewProject() {
+        // Reset project data
+        window.projectData.tabs = [];
+        window.projectData.excel = null;
+        window.projectData.recordings = [];
+        window.projectData.variables = [];
+        window.projectData.forms = [];
+        window.projectData.name = 'Mi Proyecto';
+        window.projectData.currentProjectPath = null;
+        window.projectData.lastSavedHash = null;
+
+        // Reset global state
+        window.globalSelectedData = null;
+        window.globalHeaders = [];
+        window.globalExcelData = null;
+
+        // Clear UI - Remove all tabs
+        document.querySelectorAll('.chrome-tab').forEach(tab => tab.remove());
+        document.querySelectorAll('.tab-content').forEach(content => content.remove());
+        const noTabsState = document.getElementById('no-tabs-state');
+        if (noTabsState) noTabsState.classList.remove('hidden');
+
+        // Clear Excel viewer
+        const emptyState = document.getElementById('empty-state');
+        const gridWrapper = document.getElementById('grid-wrapper');
+        const sheetTabs = document.getElementById('sheet-tabs');
+        const fileName = document.getElementById('file-name');
+
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (gridWrapper) {
+            gridWrapper.classList.add('hidden');
+            gridWrapper.innerHTML = '';
+        }
+        if (sheetTabs) {
+            sheetTabs.classList.add('hidden');
+            sheetTabs.innerHTML = '';
+        }
+        if (fileName) fileName.textContent = '';
+
+        // Update footer info
+        const excelInfo = document.querySelector('.excel-info');
+        if (excelInfo) excelInfo.textContent = 'Sin Excel';
+
+        // Clear autosave
+        if (window.bridgePy) {
+            window.bridgePy.send('clear_autosave', {});
+        }
+
+        updateSaveStatus('saved', 'Nuevo proyecto');
+        console.log('[App] New project created');
+    }
+
     // Setup project button handlers
     const btnOpenProject = document.getElementById('btn-open-project');
     const btnSaveProject = document.getElementById('btn-save-project');
+    const btnSaveAsProject = document.getElementById('btn-save-as-project');
+    const btnNewProject = document.getElementById('btn-new-project');
     const btnOpenVariables = document.getElementById('btn-open-variables');
     const btnProjectSettings = document.getElementById('btn-project-settings');
 
@@ -618,7 +826,13 @@
         btnOpenProject.addEventListener('click', openProject);
     }
     if (btnSaveProject) {
-        btnSaveProject.addEventListener('click', saveProjectAs);
+        btnSaveProject.addEventListener('click', saveProject);  // Smart save
+    }
+    if (btnSaveAsProject) {
+        btnSaveAsProject.addEventListener('click', saveProjectAs);  // Always opens dialog
+    }
+    if (btnNewProject) {
+        btnNewProject.addEventListener('click', newProject);  // With confirmation
     }
     if (btnOpenVariables) {
         btnOpenVariables.addEventListener('click', () => {
@@ -634,6 +848,39 @@
             }
         });
     }
+
+    // === KEYBOARD SHORTCUTS ===
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+S = Save
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault();
+            saveProject();
+        }
+        // Ctrl+Shift+S = Save As
+        if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+            e.preventDefault();
+            saveProjectAs();
+        }
+        // Ctrl+N = New Project
+        if (e.ctrlKey && e.key === 'n') {
+            e.preventDefault();
+            newProject();
+        }
+        // Ctrl+O = Open Project
+        if (e.ctrlKey && e.key === 'o') {
+            e.preventDefault();
+            openProject();
+        }
+    });
+
+    // === BEFOREUNLOAD - Warn on close with unsaved changes ===
+    window.addEventListener('beforeunload', (e) => {
+        if (hasUnsavedChanges()) {
+            e.preventDefault();
+            e.returnValue = '';  // Required for Chrome
+            return '';  // Required for some browsers
+        }
+    });
 
     // === INITIALIZATION ===
     function init() {

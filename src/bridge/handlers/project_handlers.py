@@ -25,6 +25,7 @@ class ProjectHandler:
         bridge.register_handler("load_autosave", self.handle_load_autosave)
         bridge.register_handler("clear_autosave", self.handle_clear_autosave)
         bridge.register_handler("save_project_as", self.handle_save_project_as)
+        bridge.register_handler("save_project", self.handle_save_project)
         bridge.register_handler("open_project", self.handle_open_project)
         
         Logger.debug(f"[Project] Autosave path: {self.autosave_path}")
@@ -123,6 +124,41 @@ class ProjectHandler:
             Logger.error(f"[Project] Clear autosave failed: {e}")
             return {'success': False, 'error': str(e)}
     
+    def handle_save_project(self, content: dict) -> dict:
+        """
+        Save project directly to a path (Smart Save).
+        """
+        try:
+            path = content.get('path')
+            project_data = content.get('data', {})
+            
+            if not path:
+                return {'success': False, 'error': 'No se proporcionó una ruta de guardado'}
+            
+            # Add metadata
+            project_data['_save'] = {
+                'timestamp': datetime.now().isoformat(),
+                'version': '1.0',
+                'path': path
+            }
+            
+            # Write to file
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(project_data, f, ensure_ascii=False, indent=2)
+            
+            self.current_project_path = path
+            Logger.info(f"[Project] Saved project to: {path}")
+            
+            return {
+                'success': True, 
+                'path': path,
+                'filename': Path(path).name
+            }
+            
+        except Exception as e:
+            Logger.error(f"[Project] Save project failed: {e}")
+            return {'success': False, 'error': str(e)}
+
     def handle_save_project_as(self, content: dict) -> dict:
         """
         Save project to a user-selected file location.
