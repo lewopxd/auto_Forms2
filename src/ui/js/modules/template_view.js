@@ -1063,14 +1063,24 @@ const TemplateViewModule = (function () {
         document.querySelectorAll('.chrome-tab').forEach(t => t.remove());
         document.querySelectorAll('.tab-content').forEach(c => c.remove());
         tabCounter = 1;
-        noTabsState.classList.remove('hidden');
+        const noTabs = noTabsState || document.getElementById('no-tabs-state');
+        if (noTabs) noTabs.classList.remove('hidden');
         rebindAddButton();
     }
 
     function rebindAddButton() {
-        tabsContainerEl.innerHTML = '<div class="add-tab-btn" id="add-tab-btn" title="Nueva pestaña"><i data-lucide="plus" class="w-5 h-5"></i></div>';
-        document.getElementById('add-tab-btn').onclick = openTabTypeModal;
-        lucide.createIcons();
+        // Get fresh DOM reference in case it wasn't available during module init
+        const container = tabsContainerEl || document.getElementById('chrome-tabs-container');
+        if (!container) {
+            console.error('[TemplateView] Cannot rebind add button: container not found');
+            return;
+        }
+        container.innerHTML = '<div class="add-tab-btn" id="add-tab-btn" title="Nueva pestaña"><i data-lucide="plus" class="w-5 h-5"></i></div>';
+        const addBtn = document.getElementById('add-tab-btn');
+        if (addBtn) {
+            addBtn.onclick = openTabTypeModal;
+        }
+        if (window.lucide) lucide.createIcons();
     }
 
     function restoreTab(tabData) {
@@ -1433,7 +1443,8 @@ const TemplateViewModule = (function () {
         }
 
         // Hide no-tabs state
-        if (noTabsState) noTabsState.classList.add('hidden');
+        const noTabs = noTabsState || document.getElementById('no-tabs-state');
+        if (noTabs) noTabs.classList.add('hidden');
 
         // Restore each tab based on type
         tabs.forEach(tabData => {

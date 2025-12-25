@@ -135,21 +135,30 @@
     window.hasUnsavedChanges = hasUnsavedChanges;
 
     /**
-     * Update the pywebview window title
+     * Update the pywebview window title and footer indicator
      * @param {string} projectName - Name of the project file (optional)
      */
     function updateWindowTitle(projectName) {
         const baseName = 'AutoForms';
-        let title = baseName;
+        let windowTitle = baseName;
+        let footerText = 'Sin proyecto';
 
         if (projectName) {
-            // Remove extension if present and create title
+            // Remove extension if present
             const displayName = projectName.replace(/\.afp$/i, '');
-            title = `${displayName} — ${baseName}`;
+            windowTitle = `${displayName} — ${baseName}`;
+            footerText = displayName;
         }
 
+        // Update pywebview window title
         if (window.bridgePy?.setWindowTitle) {
-            window.bridgePy.setWindowTitle(title);
+            window.bridgePy.setWindowTitle(windowTitle);
+        }
+
+        // Update footer indicator (always visible)
+        const footerIndicator = document.getElementById('project-name-indicator');
+        if (footerIndicator) {
+            footerIndicator.textContent = footerText;
         }
     }
 
