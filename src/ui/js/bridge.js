@@ -222,6 +222,10 @@
         }
     }
 
+    function setWindowTitle(title) {
+        return send('set_window_title', { title });
+    }
+
     // ========== Event System ==========
 
     function on(event, callback) {
@@ -306,6 +310,7 @@
         minimize,
         maximize,
         close,
+        setWindowTitle,
 
         // Events
         on,

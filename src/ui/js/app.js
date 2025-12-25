@@ -134,6 +134,28 @@
     // Expose for external use
     window.hasUnsavedChanges = hasUnsavedChanges;
 
+    /**
+     * Update the pywebview window title
+     * @param {string} projectName - Name of the project file (optional)
+     */
+    function updateWindowTitle(projectName) {
+        const baseName = 'AutoForms';
+        let title = baseName;
+
+        if (projectName) {
+            // Remove extension if present and create title
+            const displayName = projectName.replace(/\.afp$/i, '');
+            title = `${displayName} — ${baseName}`;
+        }
+
+        if (window.bridgePy?.setWindowTitle) {
+            window.bridgePy.setWindowTitle(title);
+        }
+    }
+
+    // Expose for external use
+    window.updateWindowTitle = updateWindowTitle;
+
     // === REUSABLE ALERT MODAL ===
 
     /**
@@ -663,6 +685,9 @@
             window.projectData.currentProjectPath = result.path;
             window.projectData.lastSavedHash = computeProjectHash();
 
+            // Update window title to show project name
+            updateWindowTitle(result.filename);
+
             // Show success notification
             window.showAlert({
                 icon: 'check-circle',
@@ -713,6 +738,9 @@
             // Track user save state
             window.projectData.currentProjectPath = result.path;
             window.projectData.lastSavedHash = computeProjectHash();
+
+            // Update window title to show project name
+            updateWindowTitle(result.filename);
 
             // Show success notification
             window.showAlert({
@@ -828,6 +856,9 @@
         if (window.bridgePy) {
             window.bridgePy.send('clear_autosave', {});
         }
+
+        // Reset window title
+        updateWindowTitle(null);
 
         updateSaveStatus('saved', 'Nuevo proyecto');
         console.log('[App] New project created');

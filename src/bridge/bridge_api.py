@@ -81,6 +81,7 @@ class BridgeAPI:
         self.register_handler("get_app_info", self._handle_get_app_info)
         self.register_handler("get_ui_settings", self._handle_get_ui_settings)
         self.register_handler("save_ui_setting", self._handle_save_ui_setting)
+        self.register_handler("set_window_title", self._handle_set_window_title)
     
     # ═══════════════════════════════════════════════════════════
     # HANDLER REGISTRATION
@@ -300,4 +301,17 @@ class BridgeAPI:
             
         except Exception as e:
             Logger.error(f"[Bridge] Error saving UI setting: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def _handle_set_window_title(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """Set the window title."""
+        try:
+            title = content.get("title", "AutoForms")
+            if self.window:
+                self.window.set_title(title)
+                Logger.debug(f"[Bridge] Window title set to: {title}")
+                return {"success": True}
+            return {"success": False, "error": "Window not available"}
+        except Exception as e:
+            Logger.error(f"[Bridge] Error setting window title: {e}")
             return {"success": False, "error": str(e)}

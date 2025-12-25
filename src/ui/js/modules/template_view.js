@@ -1421,15 +1421,16 @@ const TemplateViewModule = (function () {
      * @param {string} activeTabId - ID of the tab to activate after restore
      */
     function restoreTabs(tabs, activeTabId) {
+        console.log(`[TemplateView] Restoring ${tabs?.length || 0} tabs...`);
+
+        // ALWAYS clear existing tabs first (even if new tabs array is empty)
+        reset();
+
+        // If no tabs to restore, we're done (UI is now clean)
         if (!tabs || !Array.isArray(tabs) || tabs.length === 0) {
-            console.log('[TemplateView] No tabs to restore');
+            console.log('[TemplateView] No tabs to restore - UI cleared');
             return;
         }
-
-        console.log(`[TemplateView] Restoring ${tabs.length} tabs...`);
-
-        // Clear existing tabs first
-        reset();
 
         // Hide no-tabs state
         if (noTabsState) noTabsState.classList.add('hidden');
@@ -1459,25 +1460,6 @@ const TemplateViewModule = (function () {
         }
 
         console.log('[TemplateView] Tabs restored');
-    }
-
-    /**
-     * Reset all tabs (clear everything)
-     */
-    function reset() {
-        // Remove all tab elements except the add button
-        const allTabs = tabsContainerEl.querySelectorAll('.chrome-tab');
-        allTabs.forEach(t => t.remove());
-
-        // Remove all content areas
-        const allContents = contentArea.querySelectorAll('.tab-content');
-        allContents.forEach(c => c.remove());
-
-        // Show empty state
-        if (noTabsState) noTabsState.classList.remove('hidden');
-
-        // Reset tab counter
-        tabCounter = 1;
     }
 
     // === INIT ===
