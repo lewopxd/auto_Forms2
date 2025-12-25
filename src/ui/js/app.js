@@ -437,6 +437,12 @@
      */
     function restoreProjectData(data) {
         console.log('[App] Restoring project data:', Object.keys(data));
+        console.log('[App] Tabs count:', data.tabs?.length || 0);
+        console.log('[App] Excel present:', !!data.excel);
+        console.log('[App] Recordings count:', data.recordings?.length || 0);
+
+        // FIRST: Clear existing UI before restoring new project
+        clearProjectUI();
 
         // Restore projectData object
         window.projectData.name = data.name || 'Mi Proyecto';
@@ -446,6 +452,8 @@
         window.projectData.recordings = data.recordings || [];  // Restore global recordings
         window.projectData.variables = data.variables || [];    // Restore computed variables
         window.projectData.settings = data.settings || window.projectData.settings;  // Restore settings
+
+        console.log('[App] projectData.tabs after restore:', window.projectData.tabs?.length);
 
         // Restore UI state
         if (data.ui?.splitterPosition) {
@@ -484,10 +492,45 @@
             }
         }
 
-        // Restore tabs (TemplateViewModule handles this)
-        if (data.tabs && data.tabs.length > 0 && window.TemplateViewModule) {
-            window.TemplateViewModule.restoreTabs(data.tabs, data.ui?.activeTab);
+        // Restore tabs (TemplateViewModule handles this) - ALWAYS call, even if empty
+        if (window.TemplateViewModule?.restoreTabs) {
+            const tabs = data.tabs || [];
+            console.log('[App] Calling TemplateViewModule.restoreTabs with', tabs.length, 'tabs');
+            window.TemplateViewModule.restoreTabs(tabs, data.ui?.activeTab);
         }
+    }
+
+    /**
+     * Clear current project UI (used when opening/creating new project)
+     */
+    function clearProjectUI() {
+        // Clear global state
+        window.globalSelectedData = null;
+        window.globalHeaders = [];
+        window.globalExcelData = null;
+
+        // Clear Excel viewer
+        const emptyState = document.getElementById('empty-state');
+        const gridWrapper = document.getElementById('grid-wrapper');
+        const sheetTabs = document.getElementById('sheet-tabs');
+        const fileName = document.getElementById('file-name');
+
+        if (emptyState) emptyState.classList.remove('hidden');
+        if (gridWrapper) {
+            gridWrapper.classList.add('hidden');
+            gridWrapper.innerHTML = '';
+        }
+        if (sheetTabs) {
+            sheetTabs.classList.add('hidden');
+            sheetTabs.innerHTML = '';
+        }
+        if (fileName) fileName.textContent = '';
+
+        // Update footer info
+        const excelInfo = document.querySelector('.excel-info');
+        if (excelInfo) excelInfo.textContent = 'Sin Excel';
+
+        console.log('[App] Project UI cleared');
     }
 
     // === SPLITTER LOGIC ===
@@ -773,37 +816,13 @@
         window.projectData.currentProjectPath = null;
         window.projectData.lastSavedHash = null;
 
-        // Reset global state
-        window.globalSelectedData = null;
-        window.globalHeaders = [];
-        window.globalExcelData = null;
+        // Clear UI (reuse existing function)
+        clearProjectUI();
 
-        // Clear UI - Remove all tabs
-        document.querySelectorAll('.chrome-tab').forEach(tab => tab.remove());
-        document.querySelectorAll('.tab-content').forEach(content => content.remove());
-        const noTabsState = document.getElementById('no-tabs-state');
-        if (noTabsState) noTabsState.classList.remove('hidden');
-
-        // Clear Excel viewer
-        const emptyState = document.getElementById('empty-state');
-        const gridWrapper = document.getElementById('grid-wrapper');
-        const sheetTabs = document.getElementById('sheet-tabs');
-        const fileName = document.getElementById('file-name');
-
-        if (emptyState) emptyState.classList.remove('hidden');
-        if (gridWrapper) {
-            gridWrapper.classList.add('hidden');
-            gridWrapper.innerHTML = '';
+        // Clear tabs UI (restoreTabs handles reset internally)
+        if (window.TemplateViewModule?.restoreTabs) {
+            window.TemplateViewModule.restoreTabs([], null);
         }
-        if (sheetTabs) {
-            sheetTabs.classList.add('hidden');
-            sheetTabs.innerHTML = '';
-        }
-        if (fileName) fileName.textContent = '';
-
-        // Update footer info
-        const excelInfo = document.querySelector('.excel-info');
-        if (excelInfo) excelInfo.textContent = 'Sin Excel';
 
         // Clear autosave
         if (window.bridgePy) {

@@ -246,7 +246,13 @@ class ProjectHandler:
                 project_data = json.load(f)
             
             self.current_project_path = file_path
+            
+            # Debug: Log what was loaded
+            tabs_count = len(project_data.get('tabs', []))
+            has_excel = project_data.get('excel') is not None
+            recordings_count = len(project_data.get('recordings', []))
             Logger.info(f"[Project] Opened project: {file_path}")
+            Logger.info(f"[Project] Data loaded - tabs: {tabs_count}, excel: {has_excel}, recordings: {recordings_count}")
             
             return {
                 'success': True,
