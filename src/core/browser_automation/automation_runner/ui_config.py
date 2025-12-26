@@ -257,21 +257,38 @@ class AutomationRunnerUI:
         dpg.enable_item("use_profile_checkbox")
         dpg.enable_item("login_enabled_checkbox")
     
-    def _on_load_package_selected(self, sender, app_data, user_data):
-        """Handle package file selection from file dialog."""
-        if app_data and "file_path_name" in app_data:
-            file_path = app_data["file_path_name"]
-            if file_path and file_path.endswith(".afpkg"):
-                self.loaded_package_path = file_path
-                dpg.set_value("package_path_input", file_path)
-                self._update_status(f"✓ Paquete cargado", (100, 200, 100))
-                print(f"[UI] Package loaded: {file_path}")
-            else:
-                self._update_status("⚠ Seleccione un archivo .afpkg", (255, 200, 100))
-    
     def _on_load_package_click(self, sender, app_data, user_data):
-        """Show file dialog to load package."""
-        dpg.show_item("file_dialog")
+        """Show native Windows file dialog to load package."""
+        def open_dialog():
+            try:
+                import tkinter as tk
+                from tkinter import filedialog
+                
+                # Create hidden root window
+                root = tk.Tk()
+                root.withdraw()
+                root.attributes('-topmost', True)
+                
+                # Show native file dialog
+                file_path = filedialog.askopenfilename(
+                    title="Seleccionar Paquete de Automatización",
+                    filetypes=[("AutoForms Package", "*.afpkg"), ("All Files", "*.*")],
+                    parent=root
+                )
+                
+                root.destroy()
+                
+                if file_path:
+                    self.loaded_package_path = file_path
+                    dpg.set_value("package_path_input", file_path)
+                    self._update_status(f"✓ Paquete cargado", (100, 200, 100))
+                    print(f"[UI] Package loaded: {file_path}")
+            except Exception as e:
+                self._update_status(f"✗ Error: {e}", (255, 100, 100))
+        
+        # Run in thread to avoid blocking
+        threading.Thread(target=open_dialog, daemon=True).start()
+
     
     def _close(self, sender, app_data, user_data):
         """Close UI - stop automation first if running."""
@@ -298,17 +315,6 @@ class AutomationRunnerUI:
                 dpg.add_theme_color(dpg.mvThemeCol_Button, (150, 50, 50))
                 dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (180, 70, 70))
                 dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (120, 40, 40))
-        
-        # === FILE DIALOG ===
-        with dpg.file_dialog(
-            tag="file_dialog",
-            directory_selector=False,
-            show=False,
-            callback=self._on_load_package_selected,
-            width=600,
-            height=400
-        ):
-            dpg.add_file_extension(".afpkg", color=(0, 255, 150))
         
         # === MAIN WINDOW ===
         with dpg.window(label="AutoForms - Automation Runner", tag="main_window", width=500, height=480):
