@@ -90,6 +90,11 @@ class RecordingSession:
         self._poll_thread: Optional[threading.Thread] = None
         self._should_poll = False
         self._login_start_time: float = 0
+        
+        # Session ID for data safety
+        import uuid
+        self.session_id = str(uuid.uuid4())
+
     
     def start(self) -> Dict[str, Any]:
         """
@@ -149,6 +154,10 @@ class RecordingSession:
                     return {"success": False, "error": "Failed to inject login UI"}
                 self._login_start_time = time.time()
             else:
+                # Inject Session ID first
+                print(f"[RecordingSession] Injecting Session ID: {self.session_id}")
+                self.browser.get_driver().execute_script(f"window.__msfa_session_id = '{self.session_id}';")
+                
                 if not js_injector.inject_ui(self.browser.get_driver()):
                     self.browser.close()
                     return {"success": False, "error": "Failed to inject recording UI"}
@@ -332,6 +341,9 @@ class RecordingSession:
             if self.browser.navigate_to(self.url):
                 # Wait for page to load
                 time.sleep(2)
+                
+                # Inject Session ID first (to maintain session)
+                driver.execute_script(f"window.__msfa_session_id = '{self.session_id}';")
                 
                 # Inject recording UI and analyze
                 if js_injector.inject_ui(driver):

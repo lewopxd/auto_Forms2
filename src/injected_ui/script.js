@@ -393,36 +393,273 @@
     let branchData = {};
     let allSavedPages = {}; // Storage for all saved pages { page_1: { questions: [...] }, page_2: {...} }
 
-    // Auto-save function (Always active in memory)
+    // ============================================================
+    // ROBUST PAGE DETECTION SYSTEM
+    // ============================================================
+
+    const SESSION_ID = crypto.randomUUID();
+    const STORAGE_KEY = `__msfa_recording_${SESSION_ID}`;
+
+    const recordingState = {
+        sessionId: SESSION_ID,
+        logicalPageCounter: 1,
+        currentPageFingerprint: null,
+        currentPageNumber: null,
+        fingerprintToPage: {},
+        isNavigating: false,
+        navigationSource: null,
+        domProvidesPageNumber: null,
+        lastProgressText: null,
+    };
+
+    // Simple hash function for fingerprinting
+    function hashCode(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return hash.toString(16);
+    }
+
+    // Generate fingerprint from questions (for page identification)
+    function generatePageFingerprint(questions) {
+        if (!questions || questions.length === 0) return 'empty';
+        const signature = questions
+            .sort((a, b) => parseInt(a.num || '0') - parseInt(b.num || '0'))
+            .map(q => q.questionId || q.num || q.text?.substring(0, 20) || '')
+            .join('|');
+        return hashCode(signature);
+    }
+
+    // Persist state to sessionStorage
+    function saveStateToStorage() {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+                state: recordingState,
+                pages: allSavedPages
+            }));
+        } catch (e) {
+            console.warn('[MSFA] Failed to save to sessionStorage:', e);
+        }
+    }
+
+    // Load state from sessionStorage
+    function loadStateFromStorage() {
+        try {
+            const saved = sessionStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                Object.assign(recordingState, data.state);
+                allSavedPages = data.pages || {};
+                console.log('[MSFA] Restored state from sessionStorage, pages:', Object.keys(allSavedPages).length);
+            }
+        } catch (e) {
+            console.warn('[MSFA] Failed to load from sessionStorage:', e);
+        }
+    }
+
+    // Determine page number using hybrid logic
+    function determinePageNumber(data) {
+        // Case 1: DOM provides page number
+        const match = data.pageInfo?.text?.match(/(\d+)\s*(?:de|of)\s*(\d+)/i);
+        if (match) {
+            recordingState.domProvidesPageNumber = true;
+            return parseInt(match[1]);
+        }
+
+        recordingState.domProvidesPageNumber = false;
+
+        // Case 2: Navigation event without DOM number
+        if (recordingState.isNavigating) {
+            const fp = generatePageFingerprint(data.questions);
+
+            if (recordingState.fingerprintToPage[fp]) {
+                // Page already visited - return existing number
+                console.log('[MSFA] Page revisited, fingerprint:', fp);
+                return recordingState.fingerprintToPage[fp];
+            } else {
+                // New page - assign new number
+                const newPageNum = recordingState.logicalPageCounter++;
+                recordingState.fingerprintToPage[fp] = newPageNum;
+                console.log('[MSFA] New page detected, assigned number:', newPageNum, 'fingerprint:', fp);
+                return newPageNum;
+            }
+        }
+
+        // Case 3: Not a navigation event (branch reveal) - use current page
+        return recordingState.currentPageNumber || 1;
+    }
+
+    // Show error in UI (visible, not silent)
+    function showTimeoutError(message) {
+        console.error('[MSFA] Timeout Error:', message);
+        statusText.textContent = '⚠️ ' + message;
+        statusSaved.innerHTML = `<span style="color:#ef4444">Error</span>`;
+        loading.classList.add('hidden');
+        questionList.classList.remove('hidden');
+    }
+
+    // MutationObserver-based DOM stability detection
+    let domObserver = null;
+    let domStabilityTimer = null;
+    let maxTimeoutTimer = null;
+    let mutationsSinceNavigation = 0;
+
+    function setupDOMObserver() {
+        if (domObserver) return; // Already set up
+
+        domObserver = new MutationObserver((mutations) => {
+            // Only process if navigation is in progress
+            if (!recordingState.isNavigating) return;
+
+            // Check for relevant changes
+            const hasRelevantChanges = mutations.some(m => {
+                return m.addedNodes.length > 0 ||
+                    m.removedNodes.length > 0 ||
+                    (m.target.matches && m.target.matches('[data-automation-id]'));
+            });
+
+            if (hasRelevantChanges) {
+                mutationsSinceNavigation++;
+
+                // Reset debounce timer
+                clearTimeout(domStabilityTimer);
+                domStabilityTimer = setTimeout(() => {
+                    // DOM stable for 300ms
+                    if (mutationsSinceNavigation > 0 && recordingState.isNavigating) {
+                        handleDOMStable();
+                    }
+                }, 300);
+            }
+        });
+
+        domObserver.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'hidden', 'aria-hidden']
+        });
+
+        console.log('[MSFA] DOM Observer initialized');
+    }
+
+    function handleDOMStable() {
+        if (!recordingState.isNavigating) return;
+
+        // Clear max timeout since we're handling it now
+        clearTimeout(maxTimeoutTimer);
+        mutationsSinceNavigation = 0;
+
+        console.log('[MSFA] DOM stable, requesting analysis...');
+        statusText.textContent = 'Analyzing...';
+
+        // Request analysis from backend
+        window.__msfa_commands.push({
+            type: 'analyze',
+            time: Date.now(),
+            context: 'navigation',
+            source: recordingState.navigationSource
+        });
+    }
+
+    function startNavigationDetection(source) {
+        recordingState.isNavigating = true;
+        recordingState.navigationSource = source;
+        mutationsSinceNavigation = 0;
+
+        // Show loading state
+        loading.classList.remove('hidden');
+        questionList.classList.add('hidden');
+        statusText.textContent = 'Page changing...';
+        statusSaved.textContent = '';
+
+        // Set maximum timeout (safety net) - 15 seconds
+        clearTimeout(maxTimeoutTimer);
+        maxTimeoutTimer = setTimeout(() => {
+            if (recordingState.isNavigating) {
+                // Timeout exceeded - show visible error
+                showTimeoutError('Timeout: Page transition took too long (15s). Try clicking Analyze manually.');
+                recordingState.isNavigating = false;
+            }
+        }, 15000);
+
+        console.log('[MSFA] Navigation started:', source);
+    }
+
+    // Initialize on load
+    loadStateFromStorage();
+    setupDOMObserver();
+    console.log('[MSFA] Page detection system initialized, sessionId:', SESSION_ID);
+
+    // Auto-save function (Uses robust page detection)
     function triggerAutoSave() {
         if (!formData) return;
 
-        console.log('[MSFA] triggerAutoSave called, formData:', formData ? 'exists' : 'null');
-        console.log('[MSFA] formData.pageInfo:', formData?.pageInfo);
+        console.log('[MSFA] triggerAutoSave called');
 
-        // Always store page data for View All modal
-        if (formData.pageInfo) {
-            // Use special key for post-submit page
-            const pageKey = formData.isPostSubmitPage ? 'page_postSubmit' : ('page_' + formData.pageInfo.current);
+        // Determine page number using hybrid logic
+        const pageNumber = determinePageNumber(formData);
+
+        // If this was a navigation, freeze the fingerprint
+        if (recordingState.isNavigating) {
+            recordingState.currentPageFingerprint = generatePageFingerprint(formData.questions);
+            recordingState.currentPageNumber = pageNumber;
+            recordingState.isNavigating = false;
+            clearTimeout(maxTimeoutTimer);
+            console.log('[MSFA] Navigation complete, page:', pageNumber, 'fingerprint:', recordingState.currentPageFingerprint);
+        }
+
+        // Build page key
+        const pageKey = formData.isPostSubmitPage ? 'page_postSubmit' : `page_${pageNumber}`;
+
+        // Merge with existing data if present (preserve branches)
+        const existingPage = allSavedPages[pageKey];
+        if (existingPage && existingPage.questions) {
+            // Merge questions - add new ones, update existing
+            const mergedQuestions = { ...existingPage.questions };
+            formData.questions.forEach(q => {
+                const qKey = `q${q.num}`;
+                mergedQuestions[qKey] = q;
+            });
+
             allSavedPages[pageKey] = {
-                questions: formData.questions,
-                pageInfo: formData.pageInfo,
+                questions: formData.questions, // Keep array format for display
+                questionsMap: mergedQuestions, // Keep map format for lookups
+                pageInfo: { ...formData.pageInfo, current: pageNumber },
                 isPostSubmitPage: formData.isPostSubmitPage || false,
                 postSubmitActions: formData.postSubmitActions || {}
             };
-            console.log('[MSFA] Saved to allSavedPages:', pageKey, 'Total pages:', Object.keys(allSavedPages).length);
         } else {
-            console.log('[MSFA] No pageInfo, skipping allSavedPages update');
+            allSavedPages[pageKey] = {
+                questions: formData.questions,
+                pageInfo: { ...formData.pageInfo, current: pageNumber },
+                isPostSubmitPage: formData.isPostSubmitPage || false,
+                postSubmitActions: formData.postSubmitActions || {}
+            };
         }
 
-        // Only send save command to backend when page changes
-        const currentPage = formData.isPostSubmitPage ? 'postSubmit' : formData.pageInfo?.current;
-        if (currentPage !== lastSavedPage) {
-            lastSavedPage = currentPage;
-            statusSaved.innerHTML = `${ICONS.spinner} Saving...`;
-            window.__msfa_commands.push({ type: 'save', data: formData, time: Date.now() });
+        console.log('[MSFA] Saved to allSavedPages:', pageKey, 'Total pages:', Object.keys(allSavedPages).length);
 
-            // Fake "Saved" state after delay
+        // Persist to sessionStorage
+        saveStateToStorage();
+
+        // Only send save command to backend when page changes
+        const currentPageKey = formData.isPostSubmitPage ? 'postSubmit' : pageNumber;
+        if (currentPageKey !== lastSavedPage) {
+            lastSavedPage = currentPageKey;
+            statusSaved.innerHTML = `${ICONS.spinner} Saving...`;
+
+            // Update formData.pageInfo.current with determined page number
+            const dataToSave = { ...formData };
+            if (dataToSave.pageInfo) {
+                dataToSave.pageInfo = { ...dataToSave.pageInfo, current: pageNumber };
+            }
+
+            window.__msfa_commands.push({ type: 'save', data: dataToSave, time: Date.now() });
+
+            // Update saved indicator
             setTimeout(() => {
                 statusSaved.innerHTML = `${ICONS.check} Saved`;
             }, 800);
@@ -710,41 +947,29 @@
 
     window.__msfa_setQuestions = window.__msfa_setFormData;
 
-    // Auto-analyze when Next/Back buttons are clicked (using event delegation)
+    // Auto-analyze when Next/Back buttons are clicked (using MutationObserver)
     document.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-automation-id="nextButton"], [data-automation-id="backButton"]');
-        if (!btn) return;
+        const nextBtn = e.target.closest('[data-automation-id="nextButton"]');
+        const backBtn = e.target.closest('[data-automation-id="backButton"]');
 
-        // Show spinner immediately
-        loading.classList.remove('hidden');
-        questionList.classList.add('hidden');
-        statusText.textContent = 'Page changing...';
-        statusSaved.textContent = '';
+        if (nextBtn) {
+            startNavigationDetection('next');
+            return;
+        }
 
-        // Wait for page transition then analyze
-        setTimeout(() => {
-            statusText.textContent = 'Analyzing...';
-            window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
-        }, 1500);
+        if (backBtn) {
+            startNavigationDetection('back');
+            return;
+        }
     }, true);
 
-    // Auto-analyze when Submit button is clicked (to detect post-submit actions)
+    // Auto-analyze when Submit button is clicked (using MutationObserver)
     document.addEventListener('click', (e) => {
         const submitBtn = e.target.closest('[data-automation-id="submitButton"]');
         if (!submitBtn) return;
 
-        // Show spinner immediately
-        loading.classList.remove('hidden');
-        questionList.classList.add('hidden');
+        startNavigationDetection('submit');
         statusText.textContent = 'Enviando formulario...';
-        statusSaved.textContent = '';
-
-        // Wait for form submission and page update, then re-analyze
-        // MS Forms takes a moment to show the post-submit page
-        setTimeout(() => {
-            statusText.textContent = 'Analizando página post-submit...';
-            window.__msfa_commands.push({ type: 'analyze', time: Date.now() });
-        }, 3000); // Longer delay for submit
     }, true);
 
     // Branch detection - track current questions and detect new ones after radio selection
