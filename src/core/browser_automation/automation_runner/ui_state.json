@@ -1,0 +1,10 @@
+{
+  "browser_name": "ungoogled_chromium",
+  "profile_name": "Profile 1",
+  "use_profile": true,
+  "login_enabled": true,
+  "login_url": "https://login.microsoftonline.com/",
+  "package_path": "C:/Users/Admin/Desktop/PLAYGROUND_MARCELA_CUALIS/C1F3-INTERMEDIACION/automation_c1f3_v2.afpkg",
+  "use_alt_url": true,
+  "alt_url": "https://forms.office.com/r/WsqBTWGyms"
+}
