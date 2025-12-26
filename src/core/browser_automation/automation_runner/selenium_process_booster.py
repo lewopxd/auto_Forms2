@@ -116,7 +116,11 @@ class SeleniumProcessBooster:
                 # === STEP 8: Handle Login Flow OR Direct to Form ===
                 login_enabled = browser_config.get("login_enabled", False)
                 login_url = browser_config.get("login_url", "")
-                form_url = cls._package_data.get("formUrl", "")
+                
+                # Use alt URL if enabled, otherwise use package URL
+                use_alt_url = browser_config.get("use_alt_url", False)
+                alt_url = browser_config.get("alt_url", "")
+                form_url = alt_url if (use_alt_url and alt_url) else cls._package_data.get("formUrl", "")
                 
                 if login_enabled and login_url:
                     # Login flow
@@ -136,7 +140,7 @@ class SeleniumProcessBooster:
                     
                     cls._emit_status("login_done", "✓ Login completado")
                     
-                    # Navigate to form URL from package
+                    # Navigate to form URL
                     if form_url:
                         cls._emit_status("navigating", f"Navegando al formulario...")
                         driver.get(form_url)
@@ -186,12 +190,13 @@ class SeleniumProcessBooster:
             instructions = data.get("instructions", {})
             resolved_rows = data.get("resolvedRows", [])
             
-            # Count questions from first page
+            # Count questions from all pages (pages is a LIST, not dict)
             total_questions = 0
-            pages = instructions.get("pages", {})
-            for page_key, page_data in pages.items():
-                questions = page_data.get("questions", {})
+            pages = instructions.get("pages", [])
+            for page in pages:
+                questions = page.get("questions", [])
                 total_questions += len(questions)
+
             
             return {
                 "filename": filename,

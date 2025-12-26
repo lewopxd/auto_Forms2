@@ -6,15 +6,21 @@ Automation Runner - Main UI
 ============================================
 DearPyGUI-based UI for automation control.
 Ultra-lightweight, GPU-accelerated, instant load.
+With state persistence and package metadata display.
 """
 import sys
 import os
+import json
 import threading
 
 # Add parent paths for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(SCRIPT_DIR))))
 
 import dearpygui.dearpygui as dpg
+
+# State file path (next to this script)
+STATE_FILE = os.path.join(SCRIPT_DIR, "ui_state.json")
 
 
 class AutomationRunnerUI:
@@ -28,45 +34,39 @@ class AutomationRunnerUI:
         self.profile_names_map = {}
         self.selected_browser = None
         self.selected_profile = None
-        self.current_config = self._get_default_config()
         self.is_running = False
         self.loaded_package_path = ""
+        self.package_info = {}
+        self.saved_state = self._load_state()
     
-    def _get_default_config(self):
-        return {
-            "browser_name": "",
-            "browser_path": "",
-            "use_profile": False,
-            "profile_name": "",
-            "profile_path": "",
-            "login_enabled": True,
-            "login_url": "https://login.microsoftonline.com/",
-        }
+    def _load_state(self) -> dict:
+        """Load saved UI state from JSON file."""
+        try:
+            if os.path.exists(STATE_FILE):
+                with open(STATE_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"[UI] Error loading state: {e}")
+        return {}
     
-    def _load_config_async(self):
-        """Load config in background."""
-        def load():
-            try:
-                from core.browser_automation.automation_runner import config
-                self.current_config = {
-                    "browser_name": getattr(config, "BROWSER_NAME", ""),
-                    "browser_path": getattr(config, "BROWSER_PATH", ""),
-                    "use_profile": getattr(config, "USE_PROFILE", False),
-                    "profile_name": getattr(config, "PROFILE_NAME", ""),
-                    "profile_path": getattr(config, "PROFILE_PATH", ""),
-                    "login_enabled": getattr(config, "LOGIN_ENABLED", True),
-                    "login_url": getattr(config, "LOGIN_URL", "https://login.microsoftonline.com/"),
-                }
-                # Apply to UI if it's ready
-                if dpg.does_item_exist("use_profile_checkbox"):
-                    dpg.set_value("use_profile_checkbox", self.current_config["use_profile"])
-                if dpg.does_item_exist("login_enabled_checkbox"):
-                    dpg.set_value("login_enabled_checkbox", self.current_config["login_enabled"])
-                if dpg.does_item_exist("login_url_input"):
-                    dpg.set_value("login_url_input", self.current_config["login_url"])
-            except Exception as e:
-                print(f"[UI] Config load error: {e}")
-        threading.Thread(target=load, daemon=True).start()
+    def _save_state(self):
+        """Save current UI state to JSON file."""
+        try:
+            state = {
+                "browser_name": self.selected_browser.get("name", "") if self.selected_browser else "",
+                "profile_name": self.selected_profile.get("name", "") if self.selected_profile else "",
+                "use_profile": dpg.get_value("use_profile_checkbox") if dpg.does_item_exist("use_profile_checkbox") else False,
+                "login_enabled": dpg.get_value("login_enabled_checkbox") if dpg.does_item_exist("login_enabled_checkbox") else True,
+                "login_url": dpg.get_value("login_url_input") if dpg.does_item_exist("login_url_input") else "",
+                "package_path": self.loaded_package_path,
+                "use_alt_url": dpg.get_value("use_alt_url_checkbox") if dpg.does_item_exist("use_alt_url_checkbox") else False,
+                "alt_url": dpg.get_value("alt_url_input") if dpg.does_item_exist("alt_url_input") else "",
+            }
+            with open(STATE_FILE, 'w', encoding='utf-8') as f:
+                json.dump(state, f, indent=2, ensure_ascii=False)
+            print(f"[UI] State saved")
+        except Exception as e:
+            print(f"[UI] Error saving state: {e}")
     
     def _detect_browsers_async(self):
         """Detect browsers in background."""
@@ -86,75 +86,94 @@ class AutomationRunnerUI:
                 dpg.configure_item("browsers_listbox", items=browser_display_names)
                 self._update_status(f"✓ {len(self.browsers)} navegadores", (100, 200, 100))
                 
-                # Pre-select saved browser
-                if self.current_config["browser_name"]:
+                # Restore saved browser selection
+                saved_browser = self.saved_state.get("browser_name", "")
+                if saved_browser:
                     for display, data in self.browser_names_map.items():
-                        if data.get("name") == self.current_config["browser_name"]:
+                        if data.get("name") == saved_browser:
                             dpg.set_value("browsers_listbox", display)
                             self.selected_browser = data
+                            # Now load profiles if use_profile was enabled
+                            if self.saved_state.get("use_profile", False):
+                                self._update_profiles_list()
                             break
-                
-                if self.current_config["use_profile"] and self.selected_browser:
-                    self._update_profiles_list()
                     
             except Exception as e:
                 self._update_status(f"✗ {e}", (255, 100, 100))
         threading.Thread(target=detect, daemon=True).start()
     
+    def _update_profiles_list(self):
+        """Update profiles listbox for selected browser."""
+        if not self.selected_browser:
+            return
+            
+        def load():
+            try:
+                from core.browser_automation.profile_utils import get_browser_profiles
+                browser_name = self.selected_browser.get("name", "")
+                browser_path = self.selected_browser.get("path", "")
+                
+                self.profiles = get_browser_profiles(browser_name, browser_path)
+                
+                self.profile_names_map = {}
+                profile_display_names = []
+                for p in self.profiles:
+                    display = p.get("display", p.get("name", "Default"))
+                    self.profile_names_map[display] = p
+                    profile_display_names.append(display)
+                
+                if dpg.does_item_exist("profiles_listbox"):
+                    dpg.configure_item("profiles_listbox", items=profile_display_names)
+                
+                # Restore saved profile selection
+                saved_profile = self.saved_state.get("profile_name", "")
+                if saved_profile:
+                    for display, data in self.profile_names_map.items():
+                        if data.get("name") == saved_profile:
+                            dpg.set_value("profiles_listbox", display)
+                            self.selected_profile = data
+                            break
+                            
+            except Exception as e:
+                print(f"[UI] Profile load error: {e}")
+        threading.Thread(target=load, daemon=True).start()
+    
     def _on_browser_selected(self, sender, app_data, user_data):
+        """Handle browser selection."""
         selected_display = app_data
         if selected_display in self.browser_names_map:
             self.selected_browser = self.browser_names_map[selected_display]
             if dpg.get_value("use_profile_checkbox"):
                 self._update_profiles_list()
     
+    def _on_profile_selected(self, sender, app_data, user_data):
+        """Handle profile selection."""
+        selected_display = app_data
+        if selected_display in self.profile_names_map:
+            self.selected_profile = self.profile_names_map[selected_display]
+    
     def _on_use_profile_changed(self, sender, app_data, user_data):
+        """Handle use profile checkbox change."""
         if app_data:
             dpg.show_item("profiles_group")
-            self._update_profiles_list()
+            if self.selected_browser:
+                self._update_profiles_list()
         else:
             dpg.hide_item("profiles_group")
-            self.selected_profile = None
-    
-    def _update_profiles_list(self):
-        if not self.selected_browser:
-            dpg.configure_item("profiles_listbox", items=["(Seleccione navegador)"])
-            return
-        try:
-            from core.browser_automation.profile_utils import list_browser_profiles
-            browser_name = self.selected_browser.get("name", "")
-            browser_path = self.selected_browser.get("path", "")
-            self.profiles = list_browser_profiles(browser_name, browser_path)
-            
-            self.profile_names_map = {}
-            profile_display_names = []
-            for p in self.profiles:
-                display = p.get("display_name", p.get("name", "Unknown"))
-                self.profile_names_map[display] = p
-                profile_display_names.append(display)
-            
-            if profile_display_names:
-                dpg.configure_item("profiles_listbox", items=profile_display_names)
-                if self.current_config["profile_name"]:
-                    for display, data in self.profile_names_map.items():
-                        if data.get("name") == self.current_config["profile_name"]:
-                            dpg.set_value("profiles_listbox", display)
-                            self.selected_profile = data
-                            break
-            else:
-                dpg.configure_item("profiles_listbox", items=["(Sin perfiles)"])
-        except Exception as e:
-            dpg.configure_item("profiles_listbox", items=[f"Error: {e}"])
-    
-    def _on_profile_selected(self, sender, app_data, user_data):
-        if app_data in self.profile_names_map:
-            self.selected_profile = self.profile_names_map[app_data]
     
     def _on_login_enabled_changed(self, sender, app_data, user_data):
+        """Handle login enabled checkbox change."""
         if app_data:
             dpg.show_item("login_url_group")
         else:
             dpg.hide_item("login_url_group")
+    
+    def _on_use_alt_url_changed(self, sender, app_data, user_data):
+        """Handle alt URL checkbox change."""
+        if app_data:
+            dpg.show_item("alt_url_group")
+        else:
+            dpg.hide_item("alt_url_group")
     
     def _update_status(self, message: str, color: tuple = (150, 150, 150)):
         """Update status text."""
@@ -163,6 +182,10 @@ class AutomationRunnerUI:
     
     def _get_browser_config(self) -> dict:
         """Build browser config from current UI state."""
+        # Get alt URL if enabled
+        use_alt_url = dpg.get_value("use_alt_url_checkbox") if dpg.does_item_exist("use_alt_url_checkbox") else False
+        alt_url = dpg.get_value("alt_url_input") if dpg.does_item_exist("alt_url_input") else ""
+        
         config = {
             "browser_name": "",
             "browser_path": "",
@@ -172,6 +195,8 @@ class AutomationRunnerUI:
             "login_enabled": dpg.get_value("login_enabled_checkbox"),
             "login_url": dpg.get_value("login_url_input"),
             "package_path": self.loaded_package_path,
+            "use_alt_url": use_alt_url,
+            "alt_url": alt_url,
         }
         
         if self.selected_browser:
@@ -197,6 +222,13 @@ class AutomationRunnerUI:
             self._update_status("⚠ Seleccione un navegador", (255, 200, 100))
             return
         
+        if not self.loaded_package_path:
+            self._update_status("⚠ Cargue un paquete .afpkg", (255, 200, 100))
+            return
+        
+        # Save state before starting
+        self._save_state()
+        
         self.is_running = True
         dpg.configure_item("start_stop_btn", label="■ DETENER AUTOMATIZACIÓN")
         dpg.bind_item_theme("start_stop_btn", "stop_btn_theme")
@@ -206,22 +238,23 @@ class AutomationRunnerUI:
         dpg.disable_item("browsers_listbox")
         dpg.disable_item("use_profile_checkbox")
         dpg.disable_item("login_enabled_checkbox")
+        dpg.disable_item("load_package_btn")
         
         # Status callback for booster
         def on_status(status: str, message: str):
             color = (150, 150, 150)
-            if "✓" in message or status in ["ready", "boosted", "handshake"]:
+            if "✓" in message or status in ["ready", "boosted", "handshake", "injected", "loaded", "login_done"]:
                 color = (100, 255, 150)
             elif "✗" in message or status == "error":
                 color = (255, 100, 100)
             elif "▶" in message or "🚀" in message:
                 color = (100, 200, 255)
-            elif status in ["stopped", "closed"]:
+            elif status in ["stopped", "closed", "cancelled"]:
                 color = (255, 200, 100)
             self._update_status(message, color)
             
-            # Detect browser closed externally → reset UI
-            if status == "stopped":
+            # Detect automation ended → reset UI
+            if status in ["stopped", "cancelled"]:
                 self._reset_ui_state()
                 self._update_status("● Listo para iniciar", (150, 150, 150))
         
@@ -264,6 +297,8 @@ class AutomationRunnerUI:
         dpg.enable_item("browsers_listbox")
         dpg.enable_item("use_profile_checkbox")
         dpg.enable_item("login_enabled_checkbox")
+        if dpg.does_item_exist("load_package_btn"):
+            dpg.enable_item("load_package_btn")
     
     def _on_load_package_click(self, sender, app_data, user_data):
         """Show native Windows file dialog to load package."""
@@ -272,12 +307,10 @@ class AutomationRunnerUI:
                 import tkinter as tk
                 from tkinter import filedialog
                 
-                # Create hidden root window
                 root = tk.Tk()
                 root.withdraw()
                 root.attributes('-topmost', True)
                 
-                # Show native file dialog
                 file_path = filedialog.askopenfilename(
                     title="Seleccionar Paquete de Automatización",
                     filetypes=[("AutoForms Package", "*.afpkg"), ("All Files", "*.*")],
@@ -287,29 +320,112 @@ class AutomationRunnerUI:
                 root.destroy()
                 
                 if file_path:
-                    self.loaded_package_path = file_path
-                    dpg.set_value("package_path_input", file_path)
-                    self._update_status(f"✓ Paquete cargado", (100, 200, 100))
-                    print(f"[UI] Package loaded: {file_path}")
+                    self._load_package(file_path)
             except Exception as e:
                 self._update_status(f"✗ Error: {e}", (255, 100, 100))
         
-        # Run in thread to avoid blocking
         threading.Thread(target=open_dialog, daemon=True).start()
 
+    def _load_package(self, file_path: str):
+        """Load package and update UI with metadata."""
+        self.loaded_package_path = file_path
+        dpg.set_value("package_path_input", file_path)
+        
+        # Parse package for metadata
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            instructions = data.get("instructions", {})
+            resolved_rows = data.get("resolvedRows", [])
+            meta = data.get("meta", {})
+            
+            # Count questions
+            total_questions = 0
+            pages = instructions.get("pages", [])
+            for page in pages:
+                questions = page.get("questions", [])
+                total_questions += len(questions)
+            
+            self.package_info = {
+                "filename": os.path.basename(file_path),
+                "totalRows": len(resolved_rows),
+                "totalQuestions": total_questions,
+                "formUrl": instructions.get("url", ""),
+                "sourceExcel": meta.get("sourceExcel", ""),
+                "sourceSheet": meta.get("sourceSheet", ""),
+            }
+            
+            # Update metadata section
+            self._update_package_metadata()
+            dpg.show_item("package_metadata_group")
+            
+            self._update_status(f"✓ Paquete cargado", (100, 200, 100))
+            print(f"[UI] Package loaded: {file_path}")
+            
+        except Exception as e:
+            self._update_status(f"✗ Error: {e}", (255, 100, 100))
+            print(f"[UI] Package load error: {e}")
+    
+    def _update_package_metadata(self):
+        """Update package metadata display."""
+        if dpg.does_item_exist("pkg_filename_text"):
+            dpg.set_value("pkg_filename_text", f"📦 {self.package_info.get('filename', 'N/A')}")
+        if dpg.does_item_exist("pkg_rows_text"):
+            dpg.set_value("pkg_rows_text", f"Filas: {self.package_info.get('totalRows', 0)}")
+        if dpg.does_item_exist("pkg_questions_text"):
+            dpg.set_value("pkg_questions_text", f"Preguntas: {self.package_info.get('totalQuestions', 0)}")
+        if dpg.does_item_exist("pkg_url_text"):
+            url = self.package_info.get('formUrl', '')
+            dpg.set_value("pkg_url_text", url[:60] + "..." if len(url) > 60 else url)
     
     def _close(self, sender, app_data, user_data):
-        """Close UI - stop automation first if running."""
+        """Close UI - save state and stop automation if running."""
+        self._save_state()
         if self.is_running:
             self._stop_automation()
         dpg.stop_dearpygui()
     
+    def _restore_saved_state(self):
+        """Restore UI from saved state."""
+        if not self.saved_state:
+            return
+        
+        # Restore checkboxes
+        if dpg.does_item_exist("use_profile_checkbox"):
+            use_profile = self.saved_state.get("use_profile", False)
+            dpg.set_value("use_profile_checkbox", use_profile)
+            if use_profile:
+                dpg.show_item("profiles_group")
+        
+        if dpg.does_item_exist("login_enabled_checkbox"):
+            login_enabled = self.saved_state.get("login_enabled", True)
+            dpg.set_value("login_enabled_checkbox", login_enabled)
+            if login_enabled:
+                dpg.show_item("login_url_group")
+            else:
+                dpg.hide_item("login_url_group")
+        
+        if dpg.does_item_exist("login_url_input"):
+            dpg.set_value("login_url_input", self.saved_state.get("login_url", "https://login.microsoftonline.com/"))
+        
+        if dpg.does_item_exist("use_alt_url_checkbox"):
+            use_alt = self.saved_state.get("use_alt_url", False)
+            dpg.set_value("use_alt_url_checkbox", use_alt)
+            if use_alt:
+                dpg.show_item("alt_url_group")
+        
+        if dpg.does_item_exist("alt_url_input"):
+            dpg.set_value("alt_url_input", self.saved_state.get("alt_url", ""))
+        
+        # Restore package
+        saved_package = self.saved_state.get("package_path", "")
+        if saved_package and os.path.exists(saved_package):
+            self._load_package(saved_package)
+    
     def run(self):
         """Run the UI."""
         dpg.create_context()
-        
-        # Load config
-        self._load_config_async()
         
         # === THEMES ===
         with dpg.theme(tag="start_btn_theme"):
@@ -325,7 +441,7 @@ class AutomationRunnerUI:
                 dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (120, 40, 40))
         
         # === MAIN WINDOW ===
-        with dpg.window(label="AutoForms - Automation Runner", tag="main_window", width=500, height=480):
+        with dpg.window(label="AutoForms - Automation Runner", tag="main_window", width=520, height=580):
             dpg.add_spacer(height=5)
             
             # Browser section
@@ -377,7 +493,7 @@ class AutomationRunnerUI:
                     indent=20
                 )
             
-            dpg.add_spacer(height=15)
+            dpg.add_spacer(height=10)
             dpg.add_separator()
             dpg.add_spacer(height=10)
             
@@ -392,9 +508,42 @@ class AutomationRunnerUI:
                     hint="Seleccione un archivo .afpkg"
                 )
                 dpg.add_button(
+                    tag="load_package_btn",
                     label="Cargar",
                     callback=self._on_load_package_click,
                     width=70
+                )
+            
+            # === PACKAGE METADATA (hidden until package loaded) ===
+            with dpg.group(tag="package_metadata_group", show=False):
+                dpg.add_spacer(height=5)
+                with dpg.group(horizontal=True):
+                    dpg.add_text("", tag="pkg_filename_text", color=(100, 200, 255))
+                dpg.add_spacer(height=3)
+                with dpg.group(horizontal=True):
+                    dpg.add_text("", tag="pkg_rows_text", color=(150, 150, 150))
+                    dpg.add_spacer(width=20)
+                    dpg.add_text("", tag="pkg_questions_text", color=(150, 150, 150))
+                dpg.add_text("", tag="pkg_url_text", color=(100, 150, 100))
+            
+            dpg.add_spacer(height=8)
+            
+            # === ALT URL CHECKBOX ===
+            dpg.add_checkbox(
+                tag="use_alt_url_checkbox",
+                label="Usar URL alternativa",
+                default_value=False,
+                callback=self._on_use_alt_url_changed
+            )
+            
+            with dpg.group(tag="alt_url_group", show=False):
+                dpg.add_input_text(
+                    tag="alt_url_input",
+                    label="URL",
+                    default_value="",
+                    width=-1,
+                    hint="URL alternativa del formulario",
+                    indent=20
                 )
             
             dpg.add_spacer(height=10)
@@ -421,10 +570,13 @@ class AutomationRunnerUI:
             dpg.add_button(label="Cerrar", callback=self._close, width=80)
         
         # Setup and show
-        dpg.create_viewport(title="AutoForms - Automation Runner", width=520, height=540)
+        dpg.create_viewport(title="AutoForms - Automation Runner", width=540, height=640)
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.set_primary_window("main_window", True)
+        
+        # Restore saved state
+        self._restore_saved_state()
         
         # Detect browsers after UI is visible
         self._detect_browsers_async()
