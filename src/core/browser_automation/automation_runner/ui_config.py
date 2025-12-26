@@ -30,6 +30,7 @@ class AutomationRunnerUI:
         self.selected_profile = None
         self.current_config = self._get_default_config()
         self.is_running = False
+        self.loaded_package_path = ""
     
     def _get_default_config(self):
         return {
@@ -256,6 +257,22 @@ class AutomationRunnerUI:
         dpg.enable_item("use_profile_checkbox")
         dpg.enable_item("login_enabled_checkbox")
     
+    def _on_load_package_selected(self, sender, app_data, user_data):
+        """Handle package file selection from file dialog."""
+        if app_data and "file_path_name" in app_data:
+            file_path = app_data["file_path_name"]
+            if file_path and file_path.endswith(".afpkg"):
+                self.loaded_package_path = file_path
+                dpg.set_value("package_path_input", file_path)
+                self._update_status(f"✓ Paquete cargado", (100, 200, 100))
+                print(f"[UI] Package loaded: {file_path}")
+            else:
+                self._update_status("⚠ Seleccione un archivo .afpkg", (255, 200, 100))
+    
+    def _on_load_package_click(self, sender, app_data, user_data):
+        """Show file dialog to load package."""
+        dpg.show_item("file_dialog")
+    
     def _close(self, sender, app_data, user_data):
         """Close UI - stop automation first if running."""
         if self.is_running:
@@ -281,6 +298,17 @@ class AutomationRunnerUI:
                 dpg.add_theme_color(dpg.mvThemeCol_Button, (150, 50, 50))
                 dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, (180, 70, 70))
                 dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, (120, 40, 40))
+        
+        # === FILE DIALOG ===
+        with dpg.file_dialog(
+            tag="file_dialog",
+            directory_selector=False,
+            show=False,
+            callback=self._on_load_package_selected,
+            width=600,
+            height=400
+        ):
+            dpg.add_file_extension(".afpkg", color=(0, 255, 150))
         
         # === MAIN WINDOW ===
         with dpg.window(label="AutoForms - Automation Runner", tag="main_window", width=500, height=480):
@@ -336,6 +364,26 @@ class AutomationRunnerUI:
                 )
             
             dpg.add_spacer(height=15)
+            dpg.add_separator()
+            dpg.add_spacer(height=10)
+            
+            # === PACKAGE LOADER ===
+            dpg.add_text("Paquete de Automatización", color=(200, 200, 200))
+            with dpg.group(horizontal=True):
+                dpg.add_input_text(
+                    tag="package_path_input",
+                    default_value="",
+                    readonly=True,
+                    width=-80,
+                    hint="Seleccione un archivo .afpkg"
+                )
+                dpg.add_button(
+                    label="Cargar",
+                    callback=self._on_load_package_click,
+                    width=70
+                )
+            
+            dpg.add_spacer(height=10)
             dpg.add_separator()
             dpg.add_spacer(height=10)
             
