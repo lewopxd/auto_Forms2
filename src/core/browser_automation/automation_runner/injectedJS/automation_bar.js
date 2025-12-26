@@ -8,7 +8,7 @@
     'use strict';
 
     const ROOT_ID = '__autoforms_bar_root__';
-    const BAR_HEIGHT = 50;
+    const BAR_HEIGHT = 36;
 
     // Prevent duplicate injection
     if (document.getElementById(ROOT_ID)) return;
@@ -113,6 +113,9 @@
         play: `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
         pause: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`,
         stop: `<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>`,
+        next: `<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><rect x="15" y="4" width="4" height="16"/></svg>`,
+        one: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="12" y1="8" x2="9" y2="11"/></svg>`,
+        loop: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>`,
         settings: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>`,
         check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`,
         close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
@@ -165,18 +168,17 @@
                 
                 :host {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    font-size: 13px;
+                    font-size: 11px;
                 }
                 
                 .bar {
                     display: flex;
                     align-items: center;
                     height: ${BAR_HEIGHT}px;
-                    background: #ffffff;
+                    background: #f3f4f6;
                     border-bottom: 1px solid #e5e7eb;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-                    padding: 0 16px;
-                    gap: 16px;
+                    padding: 0 12px;
+                    gap: 10px;
                 }
                 
                 .section {
@@ -187,22 +189,23 @@
                 }
                 
                 .section svg {
-                    width: 16px;
-                    height: 16px;
+                    width: 14px;
+                    height: 14px;
                     color: #6b7280;
                     flex-shrink: 0;
                 }
                 
                 .divider {
                     width: 1px;
-                    height: 24px;
-                    background: #e5e7eb;
+                    height: 20px;
+                    background: #d1d5db;
                 }
                 
                 .filename {
-                    font-weight: 600;
-                    color: #1f2937;
-                    max-width: 200px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: #374151;
+                    max-width: 180px;
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
@@ -211,20 +214,22 @@
                 .info-btn {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    padding: 6px 10px;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 6px;
+                    gap: 4px;
+                    height: 24px;
+                    padding: 0 8px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 3px;
                     background: white;
                     cursor: pointer;
                     transition: all 0.15s ease;
                     color: #374151;
-                    font-size: 12px;
+                    font-size: 11px;
+                    font-weight: 500;
                 }
                 
                 .info-btn:hover {
-                    background: #f9fafb;
-                    border-color: #d1d5db;
+                    background: #e5e7eb;
+                    border-color: #9ca3af;
                 }
                 
                 .info-btn.active {
@@ -234,8 +239,8 @@
                 }
                 
                 .info-btn svg {
-                    width: 14px;
-                    height: 14px;
+                    width: 12px;
+                    height: 12px;
                 }
                 
                 .info-value {
@@ -245,14 +250,14 @@
                 .controls {
                     display: flex;
                     align-items: center;
-                    gap: 4px;
+                    gap: 3px;
                 }
                 
                 .ctrl-btn {
-                    width: 32px;
-                    height: 32px;
+                    width: 24px;
+                    height: 24px;
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 3px;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
@@ -261,22 +266,19 @@
                 }
                 
                 .ctrl-btn svg {
-                    width: 14px;
-                    height: 14px;
+                    width: 12px;
+                    height: 12px;
                 }
                 
-                .ctrl-btn.play {
+                .ctrl-btn.play-pause {
                     background: #22c55e;
                     color: white;
                 }
-                .ctrl-btn.play:hover { background: #16a34a; }
-                .ctrl-btn.play:disabled { background: #86efac; cursor: not-allowed; }
-                
-                .ctrl-btn.pause {
+                .ctrl-btn.play-pause:hover { background: #16a34a; }
+                .ctrl-btn.play-pause.paused {
                     background: #f59e0b;
-                    color: white;
                 }
-                .ctrl-btn.pause:hover { background: #d97706; }
+                .ctrl-btn.play-pause.paused:hover { background: #d97706; }
                 
                 .ctrl-btn.stop {
                     background: #ef4444;
@@ -284,17 +286,54 @@
                 }
                 .ctrl-btn.stop:hover { background: #dc2626; }
                 
+                .ctrl-btn.next {
+                    background: #3b82f6;
+                    color: white;
+                }
+                .ctrl-btn.next:hover { background: #2563eb; }
+                
+                .ctrl-btn.hidden {
+                    display: none;
+                }
+                
+                .mode-btn {
+                    width: 24px;
+                    height: 24px;
+                    border: none;
+                    border-radius: 3px;
+                    background: #f97316;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    transition: all 0.15s ease;
+                }
+                
+                .mode-btn svg {
+                    width: 12px;
+                    height: 12px;
+                }
+                
+                .mode-btn:hover {
+                    background: #ea580c;
+                }
+                
+                .mode-btn.active {
+                    background: #6b7280;
+                }
+                
                 .status {
                     flex: 1;
                     display: flex;
                     align-items: center;
-                    gap: 8px;
-                    padding: 0 12px;
+                    gap: 6px;
+                    padding: 0 8px;
                 }
                 
                 .status-dot {
-                    width: 8px;
-                    height: 8px;
+                    width: 6px;
+                    height: 6px;
                     border-radius: 50%;
                     background: #22c55e;
                 }
@@ -314,14 +353,14 @@
                 
                 .status-text {
                     color: #374151;
-                    font-size: 13px;
+                    font-size: 11px;
                 }
                 
                 .config-btn {
-                    width: 32px;
-                    height: 32px;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 6px;
+                    width: 24px;
+                    height: 24px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 3px;
                     background: white;
                     cursor: pointer;
                     display: flex;
@@ -331,8 +370,13 @@
                     transition: all 0.15s ease;
                 }
                 
+                .config-btn svg {
+                    width: 12px;
+                    height: 12px;
+                }
+                
                 .config-btn:hover {
-                    background: #f3f4f6;
+                    background: #e5e7eb;
                     color: #374151;
                 }
                 
@@ -827,57 +871,118 @@
                    TARJETAS DE ACCIÓN (reutilizables)
                    ═══════════════════════════════════════════════════════════ */
                 
-                .action-card {
+                .action-container {
                     position: fixed;
                     top: 60px;
                     left: 16px;
-                    width: 320px;
-                    background: white;
-                    border-radius: 8px;
-                    border: 1px solid #d1d5db;
-                    border-left-width: 4px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                    overflow: hidden;
                     z-index: 9999;
-                    opacity: 0;
-                    transform: translateY(-20px);
-                    pointer-events: none;
                 }
                 
-                .action-card.visible {
+                .action-wrapper {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 10px;
+                    opacity: 0;
+                    transform: translateY(50px);
+                    pointer-events: none;
+                    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                }
+                
+                .action-wrapper.visible {
                     opacity: 1;
                     transform: translateY(0);
                     pointer-events: auto;
-                    animation: cardEnter 0.3s ease-out;
                 }
                 
-                .action-card.exiting {
-                    animation: cardExit 0.3s ease-in forwards;
+                .action-wrapper.exiting {
+                    opacity: 0;
+                    transform: translateY(-50px);
+                    pointer-events: none;
                 }
                 
-                @keyframes cardEnter {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
+                /* Círculo indicador exterior */
+                .action-indicator {
+                    width: 32px;
+                    height: 32px;
+                    border-radius: 50%;
+                    border: 3px solid #e5e7eb;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: #6b7280;
+                    background: white;
+                    flex-shrink: 0;
+                    position: relative;
                 }
                 
-                @keyframes cardExit {
-                    from {
-                        opacity: 1;
-                        transform: translateX(0);
-                    }
-                    to {
-                        opacity: 0;
-                        transform: translateX(-100px);
-                    }
+                /* Colores por tipo (anillo estático) */
+                .action-indicator.fill { border-color: #93c5fd; color: #3b82f6; }
+                .action-indicator.select { border-color: #c4b5fd; color: #8b5cf6; }
+                .action-indicator.click { border-color: #fdba74; color: #f97316; }
+                
+                /* Estado: Loading - spinner girando (solo el pseudo-elemento gira) */
+                .action-indicator.loading::before {
+                    content: '';
+                    position: absolute;
+                    top: -3px;
+                    left: -3px;
+                    right: -3px;
+                    bottom: -3px;
+                    border-radius: 50%;
+                    border: 3px solid transparent;
+                    border-top-color: currentColor;
+                    border-right-color: currentColor;
+                    animation: spinnerRotate 0.8s linear infinite;
                 }
                 
-                /* Tipos de tarjeta */
+                @keyframes spinnerRotate {
+                    to { transform: rotate(360deg); }
+                }
+                
+                
+                /* Estado: Success */
+                .action-indicator.success {
+                    border-color: #22c55e;
+                    color: #22c55e;
+                }
+                
+                .action-indicator.success svg {
+                    width: 16px;
+                    height: 16px;
+                }
+                
+                /* Estado: Error */
+                .action-indicator.error {
+                    border-color: #ef4444;
+                    color: #ef4444;
+                }
+                
+                .action-indicator.error svg {
+                    width: 16px;
+                    height: 16px;
+                }
+                
+                .action-indicator svg {
+                    width: 14px;
+                    height: 14px;
+                }
+                
+                /* Tarjeta */
+                .action-card {
+                    width: 260px;
+                    background: white;
+                    border-radius: 8px;
+                    border: 1px solid #d1d5db;
+                    border-left-width: 3px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    overflow: hidden;
+                }
+                
                 .action-card.fill { border-left-color: #3b82f6; }
                 .action-card.select { border-left-color: #8b5cf6; }
                 .action-card.click { border-left-color: #f97316; }
@@ -885,36 +990,19 @@
                 .action-card-header {
                     display: flex;
                     align-items: center;
-                    padding: 8px 12px;
+                    padding: 6px 10px;
                     background: #f9fafb;
                     border-bottom: 1px solid #e5e7eb;
-                    gap: 10px;
+                    gap: 8px;
                 }
-                
-                .action-num {
-                    width: 26px;
-                    height: 26px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 12px;
-                    font-weight: 700;
-                    color: white;
-                    flex-shrink: 0;
-                }
-                
-                .action-card.fill .action-num { background: #3b82f6; }
-                .action-card.select .action-num { background: #8b5cf6; }
-                .action-card.click .action-num { background: #f97316; }
                 
                 .action-type-chip {
-                    padding: 3px 8px;
-                    border-radius: 4px;
-                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 9px;
                     font-weight: 700;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
+                    letter-spacing: 0.3px;
                 }
                 
                 .action-type-chip.fill { background: #dbeafe; color: #1e40af; }
@@ -922,22 +1010,22 @@
                 .action-type-chip.click { background: #ffedd5; color: #c2410c; }
                 
                 .action-card-body {
-                    padding: 12px;
+                    padding: 10px;
                 }
                 
                 .action-question {
-                    font-size: 13px;
+                    font-size: 12px;
                     font-weight: 600;
                     color: #1f2937;
-                    line-height: 1.4;
-                    margin-bottom: 8px;
+                    line-height: 1.3;
+                    margin-bottom: 6px;
                 }
                 
                 .action-answer {
-                    font-size: 12px;
+                    font-size: 11px;
                     color: #059669;
                     background: #ecfdf5;
-                    padding: 8px 10px;
+                    padding: 6px 8px;
                     border-radius: 4px;
                     border: 1px solid #a7f3d0;
                 }
@@ -945,13 +1033,13 @@
                 .action-options {
                     display: flex;
                     flex-direction: column;
-                    gap: 4px;
+                    gap: 3px;
                 }
                 
                 .action-opt {
-                    font-size: 11px;
-                    padding: 4px 8px;
-                    border-radius: 4px;
+                    font-size: 10px;
+                    padding: 3px 6px;
+                    border-radius: 3px;
                     color: #6b7280;
                     background: #f3f4f6;
                 }
@@ -963,11 +1051,11 @@
                 }
                 
                 .action-selector {
-                    font-size: 11px;
-                    padding: 6px 8px;
+                    font-size: 10px;
+                    padding: 5px 6px;
                     background: #fff7ed;
                     border: 1px dashed #f97316;
-                    border-radius: 4px;
+                    border-radius: 3px;
                     color: #c2410c;
                     font-family: monospace;
                 }
@@ -1052,6 +1140,208 @@
                     white-space: nowrap;
                     color: #374151;
                 }
+                
+                /* ═══════════════════════════════════════════════════════════
+                   CONFIG MODAL
+                   ═══════════════════════════════════════════════════════════ */
+                
+                .config-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 10000;
+                }
+                
+                .config-modal-overlay.open {
+                    display: flex;
+                }
+                
+                .config-modal {
+                    background: white;
+                    border-radius: 8px;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                    width: 360px;
+                    max-width: 90vw;
+                }
+                
+                .config-modal-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 12px 16px;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                .config-modal-title {
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #1f2937;
+                }
+                
+                .config-modal-close {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    padding: 4px;
+                    color: #6b7280;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .config-modal-close:hover { color: #374151; }
+                
+                .config-modal-close svg {
+                    width: 16px;
+                    height: 16px;
+                }
+                
+                .config-modal-body {
+                    padding: 16px;
+                }
+                
+                .config-field {
+                    margin-bottom: 16px;
+                }
+                
+                .config-field:last-child {
+                    margin-bottom: 0;
+                }
+                
+                .config-label {
+                    display: block;
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: #6b7280;
+                    margin-bottom: 6px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                }
+                
+                .config-input {
+                    width: 100%;
+                    height: 32px;
+                    padding: 0 10px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    color: #374151;
+                    outline: none;
+                }
+                
+                .config-input:focus {
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+                }
+                
+                .config-row {
+                    display: flex;
+                    gap: 10px;
+                }
+                
+                .config-row .config-input {
+                    flex: 1;
+                }
+                
+                .config-checkbox-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                }
+                
+                .config-checkbox {
+                    width: 16px;
+                    height: 16px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 3px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: white;
+                    flex-shrink: 0;
+                }
+                
+                .config-checkbox.checked {
+                    background: #667eea;
+                    border-color: #667eea;
+                }
+                
+                .config-checkbox svg {
+                    width: 10px;
+                    height: 10px;
+                    color: white;
+                }
+                
+                .config-checkbox-label {
+                    font-size: 12px;
+                    color: #374151;
+                }
+                
+                .config-input-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                
+                .config-input-label {
+                    font-size: 11px;
+                    font-weight: 500;
+                    color: #6b7280;
+                    min-width: 28px;
+                }
+                
+                .config-unit {
+                    font-size: 11px;
+                    color: #9ca3af;
+                    font-weight: 500;
+                }
+                
+                .config-modal-footer {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 10px;
+                    padding: 14px 16px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                
+                .config-btn {
+                    height: 32px;
+                    min-width: 80px;
+                    padding: 0 16px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    white-space: nowrap;
+                }
+                
+                .config-btn-cancel {
+                    background: white;
+                    border: 1px solid #d1d5db;
+                    color: #374151;
+                }
+                
+                .config-btn-cancel:hover {
+                    background: #f3f4f6;
+                }
+                
+                .config-btn-save {
+                    background: #667eea;
+                    border: none;
+                    color: white;
+                }
+                
+                .config-btn-save:hover {
+                    background: #5a6fd6;
+                }
             </style>
             
             <div class="bar">
@@ -1098,10 +1388,17 @@
                 
                 <!-- Control Buttons -->
                 <div class="controls">
-                    <button class="ctrl-btn play" id="btnPlay" title="Iniciar">${ICONS.play}</button>
-                    <button class="ctrl-btn pause" id="btnPause" title="Pausar">${ICONS.pause}</button>
+                    <button class="ctrl-btn play-pause" id="btnPlayPause" title="Iniciar">${ICONS.play}</button>
                     <button class="ctrl-btn stop" id="btnStop" title="Detener">${ICONS.stop}</button>
+                    <button class="ctrl-btn next hidden" id="btnNext" title="Siguiente fila">${ICONS.next}</button>
                 </div>
+                
+                <div class="divider"></div>
+                
+                <!-- Mode Toggle: Uno a uno vs Todas -->
+                <button class="mode-btn" id="btnMode" title="Modo: Todas las filas">
+                    ${ICONS.loop}
+                </button>
                 
                 <div class="divider"></div>
                 
@@ -1117,14 +1414,74 @@
                 </button>
             </div>
             
-            <!-- Tarjeta de Acción (reutilizable) -->
-            <div class="action-card" id="actionCard">
-                <div class="action-card-header">
-                    <div class="action-num" id="actionNum">1</div>
-                    <span class="action-type-chip" id="actionTypeChip">FILL</span>
+            <!-- Modal de Configuración -->
+            <div class="config-modal-overlay" id="configModalOverlay">
+                <div class="config-modal">
+                    <div class="config-modal-header">
+                        <span class="config-modal-title">Configuración</span>
+                        <button class="config-modal-close" id="configModalClose">${ICONS.close}</button>
+                    </div>
+                    <div class="config-modal-body">
+                        <div class="config-field">
+                            <label class="config-label">Retardo antes de iniciar siguiente fila</label>
+                            <div class="config-checkbox-row" id="randomDelayToggle">
+                                <div class="config-checkbox" id="randomDelayCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Random</span>
+                            </div>
+                        </div>
+                        <div class="config-field" id="fixedDelayField">
+                            <div class="config-input-group">
+                                <input type="number" class="config-input" id="delayInput" value="2000" min="0" step="100">
+                                <span class="config-unit">ms</span>
+                            </div>
+                        </div>
+                        <div class="config-field" id="randomDelayField" style="display: none;">
+                            <div class="config-row">
+                                <div class="config-input-group">
+                                    <label class="config-input-label">Min</label>
+                                    <input type="number" class="config-input" id="delayMinInput" value="1000" min="0" step="100">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                                <div class="config-input-group">
+                                    <label class="config-input-label">Max</label>
+                                    <input type="number" class="config-input" id="delayMaxInput" value="3000" min="0" step="100">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-modal-footer">
+                        <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
+                        <button class="config-btn config-btn-save" id="configSave">Aceptar</button>
+                    </div>
                 </div>
-                <div class="action-card-body" id="actionCardBody">
-                    <!-- Contenido dinámico -->
+            </div>
+            
+            <!-- Contenedor de Tarjetas de Acción (dos slots para animación scroll) -->
+            <div class="action-container" id="actionContainer">
+                <!-- Tarjeta A -->
+                <div class="action-wrapper" id="actionWrapperA">
+                    <div class="action-indicator" id="actionIndicatorA">
+                        <span id="actionNumTextA">1</span>
+                    </div>
+                    <div class="action-card" id="actionCardA">
+                        <div class="action-card-header">
+                            <span class="action-type-chip" id="actionTypeChipA">FILL</span>
+                        </div>
+                        <div class="action-card-body" id="actionCardBodyA"></div>
+                    </div>
+                </div>
+                <!-- Tarjeta B -->
+                <div class="action-wrapper" id="actionWrapperB">
+                    <div class="action-indicator" id="actionIndicatorB">
+                        <span id="actionNumTextB">2</span>
+                    </div>
+                    <div class="action-card" id="actionCardB">
+                        <div class="action-card-header">
+                            <span class="action-type-chip" id="actionTypeChipB">FILL</span>
+                        </div>
+                        <div class="action-card-body" id="actionCardBodyB"></div>
+                    </div>
                 </div>
             </div>
             
@@ -1145,14 +1502,19 @@
         document.body.style.marginTop = (originalMargin + BAR_HEIGHT) + 'px';
 
         // Get elements from shadow DOM
-        const btnPlay = shadow.getElementById('btnPlay');
-        const btnPause = shadow.getElementById('btnPause');
+        const btnPlayPause = shadow.getElementById('btnPlayPause');
         const btnStop = shadow.getElementById('btnStop');
+        const btnNext = shadow.getElementById('btnNext');
+        const btnMode = shadow.getElementById('btnMode');
         const btnConfig = shadow.getElementById('btnConfig');
         const btnRows = shadow.getElementById('btnRows');
         const rowsDropdown = shadow.getElementById('rowsDropdown');
         const statusDot = shadow.getElementById('statusDot');
         const statusText = shadow.getElementById('statusText');
+
+        // Estado de UI
+        let isPlaying = false;
+        let oneByOneMode = false;
 
         // ═══════════════════════════════════════════════════════════════════
         // DROPDOWN: SELECTOR DE COLUMNAS DE CONTROL
@@ -1485,66 +1847,228 @@
             toggleRowsDropdown();
         };
 
-        btnPlay.onclick = () => {
-            window.__autoforms_commands.push({ type: 'start', time: Date.now() });
-        };
-
-        btnPause.onclick = () => {
-            window.__autoforms_commands.push({ type: 'pause', time: Date.now() });
+        // Play/Pause toggle button
+        btnPlayPause.onclick = () => {
+            if (isPlaying) {
+                // Está en play → pausar
+                window.__autoforms_commands.push({ type: 'pause', time: Date.now() });
+                isPlaying = false;
+                btnPlayPause.innerHTML = ICONS.play;
+                btnPlayPause.classList.remove('paused');
+                btnPlayPause.title = 'Reanudar';
+            } else {
+                // Está pausado → play
+                window.__autoforms_commands.push({ type: 'start', time: Date.now() });
+                isPlaying = true;
+                btnPlayPause.innerHTML = ICONS.pause;
+                btnPlayPause.classList.add('paused');
+                btnPlayPause.title = 'Pausar';
+            }
         };
 
         btnStop.onclick = () => {
             window.__autoforms_commands.push({ type: 'stop', time: Date.now() });
+            isPlaying = false;
+            btnPlayPause.innerHTML = ICONS.play;
+            btnPlayPause.classList.remove('paused');
+            btnPlayPause.title = 'Iniciar';
         };
 
-        btnConfig.onclick = () => {
-            window.__autoforms_commands.push({ type: 'config', time: Date.now() });
+        btnNext.onclick = () => {
+            window.__autoforms_commands.push({ type: 'next', time: Date.now() });
         };
 
-        // ═══════════════════════════════════════════════════════════════════
-        // SISTEMA DE TARJETAS DE ACCIÓN
-        // ═══════════════════════════════════════════════════════════════════
+        // Toggle mode: uno a uno vs todas las filas
+        btnMode.onclick = () => {
+            oneByOneMode = !oneByOneMode;
 
-        const actionCard = shadow.getElementById('actionCard');
-        const actionNum = shadow.getElementById('actionNum');
-        const actionTypeChip = shadow.getElementById('actionTypeChip');
-        const actionCardBody = shadow.getElementById('actionCardBody');
-        const testPanel = shadow.getElementById('testPanel');
-        const testPanelList = shadow.getElementById('testPanelList');
-
-        let currentActionTimeout = null;
-
-        // Función para mostrar una tarjeta de acción
-        function showActionCard(action) {
-            // Limpiar timeout anterior
-            if (currentActionTimeout) {
-                clearTimeout(currentActionTimeout);
+            if (oneByOneMode) {
+                btnMode.innerHTML = ICONS.one;
+                btnMode.classList.add('active');
+                btnMode.title = 'Modo: Una fila';
+                btnNext.classList.remove('hidden');
+            } else {
+                btnMode.innerHTML = ICONS.loop;
+                btnMode.classList.remove('active');
+                btnMode.title = 'Modo: Todas las filas';
+                btnNext.classList.add('hidden');
             }
 
-            // Si hay tarjeta visible, animarla saliendo
-            if (actionCard.classList.contains('visible')) {
-                actionCard.classList.remove('visible');
-                actionCard.classList.add('exiting');
+            window.__autoforms_commands.push({ type: 'mode', oneByOne: oneByOneMode, time: Date.now() });
+        };
 
-                setTimeout(() => {
-                    actionCard.classList.remove('exiting');
-                    displayAction(action);
-                }, 300);
+        // ═══════════════════════════════════════════════════════════════════
+        // MODAL DE CONFIGURACIÓN
+        // ═══════════════════════════════════════════════════════════════════
+
+        const configModalOverlay = shadow.getElementById('configModalOverlay');
+        const configModalClose = shadow.getElementById('configModalClose');
+        const configCancel = shadow.getElementById('configCancel');
+        const configSave = shadow.getElementById('configSave');
+        const randomDelayToggle = shadow.getElementById('randomDelayToggle');
+        const randomDelayCheckbox = shadow.getElementById('randomDelayCheckbox');
+        const fixedDelayField = shadow.getElementById('fixedDelayField');
+        const randomDelayField = shadow.getElementById('randomDelayField');
+        const delayInput = shadow.getElementById('delayInput');
+        const delayMinInput = shadow.getElementById('delayMinInput');
+        const delayMaxInput = shadow.getElementById('delayMaxInput');
+
+        // Estado de configuración
+        let configState = {
+            randomDelay: false,
+            fixedDelay: 2,
+            minDelay: 1,
+            maxDelay: 3
+        };
+
+        function openConfigModal() {
+            // Cargar valores actuales en los inputs
+            delayInput.value = configState.fixedDelay;
+            delayMinInput.value = configState.minDelay;
+            delayMaxInput.value = configState.maxDelay;
+
+            // Actualizar checkbox y campos visibles
+            if (configState.randomDelay) {
+                randomDelayCheckbox.classList.add('checked');
+                fixedDelayField.style.display = 'none';
+                randomDelayField.style.display = 'block';
             } else {
-                displayAction(action);
+                randomDelayCheckbox.classList.remove('checked');
+                fixedDelayField.style.display = 'block';
+                randomDelayField.style.display = 'none';
+            }
+
+            configModalOverlay.classList.add('open');
+        }
+
+        function closeConfigModal() {
+            configModalOverlay.classList.remove('open');
+        }
+
+        function toggleRandomDelay() {
+            const isChecked = randomDelayCheckbox.classList.toggle('checked');
+
+            if (isChecked) {
+                fixedDelayField.style.display = 'none';
+                randomDelayField.style.display = 'block';
+            } else {
+                fixedDelayField.style.display = 'block';
+                randomDelayField.style.display = 'none';
             }
         }
 
-        function displayAction(action) {
+        function saveConfig() {
+            const isRandom = randomDelayCheckbox.classList.contains('checked');
+
+            configState = {
+                randomDelay: isRandom,
+                fixedDelay: parseFloat(delayInput.value) || 2,
+                minDelay: parseFloat(delayMinInput.value) || 1,
+                maxDelay: parseFloat(delayMaxInput.value) || 3
+            };
+
+            // Enviar configuración al backend
+            window.__autoforms_commands.push({
+                type: 'config_update',
+                config: configState,
+                time: Date.now()
+            });
+
+            closeConfigModal();
+        }
+
+        // Event listeners del modal de configuración
+        btnConfig.onclick = openConfigModal;
+        configModalClose.onclick = closeConfigModal;
+        configCancel.onclick = closeConfigModal;
+        configSave.onclick = saveConfig;
+        randomDelayToggle.onclick = toggleRandomDelay;
+
+        configModalOverlay.onclick = (e) => {
+            if (e.target === configModalOverlay) closeConfigModal();
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SISTEMA DE TARJETAS DE ACCIÓN (scroll simultáneo A/B)
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Elementos de tarjeta A
+        const wrapperA = shadow.getElementById('actionWrapperA');
+        const indicatorA = shadow.getElementById('actionIndicatorA');
+        const numTextA = shadow.getElementById('actionNumTextA');
+        const cardA = shadow.getElementById('actionCardA');
+        const chipA = shadow.getElementById('actionTypeChipA');
+        const bodyA = shadow.getElementById('actionCardBodyA');
+
+        // Elementos de tarjeta B
+        const wrapperB = shadow.getElementById('actionWrapperB');
+        const indicatorB = shadow.getElementById('actionIndicatorB');
+        const numTextB = shadow.getElementById('actionNumTextB');
+        const cardB = shadow.getElementById('actionCardB');
+        const chipB = shadow.getElementById('actionTypeChipB');
+        const bodyB = shadow.getElementById('actionCardBodyB');
+
+        const testPanel = shadow.getElementById('testPanel');
+        const testPanelList = shadow.getElementById('testPanelList');
+
+        // Iconos para estados
+        const STATE_ICONS = {
+            check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,
+            alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+        };
+
+        // Alternar entre tarjetas A y B
+        let useCardA = true;
+        let currentAction = null;
+
+        function showActionCard(action) {
+            // Determinar qué tarjeta usar (alternar)
+            const activeWrapper = useCardA ? wrapperA : wrapperB;
+            const activeIndicator = useCardA ? indicatorA : indicatorB;
+            const activeNumText = useCardA ? numTextA : numTextB;
+            const activeCard = useCardA ? cardA : cardB;
+            const activeChip = useCardA ? chipA : chipB;
+            const activeBody = useCardA ? bodyA : bodyB;
+
+            const exitingWrapper = useCardA ? wrapperB : wrapperA;
+            const exitingIndicator = useCardA ? indicatorB : indicatorA;
+            const exitingNumText = useCardA ? numTextB : numTextA;
+
+            // Determinar si hay tarjeta que debe salir
+            const hasExitingCard = !!currentAction;
+
+            // Si hay tarjeta visible, hacerla salir
+            if (hasExitingCard) {
+                // 1. Primero: marcar la saliente como success (cambiar icono)
+                exitingIndicator.className = 'action-indicator success';
+                exitingNumText.innerHTML = STATE_ICONS.check;
+
+                // 2. Pequeño delay, luego animar salida
+                setTimeout(() => {
+                    exitingWrapper.classList.remove('visible');
+                    exitingWrapper.classList.add('exiting');
+
+                    // Limpiar después de la animación
+                    setTimeout(() => {
+                        exitingWrapper.classList.remove('exiting');
+                    }, 350);
+                }, 150);
+            }
+
+            // Preparar nueva tarjeta
             const { num, type, question, answer, options, selector } = action;
+            currentAction = action;
 
-            // Actualizar header
-            actionNum.textContent = num;
-            actionTypeChip.textContent = type.toUpperCase();
-            actionTypeChip.className = 'action-type-chip ' + type;
-            actionCard.className = 'action-card ' + type;
+            // Actualizar indicador
+            activeNumText.textContent = num;
+            activeIndicator.className = `action-indicator ${type} loading`;
 
-            // Generar contenido según tipo
+            // Actualizar tarjeta
+            activeChip.textContent = type.toUpperCase();
+            activeChip.className = 'action-type-chip ' + type;
+            activeCard.className = 'action-card ' + type;
+
+            // Generar contenido
             let bodyHtml = `<div class="action-question">${escHtml(question)}</div>`;
 
             if (type === 'fill') {
@@ -1560,21 +2084,49 @@
                 bodyHtml += `<div class="action-selector">${escHtml(selector)}</div>`;
             }
 
-            actionCardBody.innerHTML = bodyHtml;
+            activeBody.innerHTML = bodyHtml;
 
-            // Mostrar con animación
+            // Mostrar nueva tarjeta con delay si hay transición
+            const entryDelay = hasExitingCard ? 150 : 0;
             setTimeout(() => {
-                actionCard.classList.add('visible');
-            }, 10);
+                requestAnimationFrame(() => {
+                    activeWrapper.classList.add('visible');
+                });
+            }, entryDelay);
+
+            // Alternar para la próxima vez
+            useCardA = !useCardA;
+        }
+
+        function setIndicatorState(state) {
+            // Obtener la tarjeta activa actual (la opuesta a useCardA porque ya alternamos)
+            const activeIndicator = useCardA ? indicatorB : indicatorA;
+            const activeNumText = useCardA ? numTextB : numTextA;
+            const type = currentAction ? currentAction.type : '';
+
+            if (state === 'success') {
+                activeIndicator.className = 'action-indicator success';
+                activeNumText.innerHTML = STATE_ICONS.check;
+            } else if (state === 'error') {
+                activeIndicator.className = 'action-indicator error';
+                activeNumText.innerHTML = STATE_ICONS.alert;
+            } else {
+                activeIndicator.className = `action-indicator ${type} loading`;
+                activeNumText.textContent = currentAction ? currentAction.num : '';
+            }
         }
 
         function hideActionCard() {
-            actionCard.classList.remove('visible');
-            actionCard.classList.add('exiting');
+            wrapperA.classList.remove('visible');
+            wrapperA.classList.add('exiting');
+            wrapperB.classList.remove('visible');
+            wrapperB.classList.add('exiting');
 
             setTimeout(() => {
-                actionCard.classList.remove('exiting');
-            }, 300);
+                wrapperA.classList.remove('exiting');
+                wrapperB.classList.remove('exiting');
+                currentAction = null;
+            }, 350);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -1654,6 +2206,11 @@
         // Show action card (called by Python during automation)
         window.__autoforms_showAction = function (action) {
             showActionCard(action);
+        };
+
+        // Set action indicator state: 'loading', 'success', 'error'
+        window.__autoforms_setActionState = function (state) {
+            setIndicatorState(state);
         };
 
         // Hide action card
