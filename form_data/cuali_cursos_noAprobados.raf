@@ -1,0 +1,966 @@
+{
+  "url": "https://forms.office.com/Pages/ResponsePage.aspx?id=CAjjs6jpKk-bwadgrpEM9aooGyI_AfhDr6ta5K8hD-ZUNVRUUFdTSkJSSkZFRks1VDM4OTNEOVo0Ty4u",
+  "filename": "cuali_cursos_noAprobados",
+  "pages": {
+    "page_1": {
+      "questions": {
+        "q1": {
+          "num": "1",
+          "options": [],
+          "questionId": "r8ebed53125904bab89541295184d8825",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r8ebed53125904bab89541295184d8825\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos Psicosocial",
+          "type": "text"
+        },
+        "q2": {
+          "num": "2",
+          "options": [],
+          "questionId": "r5d7d698a72514303a280c563ca5d60ac",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5d7d698a72514303a280c563ca5d60ac\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Documento del/la Psicosocial",
+          "type": "text (number)"
+        },
+        "q3": {
+          "num": "3",
+          "options": [],
+          "questionId": "r5de01b65c1444f0389ca2c6f7205ef3b",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5de01b65c1444f0389ca2c6f7205ef3b\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Tarjeta Profesional del/la Psicosocial",
+          "type": "text"
+        }
+      },
+      "pageInfo": {
+        "current": 1,
+        "text": "Página 1 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": null,
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_2": {
+      "questions": {
+        "q4": {
+          "num": "4",
+          "options": [],
+          "questionId": "ra5581923efdc40f49bcd27347f7ca570",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_ra5581923efdc40f49bcd27347f7ca570\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos del beneficiario/a",
+          "type": "text"
+        },
+        "q5": {
+          "num": "5",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1 . Cedula de Ciudadania\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1 . Cedula de Ciudadania\"]",
+                "method": "click"
+              },
+              "text": "1 . Cedula de Ciudadania",
+              "value": "1 . Cedula de Ciudadania"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2 . Tarjeta de Identidad\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2 . Tarjeta de Identidad\"]",
+                "method": "click"
+              },
+              "text": "2 . Tarjeta de Identidad",
+              "value": "2 . Tarjeta de Identidad"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3 . Cedula de Extranjeria\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3 . Cedula de Extranjeria\"]",
+                "method": "click"
+              },
+              "text": "3 . Cedula de Extranjeria",
+              "value": "3 . Cedula de Extranjeria"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"9 . Permiso de Proteccion Temporal\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"9 . Permiso de Proteccion Temporal\"]",
+                "method": "click"
+              },
+              "text": "9 . Permiso de Proteccion Temporal",
+              "value": "9 . Permiso de Proteccion Temporal"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"99. Contraseña \"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"99. Contraseña \"]",
+                "method": "click"
+              },
+              "text": "99. Contraseña ",
+              "value": "99. Contraseña "
+            }
+          ],
+          "questionId": "r8c0333caf51f4978a126bc5424475260",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r8c0333caf51f4978a126bc5424475260",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Tipo Documento del/la beneficiario/a",
+          "type": "choice"
+        },
+        "q6": {
+          "num": "6",
+          "options": [],
+          "questionId": "rd491bfcd8ed34ca9b0771f6561541b15",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_rd491bfcd8ed34ca9b0771f6561541b15\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Documento del/la Beneficiario/a",
+          "type": "text (number)"
+        },
+        "q7": {
+          "num": "7",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Curso Corto\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Curso Corto\"]",
+                "method": "click"
+              },
+              "text": "1. Curso Corto",
+              "value": "1. Curso Corto"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. EPJA\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. EPJA\"]",
+                "method": "click"
+              },
+              "text": "2. EPJA",
+              "value": "2. EPJA"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Superior - EFT\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Superior - EFT\"]",
+                "method": "click"
+              },
+              "text": "3. Superior - EFT",
+              "value": "3. Superior - EFT"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Superior - Tecnico\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Superior - Tecnico\"]",
+                "method": "click"
+              },
+              "text": "4. Superior - Tecnico",
+              "value": "4. Superior - Tecnico"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Superior - Teconologo\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Superior - Teconologo\"]",
+                "method": "click"
+              },
+              "text": "5. Superior - Teconologo",
+              "value": "5. Superior - Teconologo"
+            },
+            {
+              "position": "6",
+              "selenium": {
+                "byInputValue": "input[value=\"6. Superior - Superior\"]",
+                "byPosition": "[aria-posinset=\"6\"]",
+                "byValue": "[data-automation-value=\"6. Superior - Superior\"]",
+                "method": "click"
+              },
+              "text": "6. Superior - Superior",
+              "value": "6. Superior - Superior"
+            }
+          ],
+          "questionId": "r1dfe34ffb4f64c8382c6c32655ee6b35",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r1dfe34ffb4f64c8382c6c32655ee6b35",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Ruta del beneficiario",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 2,
+        "text": "Página 2 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_3": {
+      "questions": {
+        "q8": {
+          "num": "8",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Proyecto de Vida\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Proyecto de Vida\"]",
+                "method": "click"
+              },
+              "text": "1. Proyecto de Vida",
+              "value": "1. Proyecto de Vida"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. Trayectoria de Formacion\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. Trayectoria de Formacion\"]",
+                "method": "click"
+              },
+              "text": "2. Trayectoria de Formacion",
+              "value": "2. Trayectoria de Formacion"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Actividades Complementarias\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Actividades Complementarias\"]",
+                "method": "click"
+              },
+              "text": "3. Actividades Complementarias",
+              "value": "3. Actividades Complementarias"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Intermediación laboral \"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Intermediación laboral \"]",
+                "method": "click"
+              },
+              "text": "4. Intermediación laboral ",
+              "value": "4. Intermediación laboral "
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Seguimiento a nivel de riesgo\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Seguimiento a nivel de riesgo\"]",
+                "method": "click"
+              },
+              "text": "5. Seguimiento a nivel de riesgo",
+              "value": "5. Seguimiento a nivel de riesgo"
+            }
+          ],
+          "questionId": "re0470f2d9fcc4e65bee2d536ff73dd22",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "re0470f2d9fcc4e65bee2d536ff73dd22",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Seleccione el tipo de seguimiento psicosocial",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 3,
+        "text": "Página 3 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_6": {
+      "questions": {
+        "q9": {
+          "num": "9",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Curso Corto\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Curso Corto\"]",
+                "method": "click"
+              },
+              "text": "1. Curso Corto",
+              "value": "1. Curso Corto"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. EPJA\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. EPJA\"]",
+                "method": "click"
+              },
+              "text": "2. EPJA",
+              "value": "2. EPJA"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Superior - EFT\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Superior - EFT\"]",
+                "method": "click"
+              },
+              "text": "3. Superior - EFT",
+              "value": "3. Superior - EFT"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Superior - Tecnico\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Superior - Tecnico\"]",
+                "method": "click"
+              },
+              "text": "4. Superior - Tecnico",
+              "value": "4. Superior - Tecnico"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Superior - Teconologo\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Superior - Teconologo\"]",
+                "method": "click"
+              },
+              "text": "5. Superior - Teconologo",
+              "value": "5. Superior - Teconologo"
+            },
+            {
+              "position": "6",
+              "selenium": {
+                "byInputValue": "input[value=\"6. Superior - Superior\"]",
+                "byPosition": "[aria-posinset=\"6\"]",
+                "byValue": "[data-automation-value=\"6. Superior - Superior\"]",
+                "method": "click"
+              },
+              "text": "6. Superior - Superior",
+              "value": "6. Superior - Superior"
+            }
+          ],
+          "questionId": "r347df263317a40d898c326e885750b91",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r347df263317a40d898c326e885750b91",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Ruta del beneficiario Trayectoria Ruta Formación",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 6,
+        "text": "Página 6 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_7": {
+      "questions": {
+        "q10": {
+          "num": "10",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1.⁠ ⁠Virtual\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1.⁠ ⁠Virtual\"]",
+                "method": "click"
+              },
+              "text": "1.⁠ ⁠Virtual",
+              "value": "1.⁠ ⁠Virtual"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2.⁠ ⁠Presencial\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2.⁠ ⁠Presencial\"]",
+                "method": "click"
+              },
+              "text": "2.⁠ ⁠Presencial",
+              "value": "2.⁠ ⁠Presencial"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. Hibrido\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. Hibrido\"]",
+                "method": "click"
+              },
+              "text": "3. Hibrido",
+              "value": "3. Hibrido"
+            }
+          ],
+          "questionId": "r564916689b6c4ebc82ef86c438fb134c",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r564916689b6c4ebc82ef86c438fb134c",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Contacto Presencial- Virtual (Si/No)",
+          "type": "choice"
+        },
+        "q11": {
+          "num": "11",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r87dfce993a454aceab5f4cb518405d24",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r87dfce993a454aceab5f4cb518405d24",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "Contacto Telefónico (Si/No)",
+          "type": "choice"
+        },
+        "q12": {
+          "num": "12",
+          "options": [],
+          "questionId": "r5aeb9ff26a2f40329853034612085167",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5aeb9ff26a2f40329853034612085167\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Operador que brinda la Formacion al/a Joven",
+          "type": "text"
+        },
+        "q13": {
+          "num": "13",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "rea4725dd150f49059d010ccaf6ca62ba",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "rea4725dd150f49059d010ccaf6ca62ba",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven logro inscribirse al curso corto de manera éxitosa? (Sí/No)",
+          "type": "choice"
+        },
+        "q14": {
+          "num": "14",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "isBranch": true,
+              "position": "2",
+              "reveals": [
+                "re36ca8ff0b33408daad14920b627d6a6",
+                "r68fe6ab090ba458c97cbbbc97ece6192"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r8a0e72663edf4d2c9d0f346740e906b6",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r8a0e72663edf4d2c9d0f346740e906b6",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿Se presentaron inconvenientes al momento de la inscripción? (Sí/No)",
+          "type": "choice"
+        },
+        "q15": {
+          "num": "15",
+          "options": [],
+          "questionId": "re36ca8ff0b33408daad14920b627d6a6",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_re36ca8ff0b33408daad14920b627d6a6\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Concepto Psicosocial U Observaciones:Describa cómo fue el proceso de inscripción al curso corto del/la joven",
+          "type": "long_text"
+        },
+        "q16": {
+          "num": "16",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "isBranch": true,
+              "position": "2",
+              "reveals": [
+                "r7b96fb48e4c245fc9a4ff150f9515d68",
+                "r2e326f597994430ca2c8616dde07f11f",
+                "r6396cd7f81c342a79e25656085621058",
+                "r40141e811d7d4394ac5d8e2126db27f5",
+                "r9b38578c48194c4ca8d481d107162c71",
+                "r153a9a61a6f14ae2a6bcd1f6ae851fce",
+                "r6d13fd45d06043acbc68d1f2b50e64c9"
+              ],
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r68fe6ab090ba458c97cbbbc97ece6192",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r68fe6ab090ba458c97cbbbc97ece6192",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven pudo desarrollar las actividades asignadas en el curso corto? (Sí/No)",
+          "type": "choice"
+        },
+        "q17": {
+          "num": "17",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. Problemas de internet\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. Problemas de internet\"]",
+                "method": "click"
+              },
+              "text": "1. Problemas de internet",
+              "value": "1. Problemas de internet"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. Problemas con el funcionamiento de la plataforma\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. Problemas con el funcionamiento de la plataforma\"]",
+                "method": "click"
+              },
+              "text": "2. Problemas con el funcionamiento de la plataforma",
+              "value": "2. Problemas con el funcionamiento de la plataforma"
+            },
+            {
+              "position": "3",
+              "selenium": {
+                "byInputValue": "input[value=\"3. No contaba con computador\"]",
+                "byPosition": "[aria-posinset=\"3\"]",
+                "byValue": "[data-automation-value=\"3. No contaba con computador\"]",
+                "method": "click"
+              },
+              "text": "3. No contaba con computador",
+              "value": "3. No contaba con computador"
+            },
+            {
+              "position": "4",
+              "selenium": {
+                "byInputValue": "input[value=\"4. Horarios, Nivel de complejidad de las temáticas abordadas o falta de comprensión de estas\"]",
+                "byPosition": "[aria-posinset=\"4\"]",
+                "byValue": "[data-automation-value=\"4. Horarios, Nivel de complejidad de las temáticas abordadas o falta de comprensión de estas\"]",
+                "method": "click"
+              },
+              "text": "4. Horarios, Nivel de complejidad de las temáticas abordadas o falta de comprensión de estas",
+              "value": "4. Horarios, Nivel de complejidad de las temáticas abordadas o falta de comprensión de estas"
+            },
+            {
+              "position": "5",
+              "selenium": {
+                "byInputValue": "input[value=\"5. Problemas de comunicación con el instructor o la entidad que ofrece la formación\"]",
+                "byPosition": "[aria-posinset=\"5\"]",
+                "byValue": "[data-automation-value=\"5. Problemas de comunicación con el instructor o la entidad que ofrece la formación\"]",
+                "method": "click"
+              },
+              "text": "5. Problemas de comunicación con el instructor o la entidad que ofrece la formación",
+              "value": "5. Problemas de comunicación con el instructor o la entidad que ofrece la formación"
+            }
+          ],
+          "questionId": "r7b96fb48e4c245fc9a4ff150f9515d68",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r7b96fb48e4c245fc9a4ff150f9515d68",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿Cuál fue la principal razón para que el proceso de registro no se realizará de manera sencilla?",
+          "type": "choice"
+        },
+        "q18": {
+          "num": "18",
+          "options": [],
+          "questionId": "r2e326f597994430ca2c8616dde07f11f",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r2e326f597994430ca2c8616dde07f11f\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "¿Qué tipo de inconvenientes reportó el joven con relación a la Plataforma SENA?",
+          "type": "long_text"
+        },
+        "q19": {
+          "num": "19",
+          "options": [],
+          "questionId": "r6396cd7f81c342a79e25656085621058",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r6396cd7f81c342a79e25656085621058\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Concepto Psicosocial U Observaciones: Describa el proceso del/la joven durante el desarrollo del curso corto",
+          "type": "long_text"
+        },
+        "q20": {
+          "num": "20",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r40141e811d7d4394ac5d8e2126db27f5",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r40141e811d7d4394ac5d8e2126db27f5",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El/la joven finalizó la formación en curso corto de manera éxitosa? (Sí/No)",
+          "type": "choice"
+        },
+        "q21": {
+          "num": "21",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r9b38578c48194c4ca8d481d107162c71",
+          "required": true,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r9b38578c48194c4ca8d481d107162c71",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El tema abordado en el curso corto fue de interés para el/la joven? (Sí/No)",
+          "type": "choice"
+        },
+        "q22": {
+          "num": "22",
+          "options": [],
+          "questionId": "r153a9a61a6f14ae2a6bcd1f6ae851fce",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r153a9a61a6f14ae2a6bcd1f6ae851fce\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Concepto Psicosocial U Observaciones: Describa el proceso de finalización del curso corto",
+          "type": "long_text"
+        },
+        "q23": {
+          "num": "23",
+          "options": [
+            {
+              "position": "1",
+              "selenium": {
+                "byInputValue": "input[value=\"1. SI\"]",
+                "byPosition": "[aria-posinset=\"1\"]",
+                "byValue": "[data-automation-value=\"1. SI\"]",
+                "method": "click"
+              },
+              "text": "1. SI",
+              "value": "1. SI"
+            },
+            {
+              "position": "2",
+              "selenium": {
+                "byInputValue": "input[value=\"2. NO\"]",
+                "byPosition": "[aria-posinset=\"2\"]",
+                "byValue": "[data-automation-value=\"2. NO\"]",
+                "method": "click"
+              },
+              "text": "2. NO",
+              "value": "2. NO"
+            }
+          ],
+          "questionId": "r6d13fd45d06043acbc68d1f2b50e64c9",
+          "required": false,
+          "selenium": {
+            "action": "select",
+            "method": "click",
+            "questionId": "r6d13fd45d06043acbc68d1f2b50e64c9",
+            "selector": "[role=\"radiogroup\"]"
+          },
+          "text": "¿El beneficiario solicita actualización de datos personales ?",
+          "type": "choice"
+        }
+      },
+      "pageInfo": {
+        "current": 7,
+        "text": "Página 7 de 14",
+        "total": 14
+      },
+      "navigation": {
+        "back": {
+          "selector": "[data-automation-id=\"backButton\"]",
+          "text": "Atrás"
+        },
+        "next": null,
+        "submit": {
+          "selector": "[data-automation-id=\"submitButton\"]",
+          "text": "Enviar"
+        }
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    }
+  },
+  "recorded_at": "2025-12-24 23:50:59",
+  "name": "cuali_cursos_noAprobados",
+  "created": "2025-12-24T23:50:59.408359",
+  "updated": "2025-12-24T23:50:59.408388"
+}

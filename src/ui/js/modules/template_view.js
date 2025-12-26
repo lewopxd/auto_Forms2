@@ -1063,24 +1063,14 @@ const TemplateViewModule = (function () {
         document.querySelectorAll('.chrome-tab').forEach(t => t.remove());
         document.querySelectorAll('.tab-content').forEach(c => c.remove());
         tabCounter = 1;
-        const noTabs = noTabsState || document.getElementById('no-tabs-state');
-        if (noTabs) noTabs.classList.remove('hidden');
+        noTabsState.classList.remove('hidden');
         rebindAddButton();
     }
 
     function rebindAddButton() {
-        // Get fresh DOM reference in case it wasn't available during module init
-        const container = tabsContainerEl || document.getElementById('chrome-tabs-container');
-        if (!container) {
-            console.error('[TemplateView] Cannot rebind add button: container not found');
-            return;
-        }
-        container.innerHTML = '<div class="add-tab-btn" id="add-tab-btn" title="Nueva pestaña"><i data-lucide="plus" class="w-5 h-5"></i></div>';
-        const addBtn = document.getElementById('add-tab-btn');
-        if (addBtn) {
-            addBtn.onclick = openTabTypeModal;
-        }
-        if (window.lucide) lucide.createIcons();
+        tabsContainerEl.innerHTML = '<div class="add-tab-btn" id="add-tab-btn" title="Nueva pestaña"><i data-lucide="plus" class="w-5 h-5"></i></div>';
+        document.getElementById('add-tab-btn').onclick = openTabTypeModal;
+        lucide.createIcons();
     }
 
     function restoreTab(tabData) {
@@ -1433,18 +1423,16 @@ const TemplateViewModule = (function () {
     function restoreTabs(tabs, activeTabId) {
         console.log(`[TemplateView] Restoring ${tabs?.length || 0} tabs...`);
 
-        // ALWAYS clear existing tabs first (even if new tabs array is empty)
+        // ALWAYS clear existing tabs first (even for empty projects)
         reset();
 
-        // If no tabs to restore, we're done (UI is now clean)
         if (!tabs || !Array.isArray(tabs) || tabs.length === 0) {
-            console.log('[TemplateView] No tabs to restore - UI cleared');
+            console.log('[TemplateView] No tabs to restore - clean slate');
             return;
         }
 
         // Hide no-tabs state
-        const noTabs = noTabsState || document.getElementById('no-tabs-state');
-        if (noTabs) noTabs.classList.add('hidden');
+        if (noTabsState) noTabsState.classList.add('hidden');
 
         // Restore each tab based on type
         tabs.forEach(tabData => {
@@ -1471,6 +1459,25 @@ const TemplateViewModule = (function () {
         }
 
         console.log('[TemplateView] Tabs restored');
+    }
+
+    /**
+     * Reset all tabs (clear everything)
+     */
+    function reset() {
+        // Remove all tab elements except the add button
+        const allTabs = tabsContainerEl.querySelectorAll('.chrome-tab');
+        allTabs.forEach(t => t.remove());
+
+        // Remove all content areas
+        const allContents = contentArea.querySelectorAll('.tab-content');
+        allContents.forEach(c => c.remove());
+
+        // Show empty state
+        if (noTabsState) noTabsState.classList.remove('hidden');
+
+        // Reset tab counter
+        tabCounter = 1;
     }
 
     // === INIT ===

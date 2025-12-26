@@ -3907,6 +3907,7 @@ const AutoFormViewModule = (function () {
                 <div class="afv-spacer"></div>
                 <span class="afv-sep">|</span>
                 <button class="afv-cfg-btn" id="afv-export-${tabId}" title="Exportar a Excel"><i data-lucide="file-spreadsheet"></i></button>
+                <button class="afv-cfg-btn" id="afv-export-selenium-${tabId}" title="Exportar para Selenium"><i data-lucide="bot"></i></button>
                 <button class="afv-cfg-btn" id="afv-config-${tabId}" title="Configuración"><i data-lucide="settings"></i></button>
             </div>
         `;
@@ -4059,6 +4060,14 @@ const AutoFormViewModule = (function () {
         if (exportBtn && window.ExportModal) {
             exportBtn.onclick = () => {
                 ExportModal.open(tabId);
+            };
+        }
+
+        // Attach Selenium export button handler
+        const seleniumBtn = document.getElementById(`afv-export-selenium-${tabId}`);
+        if (seleniumBtn && window.AutomationExportModal) {
+            seleniumBtn.onclick = () => {
+                AutomationExportModal.open(tabId);
             };
         }
     }

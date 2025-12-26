@@ -131,6 +131,7 @@ class ExcelHandler:
         self.bridge.register_handler("get_default_export_path", self.handle_get_default_export_path)
         self.bridge.register_handler("browse_export_folder", self.handle_browse_export_folder)
         self.bridge.register_handler("export_form_responses", self.handle_export_form_responses)
+        self.bridge.register_handler("export_automation_package", self.handle_export_automation_package)
         
         # Warmup openpyxl in background thread
         threading.Thread(target=self._warmup_openpyxl, daemon=True).start()
@@ -688,6 +689,51 @@ class ExcelHandler:
             
         except Exception as e:
             Logger.error(f"[Excel Export] Error: {e}")
+            import traceback
+            Logger.debug(traceback.format_exc())
+            return {"success": False, "error": str(e)}
+
+    def handle_export_automation_package(self, content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Export automation package (.afpkg) as JSON file.
+        
+        Expected content:
+        - filename: str - Name of output file (with .afpkg)
+        - output_path: str - Directory path for output
+        - package: Dict - The complete automation package (meta, instructions, resolvedRows)
+        """
+        try:
+            import json
+            
+            filename = content.get("filename", "automation.afpkg")
+            output_path = content.get("output_path", "")
+            package = content.get("package", {})
+            
+            if not output_path:
+                return {"success": False, "error": "No output path provided"}
+            
+            if not package:
+                return {"success": False, "error": "No package data provided"}
+            
+            # Create output folder if it doesn't exist
+            output_dir = Path(output_path)
+            if not output_dir.exists():
+                output_dir.mkdir(parents=True, exist_ok=True)
+                Logger.info(f"[Automation Export] Created folder: {output_dir}")
+            
+            # Build full path
+            full_path = output_dir / filename
+            
+            # Save as JSON with formatting
+            with open(full_path, 'w', encoding='utf-8') as f:
+                json.dump(package, f, ensure_ascii=False, indent=2)
+            
+            row_count = len(package.get("resolvedRows", []))
+            Logger.info(f"[Automation Export] Saved: {full_path} ({row_count} rows)")
+            return {"success": True, "path": str(full_path), "rowCount": row_count}
+            
+        except Exception as e:
+            Logger.error(f"[Automation Export] Error: {e}")
             import traceback
             Logger.debug(traceback.format_exc())
             return {"success": False, "error": str(e)}
