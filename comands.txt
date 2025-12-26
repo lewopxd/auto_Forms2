@@ -14,3 +14,6 @@ pip install -r requirements.txt    <------ install and update dependencies
 
 
 python tests\initial_test.py           <----- iniciar app
+
+
+url test form : https://forms.office.com/r/WsqBTWGyms

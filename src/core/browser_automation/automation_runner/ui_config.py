@@ -109,11 +109,11 @@ class AutomationRunnerUI:
             
         def load():
             try:
-                from core.browser_automation.profile_utils import get_browser_profiles
+                from core.browser_automation.profile_utils import list_browser_profiles
                 browser_name = self.selected_browser.get("name", "")
                 browser_path = self.selected_browser.get("path", "")
                 
-                self.profiles = get_browser_profiles(browser_name, browser_path)
+                self.profiles = list_browser_profiles(browser_name, browser_path)
                 
                 self.profile_names_map = {}
                 profile_display_names = []
