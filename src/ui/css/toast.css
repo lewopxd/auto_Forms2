@@ -1,0 +1,119 @@
+/**
+ * Toast Notifications Styles
+ * Lightweight, minimalist toast system
+ */
+
+/* Container - positioned at bottom center */
+.toast-container {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+}
+
+/* Individual toast */
+.toast-notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    min-width: 320px;
+    max-width: 480px;
+    background: white;
+    border-radius: 10px;
+    border-left: 4px solid;
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06),
+        0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+    
+    /* Initial state - below viewport */
+    opacity: 0;
+    transform: translateY(100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Visible state */
+.toast-notification.toast-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Dismissing state */
+.toast-notification.toast-dismissing {
+    opacity: 0;
+    transform: translateY(100%);
+}
+
+/* Icon container */
+.toast-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Content area */
+.toast-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.toast-title {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 2px;
+}
+
+.toast-message {
+    font-size: 13px;
+    line-height: 1.4;
+    opacity: 0.85;
+}
+
+/* Close button */
+.toast-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+
+.toast-close svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Hover effect - slight lift */
+.toast-notification:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 12px -2px rgba(0, 0, 0, 0.12),
+        0 4px 6px -1px rgba(0, 0, 0, 0.08),
+        0 12px 30px -8px rgba(0, 0, 0, 0.15);
+}

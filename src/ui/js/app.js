@@ -809,7 +809,18 @@
 
                 if (result.success) {
                     window.projectData.lastSavedHash = computeProjectHash();
+
+                    // Update window title to remove "(SIN GUARDAR)"
+                    updateWindowTitle(window.projectData.name);
+
                     updateSaveStatus('saved', 'Guardado');
+
+                    // Show visible notification to user
+                    if (window.toast) {
+                        const filename = window.projectData.currentProjectPath.split(/[/\\]/).pop();
+                        window.toast.success('Proyecto guardado', filename);
+                    }
+
                     console.log('[App] Project saved to:', result.path);
                 } else {
                     window.showAlert({
