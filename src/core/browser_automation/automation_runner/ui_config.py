@@ -171,6 +171,7 @@ class AutomationRunnerUI:
             "profile_path": "",
             "login_enabled": dpg.get_value("login_enabled_checkbox"),
             "login_url": dpg.get_value("login_url_input"),
+            "package_path": self.loaded_package_path,
         }
         
         if self.selected_browser:
