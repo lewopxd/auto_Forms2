@@ -531,7 +531,7 @@
             // Build answers object
             const answers = {};
             (resolvedRow.questions || []).forEach(q => {
-                answers[q.key] = q.resolvedValue ?? '';
+                answers[q.questionKey] = q.resolvedValue ?? '';
             });
 
             resolvedRows.push({
