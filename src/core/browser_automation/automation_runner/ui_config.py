@@ -215,7 +215,14 @@ class AutomationRunnerUI:
                 color = (255, 100, 100)
             elif "▶" in message or "🚀" in message:
                 color = (100, 200, 255)
+            elif status in ["stopped", "closed"]:
+                color = (255, 200, 100)
             self._update_status(message, color)
+            
+            # Detect browser closed externally → reset UI
+            if status == "stopped":
+                self._reset_ui_state()
+                self._update_status("● Listo para iniciar", (150, 150, 150))
         
         def on_ready():
             self._update_status("● Automatización activa", (100, 255, 150))
