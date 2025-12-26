@@ -64,93 +64,86 @@ else {
     $CommitMsg = $SafeTitle
 }
 
-# Show confirmation prompt
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Yellow
-Write-Host "   GIT COMMIT & PUSH - Confirmacion" -ForegroundColor Yellow
-Write-Host "========================================" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  Branch:  " -ForegroundColor Cyan -NoNewline
-Write-Host $CurrentBranch -ForegroundColor White
-Write-Host ""
-Write-Host "  Titulo:  " -ForegroundColor Cyan -NoNewline
-Write-Host $SafeTitle -ForegroundColor White
-
-if (-not [string]::IsNullOrWhiteSpace($SafeDescription)) {
-    Write-Host ""
-    Write-Host "  Descripcion:" -ForegroundColor Cyan
-    Write-Host "  $SafeDescription" -ForegroundColor Gray
+# Progress bar helper function
+function Show-Progress {
+    param([int]$Step, [int]$Total, [string]$Status)
+    $barWidth = 30
+    $filled = [math]::Floor(($Step / $Total) * $barWidth)
+    $empty = $barWidth - $filled
+    $bar = ("█" * $filled) + ("░" * $empty)
+    $percent = [math]::Floor(($Step / $Total) * 100)
+    Write-Host "`r  [$bar] $percent% - $Status" -ForegroundColor Cyan -NoNewline
 }
 
-Write-Host ""
+# Show confirmation prompt (compact)
+Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Yellow
+Write-Host "║   GIT COMMIT & PUSH - Confirmacion   ║" -ForegroundColor Yellow
+Write-Host "╠══════════════════════════════════════╣" -ForegroundColor Yellow
+Write-Host "║ " -ForegroundColor Yellow -NoNewline
+Write-Host "Branch: " -ForegroundColor Cyan -NoNewline
+Write-Host ("{0,-29}" -f $CurrentBranch) -ForegroundColor White -NoNewline
+Write-Host "║" -ForegroundColor Yellow
+Write-Host "║ " -ForegroundColor Yellow -NoNewline
+Write-Host "Titulo: " -ForegroundColor Cyan -NoNewline
+$displayTitle = if ($SafeTitle.Length -gt 29) { $SafeTitle.Substring(0, 26) + "..." } else { $SafeTitle }
+Write-Host ("{0,-29}" -f $displayTitle) -ForegroundColor White -NoNewline
+Write-Host "║" -ForegroundColor Yellow
+Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Yellow
 Write-Host "  Proceder? [S/N]: " -ForegroundColor Yellow -NoNewline
 
 $confirmation = Read-Host
 if ($confirmation -notmatch '^[SsYy]$') {
-    Write-Host ""
-    Write-Host "  X Operacion cancelada" -ForegroundColor Red
-    Write-Host ""
+    Write-Host "  ✗ Operacion cancelada" -ForegroundColor Red
     exit 0
 }
 
 Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "        EJECUTANDO COMMIT & PUSH" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
+Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║        EJECUTANDO COMMIT & PUSH      ║" -ForegroundColor Green
+Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Green
 
-Write-Host ""
-Write-Host "  [1/3] Staging cambios..." -ForegroundColor Cyan
+# Step 1: Staging
+Show-Progress -Step 0 -Total 3 -Status "Staging cambios..."
 $null = git add . 2>&1 | Where-Object { $_ -notmatch "warning:" }
-Write-Host "  OK" -ForegroundColor Green
-
+Show-Progress -Step 1 -Total 3 -Status "Stage OK              "
 Write-Host ""
-Write-Host "  [2/3] Creando commit..." -ForegroundColor Cyan
 
+# Step 2: Commit
+Show-Progress -Step 1 -Total 3 -Status "Creando commit..."
 $output = git commit -m $CommitMsg 2>&1
 $commitExitCode = $LASTEXITCODE
 
 if ($commitExitCode -ne 0) {
+    Write-Host ""
     if ($output -match "nothing to commit") {
         Write-Host "  ! Sin cambios para commitear" -ForegroundColor Yellow
         exit 0
     }
     else {
-        Write-Host "  X Error:" -ForegroundColor Red
-        Write-Host $output -ForegroundColor Red
+        Write-Host "  ✗ Error: $output" -ForegroundColor Red
         exit 1
     }
 }
 $summaryLine = $output | Select-String -Pattern "\d+ file"
-if ($summaryLine) {
-    Write-Host "  OK: $summaryLine" -ForegroundColor Green
-}
-else {
-    Write-Host "  OK" -ForegroundColor Green
-}
-
+$commitInfo = if ($summaryLine) { "Commit OK: $summaryLine" } else { "Commit OK" }
+Show-Progress -Step 2 -Total 3 -Status $commitInfo.Substring(0, [math]::Min($commitInfo.Length, 20))
 Write-Host ""
-Write-Host "  [3/3] Push a remoto..." -ForegroundColor Cyan
 
+# Step 3: Push
+Show-Progress -Step 2 -Total 3 -Status "Push a remoto..."
 $output = git push 2>&1
 $pushExitCode = $LASTEXITCODE
 
 if ($pushExitCode -ne 0) {
-    Write-Host "  X Error:" -ForegroundColor Red
-    Write-Host $output -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  ✗ Error: $output" -ForegroundColor Red
     exit 1
 }
-$branchLine = $output | Select-String -Pattern "->"
-if ($branchLine) {
-    Write-Host "  OK: $branchLine" -ForegroundColor Green
-}
-else {
-    Write-Host "  OK" -ForegroundColor Green
-}
+Show-Progress -Step 3 -Total 3 -Status "Push OK               "
+Write-Host ""
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Green
-Write-Host "         EXITO - Finalizado" -ForegroundColor Green
-Write-Host "========================================" -ForegroundColor Green
-Write-Host ""
+Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Green
+Write-Host "║         ✓ EXITO - Finalizado         ║" -ForegroundColor Green
+Write-Host "╚══════════════════════════════════════╝" -ForegroundColor Green
 
 exit 0
