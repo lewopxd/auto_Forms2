@@ -25,6 +25,7 @@ sys.path.insert(0, SRC_DIR)
 from core.process_manager import ProcessManager, HIGH_PRIORITY_CLASS
 from core.browser_automation.browser_settings import BrowserConfig, build_chrome_options
 from core.browser_automation.profile_utils import get_browser_profiles_path
+from core.browser_automation.automation_runner.form_executor import FormExecutor, ExecutorConfig
 
 
 class SeleniumProcessBooster:
@@ -38,6 +39,9 @@ class SeleniumProcessBooster:
     _should_poll: bool = False
     _on_status_change: Optional[Callable[[str, str], None]] = None
     _package_data: Dict[str, Any] = {}
+    _executor: Optional[FormExecutor] = None
+    _executor_thread: Optional[threading.Thread] = None
+    _executor_config: Dict[str, Any] = {}
     
     @classmethod
     def set_status_callback(cls, callback: Callable[[str, str], None]):
@@ -368,21 +372,33 @@ class SeleniumProcessBooster:
     
     @classmethod
     def _inject_automation_bar(cls, driver):
-        """Inject automation bar with package info."""
+        """Inject automation bar with package info and full data."""
         script_path = os.path.join(SCRIPT_DIR, "injectedJS", "automation_bar.js")
         
         try:
-            # Set package info before injecting
+            # Set package info before injecting - NOW WITH FULL DATA
             pkg = cls._package_data
+            full_data = pkg.get("data", {})
+            instructions = full_data.get("instructions", {})
+            resolved_rows = full_data.get("resolvedRows", [])
+            
             driver.execute_script("""
                 window.__autoforms_package = {
                     filename: arguments[0],
                     totalRows: arguments[1],
                     totalQuestions: arguments[2],
-                    formUrl: arguments[3]
+                    formUrl: arguments[3],
+                    instructions: arguments[4],
+                    resolvedRows: arguments[5]
                 };
-            """, pkg.get("filename", ""), pkg.get("totalRows", 0), 
-                pkg.get("totalQuestions", 0), pkg.get("formUrl", ""))
+            """, 
+                pkg.get("filename", ""), 
+                pkg.get("totalRows", 0), 
+                pkg.get("totalQuestions", 0), 
+                pkg.get("formUrl", ""),
+                instructions,
+                resolved_rows
+            )
             
             if os.path.exists(script_path):
                 with open(script_path, "r", encoding="utf-8") as f:
@@ -432,16 +448,123 @@ class SeleniumProcessBooster:
         cls._emit_status("command", f"Comando recibido: {cmd_type}")
         
         if cmd_type == "start":
-            # TODO: Start automation execution
-            pass
+            cls._start_executor()
         elif cmd_type == "pause":
-            # TODO: Pause automation
-            pass
+            if cls._executor:
+                cls._executor.pause()
         elif cmd_type == "stop":
+            if cls._executor:
+                cls._executor.stop()
             cls.stop()
-        elif cmd_type == "config":
-            # TODO: Show config
-            pass
+        elif cmd_type == "next":
+            if cls._executor:
+                cls._executor.next_row()
+        elif cmd_type == "jump_to_row":
+            row_index = cmd.get("rowIndex", 0)
+            if cls._executor:
+                cls._executor.jump_to_row(row_index)
+        elif cmd_type == "mode":
+            one_by_one = cmd.get("oneByOne", False)
+            cls._executor_config["oneByOne"] = one_by_one
+            if cls._executor:
+                cls._executor.config.one_by_one_mode = one_by_one
+        elif cmd_type == "config_update":
+            config_data = cmd.get("config", {})
+            cls._update_executor_config(config_data)
+    
+    @classmethod
+    def _update_executor_config(cls, config_data: dict):
+        """Update executor configuration from UI."""
+        # Map UI config to executor config format
+        cls._executor_config.update({
+            "delayBetweenRowsRandom": config_data.get("randomDelay", False),
+            "delayBetweenRowsMs": int(config_data.get("fixedDelay", 2) * 1000),
+            "delayBetweenRowsMinMs": int(config_data.get("minDelay", 1) * 1000),
+            "delayBetweenRowsMaxMs": int(config_data.get("maxDelay", 3) * 1000),
+            "humanActionsEnabled": config_data.get("humanActionsEnabled", False),
+            "typingDelayMinMs": config_data.get("typingDelayMinMs", 30),
+            "typingDelayMaxMs": config_data.get("typingDelayMaxMs", 120),
+            "overrideDelays": config_data.get("overrideDelays", False),
+            "delayMinMs": config_data.get("delayMinMs", 500),
+            "delayMaxMs": config_data.get("delayMaxMs", 1500),
+        })
+        
+        if cls._executor:
+            cls._executor.update_config(cls._executor_config)
+    
+    @classmethod
+    def _start_executor(cls):
+        """Start the form executor in a separate thread."""
+        if cls._executor and cls._executor.is_running:
+            # Resume if paused
+            cls._executor.resume()
+            return
+        
+        if not cls._driver or not cls._package_data:
+            cls._emit_status("error", "No hay driver o paquete cargado")
+            return
+        
+        # Create callbacks for UI updates
+        def on_action_start(action_info: dict):
+            try:
+                cls._driver.execute_script(
+                    "window.__autoforms_showAction && window.__autoforms_showAction(arguments[0]);",
+                    action_info
+                )
+            except Exception as e:
+                print(f"[SeleniumBooster] Action start UI error: {e}")
+        
+        def on_action_complete(result):
+            try:
+                state = "success" if result.success else "error"
+                cls._driver.execute_script(
+                    "window.__autoforms_setActionState && window.__autoforms_setActionState(arguments[0]);",
+                    state
+                )
+            except Exception as e:
+                print(f"[SeleniumBooster] Action complete UI error: {e}")
+        
+        def on_row_complete(row_index: int):
+            try:
+                cls._driver.execute_script(
+                    "window.__autoforms_setCurrentRow && window.__autoforms_setCurrentRow(arguments[0]);",
+                    row_index + 1  # Next row
+                )
+            except Exception as e:
+                print(f"[SeleniumBooster] Row complete UI error: {e}")
+        
+        def on_status_change(status: str, message: str):
+            cls._emit_status(status, message)
+            try:
+                cls._driver.execute_script(
+                    "window.__autoforms_updateStatus && window.__autoforms_updateStatus(arguments[0], arguments[1]);",
+                    status, message
+                )
+            except Exception:
+                pass
+        
+        # Create executor
+        config = ExecutorConfig.from_dict(cls._executor_config)
+        cls._executor = FormExecutor(
+            driver=cls._driver,
+            package_data=cls._package_data,
+            config=config,
+            on_action_start=on_action_start,
+            on_action_complete=on_action_complete,
+            on_row_complete=on_row_complete,
+            on_status_change=on_status_change
+        )
+        
+        # Start in thread
+        def run_executor():
+            try:
+                cls._executor.start()
+            except Exception as e:
+                cls._emit_status("error", f"Error en executor: {e}")
+        
+        cls._executor_thread = threading.Thread(target=run_executor, daemon=True)
+        cls._executor_thread.start()
+        cls._emit_status("running", "▶ Automatización iniciada")
     
     @classmethod
     def _monitor_browser_close(cls):
@@ -493,3 +616,6 @@ class SeleniumProcessBooster:
         cls._should_monitor = False
         cls._should_poll = False
         cls._package_data = {}
+        cls._executor = None
+        cls._executor_thread = None
+        cls._executor_config = {}

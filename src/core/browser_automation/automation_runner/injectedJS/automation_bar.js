@@ -1416,14 +1416,15 @@
             
             <!-- Modal de Configuración -->
             <div class="config-modal-overlay" id="configModalOverlay">
-                <div class="config-modal">
+                <div class="config-modal" style="width: 420px;">
                     <div class="config-modal-header">
-                        <span class="config-modal-title">Configuración</span>
+                        <span class="config-modal-title">Configuración de Automatización</span>
                         <button class="config-modal-close" id="configModalClose">${ICONS.close}</button>
                     </div>
-                    <div class="config-modal-body">
+                    <div class="config-modal-body" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Sección: Retardo entre filas -->
                         <div class="config-field">
-                            <label class="config-label">Retardo antes de iniciar siguiente fila</label>
+                            <label class="config-label">⏱️ Retardo entre filas</label>
                             <div class="config-checkbox-row" id="randomDelayToggle">
                                 <div class="config-checkbox" id="randomDelayCheckbox">${ICONS.check}</div>
                                 <span class="config-checkbox-label">Random</span>
@@ -1449,10 +1450,87 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+                        
+                        <!-- Sección: Sobreescribir tiempos por pregunta -->
+                        <div class="config-field">
+                            <label class="config-label">⏳ Tiempo entre preguntas</label>
+                            <div class="config-checkbox-row" id="overrideDelaysToggle">
+                                <div class="config-checkbox" id="overrideDelaysCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Sobreescribir tiempos por pregunta</span>
+                            </div>
+                        </div>
+                        <div class="config-field" id="questionDelayField" style="display: none;">
+                            <div class="config-row">
+                                <div class="config-input-group">
+                                    <label class="config-input-label">Min</label>
+                                    <input type="number" class="config-input" id="questionDelayMinInput" value="500" min="0" step="100">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                                <div class="config-input-group">
+                                    <label class="config-input-label">Max</label>
+                                    <input type="number" class="config-input" id="questionDelayMaxInput" value="1500" min="0" step="100">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+                        
+                        <!-- Sección: Human Actions -->
+                        <div class="config-field">
+                            <label class="config-label">🤖 Human Actions (Anti-bot)</label>
+                            <div class="config-checkbox-row" id="humanActionsToggle">
+                                <div class="config-checkbox" id="humanActionsCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Habilitar acciones humanas</span>
+                            </div>
+                        </div>
+                        <div id="humanActionsFields" style="display: none; margin-left: 20px;">
+                            <div class="config-field" style="margin-bottom: 8px;">
+                                <div class="config-checkbox-row" id="scrollToggle">
+                                    <div class="config-checkbox checked" id="scrollCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Scroll hasta el elemento</span>
+                                </div>
+                            </div>
+                            <div class="config-field" style="margin-bottom: 8px;">
+                                <div class="config-checkbox-row" id="mouseToggle">
+                                    <div class="config-checkbox checked" id="mouseCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Mover mouse al elemento</span>
+                                </div>
+                            </div>
+                            <div class="config-field" style="margin-bottom: 8px;">
+                                <div class="config-checkbox-row" id="clickFirstToggle">
+                                    <div class="config-checkbox checked" id="clickFirstCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Click en pregunta antes de responder</span>
+                                </div>
+                            </div>
+                            <div class="config-field" style="margin-bottom: 8px;">
+                                <div class="config-checkbox-row" id="validateToggle">
+                                    <div class="config-checkbox checked" id="validateCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Validar valor después de llenar</span>
+                                </div>
+                            </div>
+                            <div class="config-field">
+                                <label class="config-label" style="font-size: 10px;">⌨️ Velocidad de escritura (ms entre caracteres)</label>
+                                <div class="config-row">
+                                    <div class="config-input-group">
+                                        <label class="config-input-label">Min</label>
+                                        <input type="number" class="config-input" id="typingMinInput" value="30" min="0" step="10">
+                                        <span class="config-unit">ms</span>
+                                    </div>
+                                    <div class="config-input-group">
+                                        <label class="config-input-label">Max</label>
+                                        <input type="number" class="config-input" id="typingMaxInput" value="120" min="0" step="10">
+                                        <span class="config-unit">ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="config-modal-footer">
                         <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
-                        <button class="config-btn config-btn-save" id="configSave">Aceptar</button>
+                        <button class="config-btn config-btn-save" id="configSave">Guardar</button>
                     </div>
                 </div>
             </div>
@@ -1485,11 +1563,11 @@
                 </div>
             </div>
             
-            <!-- Panel de Prueba -->
-            <div class="test-panel visible" id="testPanel">
-                <div class="test-panel-header">Test Acciones</div>
+            <!-- Panel de Prueba (oculto en producción, visible solo para debug) -->
+            <div class="test-panel" id="testPanel">
+                <div class="test-panel-header">Preview Acciones (Fila actual)</div>
                 <div class="test-panel-list" id="testPanelList">
-                    <!-- Se llena dinámicamente -->
+                    <!-- Se llena con datos del paquete -->
                 </div>
             </div>
         `;
@@ -1913,12 +1991,47 @@
         const delayMinInput = shadow.getElementById('delayMinInput');
         const delayMaxInput = shadow.getElementById('delayMaxInput');
 
-        // Estado de configuración
+        // Nuevos elementos para override delays
+        const overrideDelaysToggle = shadow.getElementById('overrideDelaysToggle');
+        const overrideDelaysCheckbox = shadow.getElementById('overrideDelaysCheckbox');
+        const questionDelayField = shadow.getElementById('questionDelayField');
+        const questionDelayMinInput = shadow.getElementById('questionDelayMinInput');
+        const questionDelayMaxInput = shadow.getElementById('questionDelayMaxInput');
+
+        // Nuevos elementos para human actions
+        const humanActionsToggle = shadow.getElementById('humanActionsToggle');
+        const humanActionsCheckbox = shadow.getElementById('humanActionsCheckbox');
+        const humanActionsFields = shadow.getElementById('humanActionsFields');
+        const scrollToggle = shadow.getElementById('scrollToggle');
+        const scrollCheckbox = shadow.getElementById('scrollCheckbox');
+        const mouseToggle = shadow.getElementById('mouseToggle');
+        const mouseCheckbox = shadow.getElementById('mouseCheckbox');
+        const clickFirstToggle = shadow.getElementById('clickFirstToggle');
+        const clickFirstCheckbox = shadow.getElementById('clickFirstCheckbox');
+        const validateToggle = shadow.getElementById('validateToggle');
+        const validateCheckbox = shadow.getElementById('validateCheckbox');
+        const typingMinInput = shadow.getElementById('typingMinInput');
+        const typingMaxInput = shadow.getElementById('typingMaxInput');
+
+        // Estado de configuración completo
         let configState = {
+            // Retardo entre filas
             randomDelay: false,
-            fixedDelay: 2,
-            minDelay: 1,
-            maxDelay: 3
+            fixedDelay: 2000,
+            minDelay: 1000,
+            maxDelay: 3000,
+            // Override tiempos por pregunta
+            overrideDelays: false,
+            delayMinMs: 500,
+            delayMaxMs: 1500,
+            // Human actions
+            humanActionsEnabled: false,
+            scrollToElement: true,
+            moveMouseToElement: true,
+            clickQuestionFirst: true,
+            validateAfterFill: true,
+            typingDelayMinMs: 30,
+            typingDelayMaxMs: 120
         };
 
         function openConfigModal() {
@@ -1926,8 +2039,12 @@
             delayInput.value = configState.fixedDelay;
             delayMinInput.value = configState.minDelay;
             delayMaxInput.value = configState.maxDelay;
+            questionDelayMinInput.value = configState.delayMinMs;
+            questionDelayMaxInput.value = configState.delayMaxMs;
+            typingMinInput.value = configState.typingDelayMinMs;
+            typingMaxInput.value = configState.typingDelayMaxMs;
 
-            // Actualizar checkbox y campos visibles
+            // Actualizar checkboxes y campos visibles - Random delay
             if (configState.randomDelay) {
                 randomDelayCheckbox.classList.add('checked');
                 fixedDelayField.style.display = 'none';
@@ -1938,6 +2055,30 @@
                 randomDelayField.style.display = 'none';
             }
 
+            // Override delays
+            if (configState.overrideDelays) {
+                overrideDelaysCheckbox.classList.add('checked');
+                questionDelayField.style.display = 'block';
+            } else {
+                overrideDelaysCheckbox.classList.remove('checked');
+                questionDelayField.style.display = 'none';
+            }
+
+            // Human actions
+            if (configState.humanActionsEnabled) {
+                humanActionsCheckbox.classList.add('checked');
+                humanActionsFields.style.display = 'block';
+            } else {
+                humanActionsCheckbox.classList.remove('checked');
+                humanActionsFields.style.display = 'none';
+            }
+
+            // Sub-checkboxes de human actions
+            scrollCheckbox.classList.toggle('checked', configState.scrollToElement);
+            mouseCheckbox.classList.toggle('checked', configState.moveMouseToElement);
+            clickFirstCheckbox.classList.toggle('checked', configState.clickQuestionFirst);
+            validateCheckbox.classList.toggle('checked', configState.validateAfterFill);
+
             configModalOverlay.classList.add('open');
         }
 
@@ -1947,24 +2088,43 @@
 
         function toggleRandomDelay() {
             const isChecked = randomDelayCheckbox.classList.toggle('checked');
+            fixedDelayField.style.display = isChecked ? 'none' : 'block';
+            randomDelayField.style.display = isChecked ? 'block' : 'none';
+        }
 
-            if (isChecked) {
-                fixedDelayField.style.display = 'none';
-                randomDelayField.style.display = 'block';
-            } else {
-                fixedDelayField.style.display = 'block';
-                randomDelayField.style.display = 'none';
-            }
+        function toggleOverrideDelays() {
+            const isChecked = overrideDelaysCheckbox.classList.toggle('checked');
+            questionDelayField.style.display = isChecked ? 'block' : 'none';
+        }
+
+        function toggleHumanActions() {
+            const isChecked = humanActionsCheckbox.classList.toggle('checked');
+            humanActionsFields.style.display = isChecked ? 'block' : 'none';
+        }
+
+        function toggleCheckbox(checkbox) {
+            checkbox.classList.toggle('checked');
         }
 
         function saveConfig() {
-            const isRandom = randomDelayCheckbox.classList.contains('checked');
-
             configState = {
-                randomDelay: isRandom,
-                fixedDelay: parseFloat(delayInput.value) || 2,
-                minDelay: parseFloat(delayMinInput.value) || 1,
-                maxDelay: parseFloat(delayMaxInput.value) || 3
+                // Retardo entre filas
+                randomDelay: randomDelayCheckbox.classList.contains('checked'),
+                fixedDelay: parseInt(delayInput.value) || 2000,
+                minDelay: parseInt(delayMinInput.value) || 1000,
+                maxDelay: parseInt(delayMaxInput.value) || 3000,
+                // Override tiempos por pregunta
+                overrideDelays: overrideDelaysCheckbox.classList.contains('checked'),
+                delayMinMs: parseInt(questionDelayMinInput.value) || 500,
+                delayMaxMs: parseInt(questionDelayMaxInput.value) || 1500,
+                // Human actions
+                humanActionsEnabled: humanActionsCheckbox.classList.contains('checked'),
+                scrollToElement: scrollCheckbox.classList.contains('checked'),
+                moveMouseToElement: mouseCheckbox.classList.contains('checked'),
+                clickQuestionFirst: clickFirstCheckbox.classList.contains('checked'),
+                validateAfterFill: validateCheckbox.classList.contains('checked'),
+                typingDelayMinMs: parseInt(typingMinInput.value) || 30,
+                typingDelayMaxMs: parseInt(typingMaxInput.value) || 120
             };
 
             // Enviar configuración al backend
@@ -1983,6 +2143,12 @@
         configCancel.onclick = closeConfigModal;
         configSave.onclick = saveConfig;
         randomDelayToggle.onclick = toggleRandomDelay;
+        overrideDelaysToggle.onclick = toggleOverrideDelays;
+        humanActionsToggle.onclick = toggleHumanActions;
+        scrollToggle.onclick = () => toggleCheckbox(scrollCheckbox);
+        mouseToggle.onclick = () => toggleCheckbox(mouseCheckbox);
+        clickFirstToggle.onclick = () => toggleCheckbox(clickFirstCheckbox);
+        validateToggle.onclick = () => toggleCheckbox(validateCheckbox);
 
         configModalOverlay.onclick = (e) => {
             if (e.target === configModalOverlay) closeConfigModal();
@@ -2130,24 +2296,62 @@
         }
 
         // ═══════════════════════════════════════════════════════════════════
-        // PANEL DE PRUEBA (con acciones demo)
+        // PANEL DE PREVIEW (usa datos reales del paquete)
         // ═══════════════════════════════════════════════════════════════════
 
-        const demoActions = [
-            { num: 1, type: 'fill', question: 'Nombre completo del beneficiario', answer: 'Juan Carlos Pérez García' },
-            { num: 2, type: 'fill', question: 'Número de documento de identidad', answer: '1024567890' },
-            { num: 3, type: 'select', question: 'Tipo de documento', answer: 'Cédula de ciudadanía', options: ['Cédula de ciudadanía', 'Tarjeta de identidad', 'Pasaporte', 'Cédula de extranjería'] },
-            { num: 4, type: 'select', question: '¿Tiene alguna discapacidad?', answer: 'No', options: ['Sí', 'No'] },
-            { num: 5, type: 'fill', question: 'Dirección de residencia actual', answer: 'Calle 123 #45-67, Barrio Centro' },
-            { num: 6, type: 'click', question: 'Continuar al siguiente paso', selector: '[data-automation-id="nextButton"]' },
-            { num: 7, type: 'fill', question: 'Correo electrónico', answer: 'juan.perez@email.com' },
-            { num: 8, type: 'select', question: 'Nivel de escolaridad', answer: 'Universitario', options: ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Posgrado'] },
-            { num: 9, type: 'click', question: 'Enviar formulario', selector: '[data-automation-id="submitButton"]' }
-        ];
+        /**
+         * Genera lista de acciones para una fila específica usando datos reales del paquete
+         */
+        function getActionsForRow(rowIndex) {
+            const rows = pkg.resolvedRows || [];
+            const row = rows[rowIndex];
+            if (!row) return [];
 
-        // Renderizar panel de prueba
+            const answers = row.answers || {};
+            const questions = getAllQuestions();
+            const actions = [];
+
+            questions.forEach((q, idx) => {
+                const answer = answers[q.key] || '';
+                if (!answer) return; // Skip sin respuesta
+
+                const selenium = q.selenium || {};
+                const actionType = selenium.action || 'fill';
+
+                const action = {
+                    num: idx + 1,
+                    type: actionType,
+                    question: q.text || q.key,
+                    answer: answer,
+                    key: q.key
+                };
+
+                // Agregar opciones si es select
+                if (actionType === 'select' && q.options) {
+                    action.options = q.options.map(o => o.value || o.text || o);
+                }
+
+                // Agregar selector si es click
+                if (actionType === 'click') {
+                    action.selector = selenium.selector || selenium.fullSelector || '';
+                }
+
+                actions.push(action);
+            });
+
+            return actions;
+        }
+
+        // Renderizar panel de preview con datos reales
         function renderTestPanel() {
-            let html = demoActions.map(a => `
+            const actions = getActionsForRow(config.currentRowIndex);
+
+            if (actions.length === 0) {
+                testPanelList.innerHTML = '<div style="padding: 12px; color: #9ca3af; text-align: center;">Sin acciones para esta fila</div>';
+                return;
+            }
+
+            let html = actions.map(a => `
                 <div class="test-action-item" data-action-index="${a.num - 1}">
                     <div class="test-action-num ${a.type}">${a.num}</div>
                     <div class="test-action-text">${escHtml(a.question)}</div>
@@ -2156,17 +2360,17 @@
 
             testPanelList.innerHTML = html;
 
-            // Bind clicks
+            // Bind clicks para preview
             testPanelList.querySelectorAll('.test-action-item').forEach(item => {
                 item.onclick = () => {
                     const idx = parseInt(item.dataset.actionIndex);
-                    showActionCard(demoActions[idx]);
+                    const actions = getActionsForRow(config.currentRowIndex);
+                    if (actions[idx]) {
+                        showActionCard(actions[idx]);
+                    }
                 };
             });
         }
-
-        // Renderizar al iniciar
-        renderTestPanel();
 
         // ═══════════════════════════════════════════════════════════════════
         // PUBLIC API
@@ -2185,6 +2389,8 @@
             if (config.dropdownOpen === 'rows' && config.controlColumns.length > 0) {
                 renderRowsList();
             }
+            // Actualizar panel de preview
+            renderTestPanel();
         };
 
         // Get config (for Python to read)
@@ -2225,3 +2431,4 @@
     // Execute
     waitForBody(createAutomationBar);
 })();
+
