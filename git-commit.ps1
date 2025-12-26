@@ -146,9 +146,15 @@ if ($pushExitCode -ne 0) {
 }
 $pushBranch = ($output | Select-String -Pattern "->").Line
 
-# Clear progress and show final summary
-Clear-ProgressLine
-Write-Host ""
+# Clear proceder line + executing banner + progress (keep confirmation banner)
+# Lines: proceder 1 + empty 1 + exec banner 3 + empty 1 + progress 2 = 8
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+for ($i = 0; $i -lt 8; $i++) {
+    Write-Host (" " * 60)
+}
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 8)
+
+# Show final summary
 Write-Host "  [1/3] Stage    ✓" -ForegroundColor Green
 Write-Host "  [2/3] Commit   ✓  " -ForegroundColor Green -NoNewline
 Write-Host $commitDetail -ForegroundColor DarkGray
