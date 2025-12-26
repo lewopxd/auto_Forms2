@@ -502,4 +502,35 @@ def register_selenium_handlers(bridge):
     bridge.register_handler("select_file_dialog", handler.handle_select_file_dialog)
     bridge.register_handler("select_save_dialog", handler.handle_select_save_dialog)
     bridge.register_handler("copy_file", handler.handle_copy_file)
+    bridge.register_handler("save_recording_to_file", handler.handle_save_recording_to_file)
 
+
+# Add missing method to SeleniumHandler class
+def _handle_save_recording_to_file(self, content: Dict[str, Any]) -> Dict[str, Any]:
+    """Save recording data to a .raf file (for exporting from project)."""
+    print(f"[SeleniumHandler] save_recording_to_file called: {content.get('path', 'no path')}")
+    try:
+        import json
+        path = content.get("path")
+        data = content.get("data")
+        
+        if not path:
+            return {"success": False, "error": "No path provided"}
+        if not data:
+            return {"success": False, "error": "No data provided"}
+        
+        # Ensure .raf extension
+        if not path.lower().endswith('.raf'):
+            path += '.raf'
+        
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        print(f"[SeleniumHandler] Recording saved to: {path}")
+        return {"success": True, "path": path}
+    except Exception as e:
+        print(f"[SeleniumHandler] Error saving recording: {e}")
+        return {"success": False, "error": str(e)}
+
+# Patch the method onto the class
+SeleniumHandler.handle_save_recording_to_file = _handle_save_recording_to_file

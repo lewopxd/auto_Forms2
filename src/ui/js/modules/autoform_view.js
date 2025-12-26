@@ -748,88 +748,77 @@ const AutoFormViewModule = (function () {
 
         // Get current tab's loaded recording to show indicator
         const tab = currentManagerTabId ? window.findTab(currentManagerTabId) : null;
-        const loadedRec = tab?.loadedRecordingId && window.projectData.recordings
-            ? window.projectData.recordings.find(r => r.id === tab.loadedRecordingId)
-            : null;
-        const activeRecPath = loadedRec?.path;
+        const loadedRecId = tab?.loadedRecordingId;
 
-        try {
-            const result = await window.bridgePy.send('list_form_records', {});
+        // Use project-specific recordings (not global form_data/)
+        const recordings = window.projectData?.recordings || [];
 
-            if (!result.success || !result.forms || result.forms.length === 0) {
-                listEl.innerHTML = `
-                    <div class="text-center text-gray-400 py-8">
-                        <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
-                        <p>No hay grabaciones guardadas</p>
-                        <p class="text-xs mt-1">Importa un archivo .raf o crea una nueva grabación</p>
-                    </div>
-                `;
-                if (window.lucide) lucide.createIcons();
-                return;
-            }
-
-            // Render recordings with active indicator
-            listEl.innerHTML = result.forms.map(form => {
-                const isActive = form.path === activeRecPath;
-                const cardClass = isActive
-                    ? 'recording-card flex items-center gap-3 p-3 bg-orange-50 rounded-lg border-2 border-orange-300'
-                    : 'recording-card flex items-center gap-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors';
-                const safePath = form.path.replace(/"/g, '&quot;');
-
-                return `
-                    <div class="${cardClass}" data-recording-path="${safePath}">
-                        <i data-lucide="file-video" class="w-8 h-8 ${isActive ? 'text-orange-500' : 'text-orange-400'} flex-shrink-0"></i>
-                        <div class="flex-1 min-w-0">
-                            <div class="font-medium text-gray-800 truncate">
-                                ${escHtml(form.name || form.filename)}
-                                ${isActive ? '<span class="text-xs text-orange-500 ml-2">(activo)</span>' : ''}
-                            </div>
-                            <div class="text-xs text-gray-500 truncate">${escHtml(form.url || 'Sin URL')}</div>
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <button class="rec-btn-load p-2 hover:bg-orange-100 rounded text-orange-600" 
-                                    data-action="load" title="Cargar en AutoForm">
-                                <i data-lucide="arrow-right-circle" class="w-4 h-4"></i>
-                            </button>
-                            <button class="rec-btn-export p-2 hover:bg-blue-100 rounded text-blue-600" 
-                                    data-action="export" title="Exportar">
-                                <i data-lucide="download" class="w-4 h-4"></i>
-                            </button>
-                            <button class="rec-btn-delete p-2 hover:bg-red-100 rounded text-red-600" 
-                                    data-action="delete" title="Eliminar">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Attach event handlers via delegation
-            listEl.querySelectorAll('[data-action]').forEach(btn => {
-                btn.onclick = async (e) => {
-                    e.stopPropagation();
-                    const card = btn.closest('[data-recording-path]');
-                    const path = card?.dataset.recordingPath;
-                    if (!path) return;
-
-                    const action = btn.dataset.action;
-                    if (action === 'load') await handleLoadRecording(path, btn);
-                    else if (action === 'export') await exportRecording(path);
-                    else if (action === 'delete') await deleteRecording(path);
-                };
-            });
-
-            if (window.lucide) lucide.createIcons();
-        } catch (e) {
-            console.error('[AutoForm] Error loading recordings:', e);
+        if (recordings.length === 0) {
             listEl.innerHTML = `
-                <div class="text-center text-red-400 py-8">
-                    <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
-                    <p>Error al cargar grabaciones</p>
+                <div class="text-center text-gray-400 py-8">
+                    <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                    <p>No hay grabaciones en este proyecto</p>
+                    <p class="text-xs mt-1">Importa un archivo .raf o crea una nueva grabación</p>
                 </div>
             `;
             if (window.lucide) lucide.createIcons();
+            return;
         }
+
+        // Render recordings with active indicator
+        listEl.innerHTML = recordings.map(rec => {
+            const isActive = rec.id === loadedRecId;
+            const cardClass = isActive
+                ? 'recording-card flex items-center gap-3 p-3 bg-orange-50 rounded-lg border-2 border-orange-300'
+                : 'recording-card flex items-center gap-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors';
+
+            // Get URL from data if available
+            const url = rec.data?.url || rec.url || '';
+
+            return `
+                <div class="${cardClass}" data-recording-id="${rec.id}">
+                    <i data-lucide="file-video" class="w-8 h-8 ${isActive ? 'text-orange-500' : 'text-orange-400'} flex-shrink-0"></i>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-800 truncate">
+                            ${escHtml(rec.name || rec.filename || 'Sin nombre')}
+                            ${isActive ? '<span class="text-xs text-orange-500 ml-2">(activo)</span>' : ''}
+                        </div>
+                        <div class="text-xs text-gray-500 truncate">${escHtml(url || 'Sin URL')}</div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button class="rec-btn-load p-2 hover:bg-orange-100 rounded text-orange-600" 
+                                data-action="load" title="Cargar en AutoForm">
+                            <i data-lucide="arrow-right-circle" class="w-4 h-4"></i>
+                        </button>
+                        <button class="rec-btn-export p-2 hover:bg-blue-100 rounded text-blue-600" 
+                                data-action="export" title="Exportar a archivo .raf">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                        <button class="rec-btn-delete p-2 hover:bg-red-100 rounded text-red-600" 
+                                data-action="delete" title="Eliminar del proyecto">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Attach event handlers via delegation (now using recording ID)
+        listEl.querySelectorAll('[data-action]').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const card = btn.closest('[data-recording-id]');
+                const recId = card?.dataset.recordingId;
+                if (!recId) return;
+
+                const action = btn.dataset.action;
+                if (action === 'load') await handleLoadRecordingById(recId, btn);
+                else if (action === 'export') await exportRecordingById(recId);
+                else if (action === 'delete') await deleteRecordingById(recId);
+            };
+        });
+
+        if (window.lucide) lucide.createIcons();
     }
 
     function closeRecordingManager() {
@@ -1001,6 +990,183 @@ const AutoFormViewModule = (function () {
                 try {
                     await window.bridgePy.send('delete_form_record', { path });
                     await refreshRecordingsList();
+                } catch (e) {
+                    console.error('[AutoForm] Error deleting:', e);
+                }
+            }
+        });
+    }
+
+    // ============================================================
+    // ID-BASED RECORDING OPERATIONS (for project-specific recordings)
+    // ============================================================
+
+    /**
+     * Load a recording by its ID (from window.projectData.recordings)
+     */
+    async function handleLoadRecordingById(recId, btn) {
+        if (!currentManagerTabId) return;
+
+        const tab = window.findTab(currentManagerTabId);
+        if (!tab) return;
+
+        // Find recording in project's recordings array
+        const recording = window.projectData?.recordings?.find(r => r.id === recId);
+        if (!recording) {
+            console.error('[AutoForm] Recording not found:', recId);
+            return;
+        }
+
+        const modal = document.getElementById('modal-recording-manager');
+        const originalBtnHtml = btn?.innerHTML;
+
+        // Show spinner on button, disable all buttons
+        if (modal) {
+            modal.querySelectorAll('button').forEach(b => b.disabled = true);
+        }
+        if (btn) {
+            btn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        try {
+            // Save current state before switching
+            syncToProjectData(currentManagerTabId);
+
+            // Ensure recording has data (may need to load from path if imported)
+            if (!recording.data && recording.path) {
+                const result = await window.bridgePy.send('load_form_record', { path: recording.path });
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load recording data');
+                }
+                recording.data = result.data;
+            }
+
+            // Set tab's reference and generate cards
+            tab.loadedRecordingId = recording.id;
+            tab.cards = buildCardsArray(recording.data);
+
+            // Refresh modal to show new active state
+            await refreshRecordingsList();
+
+            // Update internal state from loaded recording
+            const state = tabs.get(currentManagerTabId);
+            state.formData = JSON.parse(JSON.stringify(recording.data));
+            state.filePath = recording.path || '';
+            state.fileName = recording.name || recording.filename;
+
+            // Apply tab's cards to formData
+            if (tab.cards && state.formData?.pages) {
+                tab.cards.forEach(card => {
+                    const page = state.formData.pages[card.pageKey];
+                    if (page?.questions?.[card.questionKey]) {
+                        page.questions[card.questionKey].response = card.response;
+                        page.questions[card.questionKey].selectedOptions = card.selectedOptions;
+                        if (card.config && Object.keys(card.config).length > 0) {
+                            page.questions[card.questionKey].config = card.config;
+                        }
+                    }
+                });
+            }
+
+            // Update tab UI
+            const rafNameEl = document.getElementById(`af-raf-name-${currentManagerTabId}`);
+            if (rafNameEl) {
+                rafNameEl.textContent = state.fileName;
+                rafNameEl.classList.remove('empty');
+            }
+
+            // Render the tab with new content
+            renderEdit(currentManagerTabId);
+
+            // Close modal after brief delay
+            setTimeout(() => {
+                closeRecordingManager();
+                if (window.triggerAutoSave) window.triggerAutoSave();
+            }, 300);
+
+        } catch (e) {
+            console.error('[AutoForm] Error loading recording:', e);
+            if (btn) btn.innerHTML = originalBtnHtml;
+            if (modal) modal.querySelectorAll('button').forEach(b => b.disabled = false);
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    /**
+     * Export a recording by its ID to an external .raf file
+     */
+    async function exportRecordingById(recId) {
+        const recording = window.projectData?.recordings?.find(r => r.id === recId);
+        if (!recording) {
+            console.error('[AutoForm] Recording not found for export:', recId);
+            return;
+        }
+
+        try {
+            const defaultName = (recording.filename || recording.name || 'recording') + '.raf';
+
+            const result = await window.bridgePy.send('select_save_dialog', {
+                file_types: ['Raf Files (*.raf)'],
+                default_name: defaultName.replace('.raf.raf', '.raf') // Avoid double extension
+            });
+
+            if (result.success && result.path) {
+                // Write recording data to file
+                await window.bridgePy.send('save_recording_to_file', {
+                    path: result.path,
+                    data: recording.data
+                });
+
+                if (window.showToast) {
+                    window.showToast('Grabación exportada correctamente', 'success');
+                }
+            }
+        } catch (e) {
+            console.error('[AutoForm] Error exporting:', e);
+        }
+    }
+
+    /**
+     * Delete a recording by its ID (removes from project, not from disk)
+     */
+    async function deleteRecordingById(recId) {
+        const recording = window.projectData?.recordings?.find(r => r.id === recId);
+        if (!recording) return;
+
+        const fileName = recording.name || recording.filename || 'grabación';
+
+        window.showAlert({
+            icon: 'trash-2',
+            iconColor: 'text-red-500',
+            title: 'Eliminar Grabación',
+            message: `¿Estás seguro de que deseas eliminar <strong>${escHtml(fileName)}</strong> del proyecto?<br><span class="text-xs text-gray-400">La grabación se eliminará de este proyecto.</span>`,
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            confirmColor: 'bg-red-600 hover:bg-red-700',
+            onConfirm: async () => {
+                try {
+                    // Remove from project's recordings array
+                    const idx = window.projectData.recordings.findIndex(r => r.id === recId);
+                    if (idx !== -1) {
+                        window.projectData.recordings.splice(idx, 1);
+                    }
+
+                    // If any tab has this recording loaded, clear it
+                    if (window.projectData.tabs) {
+                        window.projectData.tabs.forEach(tab => {
+                            if (tab.loadedRecordingId === recId) {
+                                tab.loadedRecordingId = null;
+                                tab.cards = [];
+                            }
+                        });
+                    }
+
+                    // Refresh UI
+                    await refreshRecordingsList();
+
+                    // Trigger autosave
+                    if (window.triggerAutoSave) window.triggerAutoSave();
                 } catch (e) {
                     console.error('[AutoForm] Error deleting:', e);
                 }
