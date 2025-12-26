@@ -65,6 +65,12 @@ class ExecutorConfig:
     typing_delay_max_ms: int = 120
     validate_after_fill: bool = True
     
+    # Visual feedback
+    highlight_elements: bool = True
+    
+    # Error handling
+    stop_on_error: bool = True  # Detener ejecución si hay error
+    
     # Timeouts
     element_wait_timeout: int = 10
     page_load_timeout: int = 30
@@ -90,6 +96,8 @@ class ExecutorConfig:
             typing_delay_min_ms=data.get("typingDelayMinMs", 30),
             typing_delay_max_ms=data.get("typingDelayMaxMs", 120),
             validate_after_fill=data.get("validateAfterFill", True),
+            highlight_elements=data.get("highlightElements", True),
+            stop_on_error=data.get("stopOnError", True),
             element_wait_timeout=data.get("elementWaitTimeout", 10),
             one_by_one_mode=data.get("oneByOne", False),
         )
@@ -260,6 +268,66 @@ class FormExecutor:
             return False
     
     # ═══════════════════════════════════════════════════════════════════════
+    # ELEMENT HIGHLIGHTING
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def _highlight_element(self, element: WebElement, color: str = "#667eea"):
+        """Aplicar efecto glow al elemento activo."""
+        if not self.config.highlight_elements:
+            return
+        try:
+            # Remover highlight anterior
+            self._remove_all_highlights()
+            
+            # Aplicar nuevo highlight
+            self.driver.execute_script("""
+                arguments[0].classList.add('__autoforms_highlight');
+                
+                // Inyectar CSS si no existe
+                if (!document.getElementById('__autoforms_highlight_style')) {
+                    const style = document.createElement('style');
+                    style.id = '__autoforms_highlight_style';
+                    style.textContent = `
+                        .__autoforms_highlight {
+                            outline: 3px solid """ + color + """ !important;
+                            box-shadow: 0 0 15px 5px """ + color + """80, 
+                                        0 0 30px 10px """ + color + """40 !important;
+                            animation: __autoforms_pulse 1.5s ease-in-out infinite !important;
+                            transition: all 0.3s ease !important;
+                        }
+                        @keyframes __autoforms_pulse {
+                            0%, 100% { box-shadow: 0 0 15px 5px """ + color + """80, 0 0 30px 10px """ + color + """40; }
+                            50% { box-shadow: 0 0 25px 8px """ + color + """99, 0 0 45px 15px """ + color + """60; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+            """, element)
+        except Exception as e:
+            print(f"[FormExecutor] Highlight error: {e}")
+    
+    def _remove_highlight(self, element: WebElement):
+        """Remover highlight de un elemento específico."""
+        try:
+            self.driver.execute_script(
+                "arguments[0].classList.remove('__autoforms_highlight');",
+                element
+            )
+        except Exception:
+            pass
+    
+    def _remove_all_highlights(self):
+        """Remover todos los highlights de la página."""
+        try:
+            self.driver.execute_script("""
+                document.querySelectorAll('.__autoforms_highlight').forEach(el => {
+                    el.classList.remove('__autoforms_highlight');
+                });
+            """)
+        except Exception:
+            pass
+    
+    # ═══════════════════════════════════════════════════════════════════════
     # ELEMENT FINDING WITH FALLBACK
     # ═══════════════════════════════════════════════════════════════════════
     
@@ -300,13 +368,55 @@ class FormExecutor:
     def _find_text_input(self, question: dict) -> Optional[WebElement]:
         """Encontrar campo de texto para una pregunta."""
         selenium_info = question.get("selenium", {})
+        key = question.get("key", "unknown")
         
-        selectors = [
-            ("fullSelector", selenium_info.get("fullSelector")),
-            ("selector", selenium_info.get("selector")),
-        ]
+        # IMPORTANTE: fullSelector contiene el QuestionId único
+        full_selector = selenium_info.get("fullSelector")
         
-        return self._find_element_robust(selectors)
+        print(f"[FormExecutor] === Buscando input para {key} ===")
+        print(f"[FormExecutor] fullSelector: {full_selector}")
+        
+        if full_selector:
+            try:
+                print(f"[FormExecutor] Intentando con fullSelector...")
+                element = WebDriverWait(self.driver, self.config.element_wait_timeout).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, full_selector))
+                )
+                print(f"[FormExecutor] ✓ Elemento encontrado via fullSelector!")
+                return element
+            except TimeoutException:
+                print(f"[FormExecutor] ✗ Timeout con fullSelector")
+            except Exception as e:
+                print(f"[FormExecutor] ✗ Error con fullSelector: {e}")
+        
+        # Fallback: extraer el QuestionId del fullSelector y buscar diferente
+        if full_selector and "QuestionId_" in full_selector:
+            try:
+                # Extraer solo el QuestionId
+                import re
+                match = re.search(r'QuestionId_([a-zA-Z0-9]+)', full_selector)
+                if match:
+                    question_id = match.group(1)
+                    print(f"[FormExecutor] Intentando con QuestionId extraído: {question_id}")
+                    
+                    # Selector más flexible: buscar input dentro del contenedor de pregunta
+                    alt_selector = f"#QuestionId_r{question_id} ~ div input[data-automation-id='textInput'], " \
+                                   f"#QuestionId_r{question_id} ~ div textarea, " \
+                                   f"[aria-labelledby*='QuestionId_r{question_id}'][data-automation-id='textInput']"
+                    
+                    element = WebDriverWait(self.driver, 3).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, alt_selector))
+                    )
+                    print(f"[FormExecutor] ✓ Elemento encontrado via QuestionId extraído!")
+                    return element
+            except Exception as e:
+                print(f"[FormExecutor] ✗ Fallback QuestionId también falló: {e}")
+        
+        # Último recurso: buscar por índice (no recomendado pero añade logging)
+        print(f"[FormExecutor] ✗ No se pudo encontrar input para {key}")
+        print(f"[FormExecutor] ✗ DEBUG: Verifique que el QuestionId del archivo coincida con la página")
+        
+        return None
     
     def _find_option_element(self, question: dict, answer_value: str) -> Optional[WebElement]:
         """Encontrar opción para seleccionar."""
@@ -373,7 +483,10 @@ class FormExecutor:
                     error_message="Input element not found"
                 )
             
-            # 2. Human actions (si están habilitadas)
+            # 2. Highlight del elemento
+            self._highlight_element(element)
+            
+            # 3. Human actions (si están habilitadas)
             if self.config.human_actions_enabled:
                 if self.config.scroll_to_element:
                     self._scroll_to_element(element)
@@ -384,24 +497,49 @@ class FormExecutor:
                 if self.config.click_question_first:
                     element.click()
                     time.sleep(0.1)
+            else:
+                # Incluso sin human actions, hacer click para asegurar foco
+                try:
+                    element.click()
+                    time.sleep(0.05)
+                except Exception:
+                    pass
             
-            # 3. Limpiar campo existente
+            # 4. Limpiar campo existente
             element.clear()
             time.sleep(0.1)
             
-            # 4. Escribir valor
+            # 5. Escribir valor
             if self.config.human_actions_enabled:
                 self._human_type(element, answer)
             else:
                 element.send_keys(answer)
             
-            # 5. Validar (si está habilitado)
-            if self.config.human_actions_enabled and self.config.validate_after_fill:
+            time.sleep(0.2)  # Pequeño delay para que el DOM se actualice
+            
+            # 6. SIEMPRE Validar después de fill
+            if not self._validate_input_value(element, answer):
+                print(f"[FormExecutor] Validation failed for {key}, retrying...")
+                # Reintentar: limpiar y escribir de nuevo
+                element.clear()
+                time.sleep(0.1)
+                element.send_keys(answer)
+                time.sleep(0.2)
+                
+                # Verificar de nuevo
                 if not self._validate_input_value(element, answer):
-                    # Reintentar
-                    element.clear()
-                    time.sleep(0.1)
-                    element.send_keys(answer)
+                    self._remove_highlight(element)
+                    return ActionResult(
+                        success=False,
+                        question_key=key,
+                        action_type=ActionType.FILL,
+                        error_message=f"Validation failed: value not set correctly"
+                    )
+            
+            # 7. Cambiar color de highlight a verde (éxito)
+            self._highlight_element(element, "#10b981")  # Verde
+            time.sleep(0.3)  # Mostrar brevemente el éxito
+            self._remove_highlight(element)
             
             return ActionResult(
                 success=True,
@@ -411,6 +549,7 @@ class FormExecutor:
             )
             
         except Exception as e:
+            self._remove_all_highlights()
             return ActionResult(
                 success=False,
                 question_key=key,
@@ -433,7 +572,10 @@ class FormExecutor:
                     error_message=f"Option element not found for value: {answer}"
                 )
             
-            # 2. Human actions
+            # 2. Highlight del elemento
+            self._highlight_element(element)
+            
+            # 3. Human actions
             if self.config.human_actions_enabled:
                 if self.config.scroll_to_element:
                     self._scroll_to_element(element)
@@ -441,8 +583,13 @@ class FormExecutor:
                 if self.config.move_mouse_to_element:
                     self._move_mouse_to_element(element)
             
-            # 3. Click en la opción
+            # 4. Click en la opción
             element.click()
+            
+            # 5. Cambiar highlight a verde y remover
+            self._highlight_element(element, "#10b981")
+            time.sleep(0.3)
+            self._remove_highlight(element)
             
             return ActionResult(
                 success=True,
@@ -452,6 +599,7 @@ class FormExecutor:
             )
             
         except Exception as e:
+            self._remove_all_highlights()
             return ActionResult(
                 success=False,
                 question_key=key,
@@ -588,7 +736,12 @@ class FormExecutor:
                     self._emit_status("error", f"Error en {key}: {result.error_message}")
                     if self.on_action_error:
                         self.on_action_error(key, result.error_message)
-                    # Continuar con siguiente pregunta (no abortar)
+                    
+                    # DETENERSE en error (configurable)
+                    if self.config.stop_on_error:
+                        print(f"[FormExecutor] Detenido por error en {key}")
+                        self.is_paused = True  # Pausar, no detener completamente
+                        return False
                 
                 # Delay antes de siguiente pregunta
                 delay_min, delay_max = self._get_question_delay(question)

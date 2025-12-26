@@ -455,7 +455,8 @@ class SeleniumProcessBooster:
         elif cmd_type == "stop":
             if cls._executor:
                 cls._executor.stop()
-            cls.stop()
+            # NO cerrar navegador, solo detener executor
+            # cls.stop() se omite - el usuario puede cerrar manualmente o usar otro comando
         elif cmd_type == "next":
             if cls._executor:
                 cls._executor.next_row()
@@ -487,6 +488,11 @@ class SeleniumProcessBooster:
             "overrideDelays": config_data.get("overrideDelays", False),
             "delayMinMs": config_data.get("delayMinMs", 500),
             "delayMaxMs": config_data.get("delayMaxMs", 1500),
+            "highlightElements": config_data.get("highlightElements", True),
+            "scrollToElement": config_data.get("scrollToElement", True),
+            "moveMouseToElement": config_data.get("moveMouseToElement", True),
+            "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
+            "validateAfterFill": config_data.get("validateAfterFill", True),
         })
         
         if cls._executor:

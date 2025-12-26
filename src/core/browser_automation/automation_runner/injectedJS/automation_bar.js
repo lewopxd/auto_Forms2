@@ -1527,6 +1527,17 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+                        
+                        <!-- Sección: Visual Feedback -->
+                        <div class="config-field">
+                            <label class="config-label">✨ Visual Feedback</label>
+                            <div class="config-checkbox-row" id="highlightToggle">
+                                <div class="config-checkbox checked" id="highlightCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Resaltar elemento activo (glow)</span>
+                            </div>
+                        </div>
                     </div>
                     <div class="config-modal-footer">
                         <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
@@ -2013,6 +2024,10 @@
         const typingMinInput = shadow.getElementById('typingMinInput');
         const typingMaxInput = shadow.getElementById('typingMaxInput');
 
+        // Elemento para visual feedback
+        const highlightToggle = shadow.getElementById('highlightToggle');
+        const highlightCheckbox = shadow.getElementById('highlightCheckbox');
+
         // Estado de configuración completo
         let configState = {
             // Retardo entre filas
@@ -2031,7 +2046,9 @@
             clickQuestionFirst: true,
             validateAfterFill: true,
             typingDelayMinMs: 30,
-            typingDelayMaxMs: 120
+            typingDelayMaxMs: 120,
+            // Visual feedback
+            highlightElements: true
         };
 
         function openConfigModal() {
@@ -2079,6 +2096,9 @@
             clickFirstCheckbox.classList.toggle('checked', configState.clickQuestionFirst);
             validateCheckbox.classList.toggle('checked', configState.validateAfterFill);
 
+            // Visual feedback
+            highlightCheckbox.classList.toggle('checked', configState.highlightElements);
+
             configModalOverlay.classList.add('open');
         }
 
@@ -2124,7 +2144,9 @@
                 clickQuestionFirst: clickFirstCheckbox.classList.contains('checked'),
                 validateAfterFill: validateCheckbox.classList.contains('checked'),
                 typingDelayMinMs: parseInt(typingMinInput.value) || 30,
-                typingDelayMaxMs: parseInt(typingMaxInput.value) || 120
+                typingDelayMaxMs: parseInt(typingMaxInput.value) || 120,
+                // Visual feedback
+                highlightElements: highlightCheckbox.classList.contains('checked')
             };
 
             // Enviar configuración al backend
@@ -2149,6 +2171,7 @@
         mouseToggle.onclick = () => toggleCheckbox(mouseCheckbox);
         clickFirstToggle.onclick = () => toggleCheckbox(clickFirstCheckbox);
         validateToggle.onclick = () => toggleCheckbox(validateCheckbox);
+        highlightToggle.onclick = () => toggleCheckbox(highlightCheckbox);
 
         configModalOverlay.onclick = (e) => {
             if (e.target === configModalOverlay) closeConfigModal();
