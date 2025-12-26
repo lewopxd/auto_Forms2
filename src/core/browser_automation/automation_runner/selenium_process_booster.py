@@ -76,7 +76,11 @@ class SeleniumProcessBooster:
                 if ProcessManager.boost_current_process():
                     cls._emit_status("boosted", f"✓ Script Python → HIGH (PID {os.getpid()})")
                 
-                # === STEP 3: Launch browser with Selenium ===
+                # === STEP 3: Capture existing browser PIDs BEFORE launch ===
+                initial_browser_pids = cls._get_browser_pids()
+                cls._emit_status("info", f"Navegadores existentes: {len(initial_browser_pids)} procesos")
+                
+                # === STEP 4: Launch browser with Selenium ===
                 cls._emit_status("launching", "Abriendo navegador Selenium...")
                 
                 driver = cls._launch_browser(browser_config)
@@ -85,7 +89,7 @@ class SeleniumProcessBooster:
                 
                 cls._driver = driver
                 
-                # === STEP 4: Boost ChromeDriver ===
+                # === STEP 5: Boost ChromeDriver ===
                 try:
                     chromedriver_pid = driver.service.process.pid
                     cls._chromedriver_pid = chromedriver_pid
@@ -94,8 +98,9 @@ class SeleniumProcessBooster:
                 except Exception as e:
                     cls._emit_status("warning", f"ChromeDriver PID no disponible: {e}")
                 
-                # === STEP 5: Start browser children monitor ===
-                cls._start_browser_monitor()
+                # === STEP 6: Start browser monitor with initial PIDs ===
+                cls._start_browser_monitor(initial_browser_pids)
+
                 
                 # === STEP 6: Navigate to login URL if enabled ===
                 login_url = browser_config.get("login_url", "")
@@ -185,28 +190,44 @@ class SeleniumProcessBooster:
         return False
     
     @classmethod
-    def _start_browser_monitor(cls):
-        """Monitor and boost browser child processes."""
+    def _get_browser_pids(cls) -> set:
+        """Get all current browser PIDs using psutil."""
+        browser_patterns = ['chrome', 'chromium', 'brave', 'msedge', 'ungoogled']
+        try:
+            import psutil
+            pids = set()
+            for proc in psutil.process_iter(['pid', 'name']):
+                try:
+                    name = proc.info['name'].lower()
+                    if any(p in name for p in browser_patterns):
+                        pids.add(proc.info['pid'])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            return pids
+        except ImportError:
+            return set()
+    
+    @classmethod
+    def _start_browser_monitor(cls, initial_pids: set):
+        """Monitor and boost browser processes by detecting NEW processes."""
         cls._should_monitor = True
         cls._browser_pids = []
         
         def monitor():
-            if not cls._chromedriver_pid:
-                return
-            
             start_time = time.time()
-            while cls._should_monitor and (time.time() - start_time) < 15:
+            while cls._should_monitor and (time.time() - start_time) < 20:
                 try:
-                    descendants = ProcessManager.get_all_descendants(cls._chromedriver_pid)
+                    current_pids = cls._get_browser_pids()
+                    new_pids = current_pids - initial_pids
                     
-                    for pid in descendants:
+                    for pid in new_pids:
                         if pid not in cls._browser_pids:
                             name = ProcessManager._get_process_name(pid)
                             if name and ProcessManager._set_priority(pid, HIGH_PRIORITY_CLASS):
                                 cls._browser_pids.append(pid)
                                 cls._emit_status("boosted", f"🚀 {name} → HIGH (PID {pid})")
                     
-                    time.sleep(1.0)
+                    time.sleep(0.5)
                 except Exception as e:
                     print(f"[SeleniumBooster] Monitor error: {e}")
                     break
