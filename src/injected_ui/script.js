@@ -643,14 +643,22 @@
             allSavedPages[pageKey] = {
                 questions: formData.questions, // Keep array format for display
                 questionsMap: mergedQuestions, // Keep map format for lookups
-                pageInfo: { ...formData.pageInfo, current: pageNumber },
+                pageInfo: {
+                    ...formData.pageInfo,
+                    current: pageNumber,
+                    total: recordingState.domProvidesPageNumber ? formData.pageInfo?.total : Math.max(recordingState.logicalPageCounter - 1, pageNumber)
+                },
                 isPostSubmitPage: formData.isPostSubmitPage || false,
                 postSubmitActions: formData.postSubmitActions || {}
             };
         } else {
             allSavedPages[pageKey] = {
                 questions: formData.questions,
-                pageInfo: { ...formData.pageInfo, current: pageNumber },
+                pageInfo: {
+                    ...formData.pageInfo,
+                    current: pageNumber,
+                    total: recordingState.domProvidesPageNumber ? formData.pageInfo?.total : Math.max(recordingState.logicalPageCounter - 1, pageNumber)
+                },
                 isPostSubmitPage: formData.isPostSubmitPage || false,
                 postSubmitActions: formData.postSubmitActions || {}
             };
@@ -670,7 +678,11 @@
             // Update formData.pageInfo.current with determined page number
             const dataToSave = { ...formData };
             if (dataToSave.pageInfo) {
-                dataToSave.pageInfo = { ...dataToSave.pageInfo, current: pageNumber };
+                dataToSave.pageInfo = {
+                    ...dataToSave.pageInfo,
+                    current: pageNumber,
+                    total: recordingState.domProvidesPageNumber ? dataToSave.pageInfo?.total : Math.max(recordingState.logicalPageCounter - 1, pageNumber)
+                };
             }
 
             window.__msfa_commands.push({ type: 'save', data: dataToSave, time: Date.now() });

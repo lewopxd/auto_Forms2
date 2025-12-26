@@ -1,8 +1,72 @@
 {
   "url": "https://forms.office.com/r/WsqBTWGyms",
-  "filename": "TEST_CUAI_C1F3",
+  "filename": "TEST-CUALI-C1F3-APROB",
   "pages": {
     "page_1": {
+      "questions": {
+        "q1": {
+          "num": "1",
+          "options": [],
+          "questionId": "rc21b90401a0f4f2b9b5b94e4d2730e25",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_rc21b90401a0f4f2b9b5b94e4d2730e25\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Nombres y Apellidos Psicosocial",
+          "type": "text"
+        },
+        "q2": {
+          "num": "2",
+          "options": [],
+          "questionId": "r17cc0edb18e54cf2a63e1da7ea845f84",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r17cc0edb18e54cf2a63e1da7ea845f84\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Documento del/la Psicosocial",
+          "type": "text"
+        },
+        "q3": {
+          "num": "3",
+          "options": [],
+          "questionId": "r5490ef262b6d41dabaeefa0589a265a0",
+          "required": true,
+          "selenium": {
+            "action": "fill",
+            "fullSelector": "[aria-labelledby*=\"QuestionId_r5490ef262b6d41dabaeefa0589a265a0\"][data-automation-id=\"textInput\"]",
+            "method": "send_keys",
+            "selector": "[data-automation-id=\"textInput\"]"
+          },
+          "text": "Número de Tarjeta Profesional del/la Psicosocial",
+          "type": "text"
+        }
+      },
+      "pageInfo": {
+        "current": 1,
+        "text": "",
+        "total": 1
+      },
+      "navigation": {
+        "back": null,
+        "next": {
+          "selector": "[data-automation-id=\"nextButton\"]",
+          "text": "Siguiente"
+        },
+        "submit": null
+      },
+      "isPostSubmitPage": false,
+      "postSubmitActions": {
+        "saveAndEdit": null,
+        "submitAnother": null
+      }
+    },
+    "page_2": {
       "questions": {
         "q4": {
           "num": "4",
@@ -185,7 +249,7 @@
         }
       },
       "pageInfo": {
-        "current": 1,
+        "current": 2,
         "text": "",
         "total": 1
       },
@@ -206,7 +270,7 @@
         "submitAnother": null
       }
     },
-    "page_2": {
+    "page_3": {
       "questions": {
         "q8": {
           "num": "8",
@@ -280,7 +344,7 @@
         }
       },
       "pageInfo": {
-        "current": 2,
+        "current": 3,
         "text": "",
         "total": 1
       },
@@ -301,7 +365,7 @@
         "submitAnother": null
       }
     },
-    "page_3": {
+    "page_4": {
       "questions": {
         "q9": {
           "num": "9",
@@ -771,7 +835,7 @@
         }
       },
       "pageInfo": {
-        "current": 3,
+        "current": 4,
         "text": "",
         "total": 1
       },
@@ -792,73 +856,35 @@
         "submitAnother": null
       }
     },
-    "page_4": {
-      "questions": {
-        "q1": {
-          "num": "1",
-          "options": [],
-          "questionId": "rc21b90401a0f4f2b9b5b94e4d2730e25",
-          "required": true,
-          "selenium": {
-            "action": "fill",
-            "fullSelector": "[aria-labelledby*=\"QuestionId_rc21b90401a0f4f2b9b5b94e4d2730e25\"][data-automation-id=\"textInput\"]",
-            "method": "send_keys",
-            "selector": "[data-automation-id=\"textInput\"]"
-          },
-          "text": "Nombres y Apellidos Psicosocial",
-          "type": "text"
-        },
-        "q2": {
-          "num": "2",
-          "options": [],
-          "questionId": "r17cc0edb18e54cf2a63e1da7ea845f84",
-          "required": true,
-          "selenium": {
-            "action": "fill",
-            "fullSelector": "[aria-labelledby*=\"QuestionId_r17cc0edb18e54cf2a63e1da7ea845f84\"][data-automation-id=\"textInput\"]",
-            "method": "send_keys",
-            "selector": "[data-automation-id=\"textInput\"]"
-          },
-          "text": "Número de Documento del/la Psicosocial",
-          "type": "text"
-        },
-        "q3": {
-          "num": "3",
-          "options": [],
-          "questionId": "r5490ef262b6d41dabaeefa0589a265a0",
-          "required": true,
-          "selenium": {
-            "action": "fill",
-            "fullSelector": "[aria-labelledby*=\"QuestionId_r5490ef262b6d41dabaeefa0589a265a0\"][data-automation-id=\"textInput\"]",
-            "method": "send_keys",
-            "selector": "[data-automation-id=\"textInput\"]"
-          },
-          "text": "Número de Tarjeta Profesional del/la Psicosocial",
-          "type": "text"
-        }
-      },
+    "page_postSubmit": {
+      "questions": {},
       "pageInfo": {
-        "current": 4,
+        "current": 5,
         "text": "",
         "total": 1
       },
       "navigation": {
         "back": null,
-        "next": {
-          "selector": "[data-automation-id=\"nextButton\"]",
-          "text": "Siguiente"
-        },
+        "next": null,
         "submit": null
       },
-      "isPostSubmitPage": false,
+      "isPostSubmitPage": true,
       "postSubmitActions": {
-        "saveAndEdit": null,
-        "submitAnother": null
+        "saveAndEdit": {
+          "action": "click",
+          "selector": "[data-automation-id=\"saveAndEditButton\"]",
+          "text": "Guardar mi respuesta para editar"
+        },
+        "submitAnother": {
+          "action": "click",
+          "selector": "[data-automation-id=\"submitAnother\"]",
+          "text": "Enviar otra respuesta"
+        }
       }
     }
   },
-  "recorded_at": "2025-12-26 14:00:57",
-  "name": "TEST_CUAI_C1F3",
-  "created": "2025-12-26T14:00:57.956951",
-  "updated": "2025-12-26T14:00:57.957015"
+  "recorded_at": "2025-12-26 14:24:28",
+  "name": "TEST-CUALI-C1F3-APROB",
+  "created": "2025-12-26T14:24:28.211078",
+  "updated": "2025-12-26T14:24:28.211134"
 }
