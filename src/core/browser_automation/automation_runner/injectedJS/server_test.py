@@ -22,12 +22,31 @@ from pathlib import Path
 DEFAULT_PORT = 5500
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-# Datos de paquete de prueba por defecto
+# Datos de paquete de prueba por defecto (cuando no se carga un .afpkg)
 DEFAULT_PACKAGE_DATA = {
-    "filename": "automation_test_package.afpkg",
-    "totalRows": 62,
-    "totalQuestions": 21,
-    "formUrl": "https://forms.office.com/example"
+    "filename": "demo_package.afpkg",
+    "totalRows": 5,
+    "totalQuestions": 4,
+    "formUrl": "https://forms.office.com/demo",
+    "instructions": {
+        "pages": [
+            {
+                "questions": [
+                    {"key": "q1", "text": "Nombre del beneficiario", "type": "text"},
+                    {"key": "q2", "text": "Número de documento", "type": "text"},
+                    {"key": "q3", "text": "Tipo de documento", "type": "choice"},
+                    {"key": "q4", "text": "Observaciones", "type": "long_text"}
+                ]
+            }
+        ]
+    },
+    "resolvedRows": [
+        {"rowIndex": 0, "excelRow": 2, "answers": {"q1": "Juan Pérez", "q2": "12345678", "q3": "Cédula", "q4": "Sin novedad"}},
+        {"rowIndex": 1, "excelRow": 3, "answers": {"q1": "María García", "q2": "87654321", "q3": "Cédula", "q4": "Pendiente"}},
+        {"rowIndex": 2, "excelRow": 4, "answers": {"q1": "Carlos López", "q2": "11223344", "q3": "Pasaporte", "q4": "Aprobado"}},
+        {"rowIndex": 3, "excelRow": 5, "answers": {"q1": "Ana Martínez", "q2": "55667788", "q3": "Cédula", "q4": "En proceso"}},
+        {"rowIndex": 4, "excelRow": 6, "answers": {"q1": "Pedro Rodríguez", "q2": "99887766", "q3": "Cédula", "q4": "Finalizado"}}
+    ]
 }
 
 
@@ -53,7 +72,9 @@ def load_package_data(package_path: str = None) -> dict:
                 "totalRows": len(resolved_rows),
                 "totalQuestions": total_questions,
                 "formUrl": instructions.get('url', ''),
-                "_fullPackage": pkg  # Paquete completo para debugging
+                # Incluir datos completos para el script inyectado
+                "instructions": instructions,
+                "resolvedRows": resolved_rows
             }
         except Exception as e:
             print(f"⚠️  Error cargando paquete: {e}")
@@ -77,8 +98,8 @@ def generate_test_html(package_data: dict) -> str:
     # Cargar el script de la barra
     automation_bar_script = load_injection_script()
     
-    # Preparar datos del paquete para inyección (sin _fullPackage si existe)
-    pkg_for_injection = {k: v for k, v in package_data.items() if k != '_fullPackage'}
+    # Datos del paquete para inyección
+    pkg_for_injection = package_data
     
     html = f'''<!DOCTYPE html>
 <html lang="es">
