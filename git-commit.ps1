@@ -64,10 +64,22 @@ else {
     $CommitMsg = $SafeTitle
 }
 
-# Simple progress display (single line, updates in-place)
+# Progress bar helper function (updates in-place: text + bar)
 function Show-Progress {
     param([int]$Step, [int]$Total, [string]$Status)
+    $barWidth = 20
+    $filled = [math]::Floor(($Step / $Total) * $barWidth)
+    $empty = $barWidth - $filled
+    $bar = ("━" * $filled) + ("─" * $empty)
     Write-Host "`r  [$Step/$Total] $Status".PadRight(50) -ForegroundColor Cyan -NoNewline
+    Write-Host "`n  $bar" -ForegroundColor DarkGray -NoNewline
+    [Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+}
+
+function Clear-ProgressLine {
+    Write-Host "`r".PadRight(60) -NoNewline
+    Write-Host "`n".PadRight(60) -NoNewline
+    [Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
 }
 
 # Show confirmation prompt (compact)
@@ -92,10 +104,11 @@ if ($confirmation -notmatch '^[SsYy]$') {
     exit 0
 }
 
-# Clear "Proceder?" line (1 line up, overwrite, stay there)
-Write-Host "`r".PadRight(60) -NoNewline
+# Clear the "Proceder?" line immediately after user confirms
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+Write-Host (" " * 60)
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
 
-# Show executing banner
 Write-Host ""
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║        EJECUTANDO COMMIT & PUSH      ║" -ForegroundColor Green
@@ -112,7 +125,7 @@ $output = git commit -m $CommitMsg 2>&1
 $commitExitCode = $LASTEXITCODE
 
 if ($commitExitCode -ne 0) {
-    Write-Host ""
+    Clear-ProgressLine
     if ($output -match "nothing to commit") {
         Write-Host "  ! Sin cambios para commitear" -ForegroundColor Yellow
         exit 0
@@ -122,6 +135,8 @@ if ($commitExitCode -ne 0) {
         exit 1
     }
 }
+$commitSummary = ($output | Select-String -Pattern "\d+ file").Matches.Value
+if (-not $commitSummary) { $commitSummary = "" }
 $commitDetail = $output | Select-String -Pattern "\d+ insertion|\d+ deletion"
 
 # Step 3: Push
@@ -130,21 +145,18 @@ $output = git push 2>&1
 $pushExitCode = $LASTEXITCODE
 
 if ($pushExitCode -ne 0) {
-    Write-Host ""
+    Clear-ProgressLine
     Write-Host "  ✗ Error: $output" -ForegroundColor Red
     exit 1
 }
 $pushBranch = ($output | Select-String -Pattern "->").Line
 
-# Clear: progress line (1) + empty (1) + exec banner (3) + empty (1) = 6 lines up
-# Move cursor up 5 lines (current is progress line)
-[Console]::SetCursorPosition(0, [Console]::CursorTop)
-for ($i = 0; $i -lt 5; $i++) {
-    [Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+# Clear executing banner + progress (5 lines: exec banner 3 + empty 1 + progress 2)
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+for ($i = 0; $i -lt 6; $i++) {
     Write-Host (" " * 60)
 }
-# Move back up to overwrite
-[Console]::SetCursorPosition(0, [Console]::CursorTop - 5)
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 6)
 
 # Show final summary
 Write-Host "  [1/3] Stage    ✓" -ForegroundColor Green
