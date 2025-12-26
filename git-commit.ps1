@@ -104,6 +104,11 @@ if ($confirmation -notmatch '^[SsYy]$') {
     exit 0
 }
 
+# Clear the "Proceder?" line immediately after user confirms
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+Write-Host (" " * 60)
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
+
 Write-Host ""
 Write-Host "╔══════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║        EJECUTANDO COMMIT & PUSH      ║" -ForegroundColor Green
@@ -146,13 +151,12 @@ if ($pushExitCode -ne 0) {
 }
 $pushBranch = ($output | Select-String -Pattern "->").Line
 
-# Clear proceder line + executing banner + progress (keep confirmation banner)
-# Lines: proceder 1 + empty 1 + exec banner 3 + empty 1 + progress 2 = 8
+# Clear executing banner + progress (5 lines: exec banner 3 + empty 1 + progress 2)
 [Console]::SetCursorPosition(0, [Console]::CursorTop - 1)
-for ($i = 0; $i -lt 8; $i++) {
+for ($i = 0; $i -lt 6; $i++) {
     Write-Host (" " * 60)
 }
-[Console]::SetCursorPosition(0, [Console]::CursorTop - 8)
+[Console]::SetCursorPosition(0, [Console]::CursorTop - 6)
 
 # Show final summary
 Write-Host "  [1/3] Stage    ✓" -ForegroundColor Green
