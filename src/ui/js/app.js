@@ -146,8 +146,13 @@
         if (projectName) {
             // Remove extension if present
             const displayName = projectName.replace(/\.afp$/i, '');
-            windowTitle = `${displayName} — ${baseName}`;
-            footerText = displayName;
+
+            // Check if there are unsaved changes using hash comparison
+            const hasChanges = hasUnsavedChanges();
+            const unsavedSuffix = hasChanges ? ' (SIN GUARDAR)' : '';
+
+            windowTitle = `${displayName}${unsavedSuffix} — ${baseName}`;
+            footerText = `${displayName}${unsavedSuffix}`;
         }
 
         // Update pywebview window title
@@ -320,7 +325,9 @@
         } : null;
 
         return {
-            name: window.projectData?.name || 'Mi Proyecto',
+            name: window.projectData?.name || 'Sin Título',
+            currentProjectPath: window.projectData?.currentProjectPath || null,  // Persist user save path
+            lastSavedHash: window.projectData?.lastSavedHash || null,  // Persist hash for dirty detection
             excel: excel,
             forms: window.projectData?.forms || [],
             tabs: window.projectData?.tabs || [],
@@ -449,8 +456,13 @@
 
                 if (load.success && load.data) {
                     restoreProjectData(load.data);
+
+                    // Update window title with project name (autosave has no user path)
+                    const projectName = load.data.name || 'Mi Proyecto';
+                    updateWindowTitle(projectName);
+
                     updateSaveStatus('saved', 'Restored');
-                    console.log('[App] Project restored');
+                    console.log('[App] Project restored:', projectName);
                 } else {
                     updateSaveStatus('saved', 'Listo');
                 }
@@ -476,7 +488,9 @@
         clearProjectUI();
 
         // Restore projectData object
-        window.projectData.name = data.name || 'Mi Proyecto';
+        window.projectData.name = data.name || 'Sin Título';
+        window.projectData.currentProjectPath = data.currentProjectPath || null;  // Restore user save path
+        window.projectData.lastSavedHash = data.lastSavedHash || null;  // Restore hash for dirty detection
         window.projectData.tabs = data.tabs || [];
         window.projectData.forms = data.forms || [];
         window.projectData.excel = data.excel || null;
@@ -690,6 +704,10 @@
             // Restore project data
             restoreProjectData(result.data);
 
+            // Update project name from filename (without extension)
+            const projectName = result.filename.replace(/\.afp$/i, '');
+            window.projectData.name = projectName;
+
             // Track user save state
             window.projectData.currentProjectPath = result.path;
             window.projectData.lastSavedHash = computeProjectHash();
@@ -743,6 +761,10 @@
                 });
                 return;
             }
+
+            // Update project name from filename (without extension)
+            const projectName = result.filename.replace(/\.afp$/i, '');
+            window.projectData.name = projectName;
 
             // Track user save state
             window.projectData.currentProjectPath = result.path;
@@ -849,7 +871,7 @@
         window.projectData.recordings = [];
         window.projectData.variables = [];
         window.projectData.forms = [];
-        window.projectData.name = 'Mi Proyecto';
+        window.projectData.name = 'Sin Título';
         window.projectData.currentProjectPath = null;
         window.projectData.lastSavedHash = null;
 
