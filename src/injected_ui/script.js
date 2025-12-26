@@ -466,15 +466,31 @@
         const match = data.pageInfo?.text?.match(/(\d+)\s*(?:de|of)\s*(\d+)/i);
         if (match) {
             recordingState.domProvidesPageNumber = true;
-            return parseInt(match[1]);
+            const pageNum = parseInt(match[1]);
+
+            // Also register fingerprint for this page (for future reference)
+            const fp = generatePageFingerprint(data.questions);
+            if (!recordingState.fingerprintToPage[fp]) {
+                recordingState.fingerprintToPage[fp] = pageNum;
+            }
+
+            // Update current page number and fingerprint
+            recordingState.currentPageNumber = pageNum;
+            recordingState.currentPageFingerprint = fp;
+
+            return pageNum;
         }
 
         recordingState.domProvidesPageNumber = false;
 
-        // Case 2: Navigation event without DOM number
-        if (recordingState.isNavigating) {
-            const fp = generatePageFingerprint(data.questions);
+        // Generate fingerprint for this page
+        const fp = generatePageFingerprint(data.questions);
 
+        // Case 2: First analysis (no current page yet) OR Navigation event
+        // Treat first analysis same as navigation to properly save page 1
+        const isFirstAnalysis = recordingState.currentPageNumber === null;
+
+        if (recordingState.isNavigating || isFirstAnalysis) {
             if (recordingState.fingerprintToPage[fp]) {
                 // Page already visited - return existing number
                 console.log('[MSFA] Page revisited, fingerprint:', fp);
@@ -483,7 +499,7 @@
                 // New page - assign new number
                 const newPageNum = recordingState.logicalPageCounter++;
                 recordingState.fingerprintToPage[fp] = newPageNum;
-                console.log('[MSFA] New page detected, assigned number:', newPageNum, 'fingerprint:', fp);
+                console.log('[MSFA] New page detected, assigned number:', newPageNum, 'fingerprint:', fp, isFirstAnalysis ? '(first analysis)' : '');
                 return newPageNum;
             }
         }
