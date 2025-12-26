@@ -118,7 +118,7 @@ class AutomationRunnerUI:
                 self.profile_names_map = {}
                 profile_display_names = []
                 for p in self.profiles:
-                    display = p.get("display", p.get("name", "Default"))
+                    display = p.get("display_name", p.get("name", "Default"))
                     self.profile_names_map[display] = p
                     profile_display_names.append(display)
                 
