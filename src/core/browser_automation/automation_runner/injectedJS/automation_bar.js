@@ -1536,26 +1536,6 @@
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Tiempo entre preguntas (override) -->
-                            <div class="config-checkbox-row" id="overrideDelaysToggle" style="margin-top: 10px;">
-                                <div class="config-checkbox" id="overrideDelaysCheckbox">${ICONS.check}</div>
-                                <span class="config-checkbox-label">Sobreescribir tiempos de tarjetas</span>
-                            </div>
-                            <div class="config-field" id="questionDelayField" style="display: none; margin-top: 8px; margin-left: 24px;">
-                                <div class="config-row">
-                                    <div class="config-input-group">
-                                        <label class="config-input-label">Min</label>
-                                        <input type="number" class="config-input" id="questionDelayMinInput" value="500" min="0" step="100" style="width: 70px;">
-                                        <span class="config-unit">ms</span>
-                                    </div>
-                                    <div class="config-input-group">
-                                        <label class="config-input-label">Max</label>
-                                        <input type="number" class="config-input" id="questionDelayMaxInput" value="1500" min="0" step="100" style="width: 70px;">
-                                        <span class="config-unit">ms</span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                         
                         <div class="config-divider"></div>
@@ -2332,7 +2312,7 @@
         // Override delays
         const overrideDelaysToggle = shadow.getElementById('overrideDelaysToggle');
         const overrideDelaysCheckbox = shadow.getElementById('overrideDelaysCheckbox');
-        const questionDelayField = shadow.getElementById('questionDelayField');
+        const overrideDelaysFields = shadow.getElementById('overrideDelaysFields');
         const questionDelayMinInput = shadow.getElementById('questionDelayMinInput');
         const questionDelayMaxInput = shadow.getElementById('questionDelayMaxInput');
 
@@ -2476,7 +2456,7 @@
 
         function toggleOverrideDelays() {
             const isChecked = overrideDelaysCheckbox.classList.toggle('checked');
-            questionDelayField.style.display = isChecked ? 'block' : 'none';
+            overrideDelaysFields.style.display = isChecked ? 'block' : 'none';
         }
 
         function toggleHumanActions() {
