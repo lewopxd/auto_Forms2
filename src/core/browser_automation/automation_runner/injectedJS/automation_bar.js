@@ -1610,59 +1610,102 @@
                         
                         <div class="config-divider"></div>
                         
-                        <!-- ═══ SECCIÓN 4: Configuración de Llenado (FILL) ═══ -->
+                        <!-- ═══ SECCIÓN 4: Sobreescribir Config de Tarjetas ═══ -->
                         <div class="config-section">
-                            <div class="config-section-title">⌨️ Configuración de Llenado</div>
+                            <div class="config-section-title">🔧 Sobreescribir Config de Tarjetas</div>
+                            <p style="font-size: 10px; color: #9ca3af; margin-bottom: 10px;">Estos valores sobreescriben la configuración individual de cada tarjeta del paquete.</p>
                             
-                            <!-- Textos CORTOS -->
-                            <div class="config-subsection">
-                                <div class="config-subsection-title">Textos Cortos</div>
-                                <div class="config-field">
-                                    <label class="config-label" style="margin-bottom: 4px;">Método de escritura:</label>
+                            <!-- === MÉTODOS DE LLENADO === -->
+                            <div class="config-subsection" style="border-left: 2px solid #3b82f6; padding-left: 10px;">
+                                <div class="config-subsection-title">⌨️ Métodos de Llenado (FILL)</div>
+                                
+                                <!-- Tier 1: Textos CORTOS -->
+                                <div style="margin-bottom: 12px; padding: 8px; background: rgba(59, 130, 246, 0.1); border-radius: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                        <span style="font-size: 11px; font-weight: 600; color: #60a5fa;">📝 Textos Cortos</span>
+                                        <span style="font-size: 9px; color: #9ca3af;">(< umbral largo)</span>
+                                    </div>
                                     <select class="config-select" id="shortTextMethodSelect">
-                                        <option value="keyByKey">🐢 Tecla por tecla (más humano)</option>
-                                        <option value="sendKeys">⚡ sendKeys directo (rápido)</option>
+                                        <option value="keyByKey">🐢 Tecla por tecla (humano)</option>
+                                        <option value="sendKeys">⚡ sendKeys (rápido)</option>
                                         <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
+                                        <option value="jsValue">🚀 JS injection (instantáneo)</option>
+                                    </select>
+                                    <!-- Opciones de keyByKey -->
+                                    <div class="config-method-options" id="shortTextKeyByKeyOptions" style="margin-top: 6px;">
+                                        <label class="config-label" style="font-size: 10px;">Delay entre teclas:</label>
+                                        <div class="config-row" style="margin-top: 4px;">
+                                            <div class="config-input-group">
+                                                <label class="config-input-label">Min</label>
+                                                <input type="number" class="config-input" id="typingMinInput" value="30" min="0" step="10" style="width: 55px;">
+                                                <span class="config-unit">ms</span>
+                                            </div>
+                                            <div class="config-input-group">
+                                                <label class="config-input-label">Max</label>
+                                                <input type="number" class="config-input" id="typingMaxInput" value="120" min="0" step="10" style="width: 55px;">
+                                                <span class="config-unit">ms</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Tier 2: Textos LARGOS -->
+                                <div style="margin-bottom: 12px; padding: 8px; background: rgba(234, 179, 8, 0.1); border-radius: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                        <span style="font-size: 11px; font-weight: 600; color: #fbbf24;">📄 Textos Largos</span>
+                                        <span style="font-size: 9px; color: #9ca3af;">(>= umbral largo, < umbral muy largo)</span>
+                                    </div>
+                                    <div class="config-inline-group" style="margin-bottom: 6px;">
+                                        <label class="config-label" style="margin: 0; font-size: 10px;">Umbral:</label>
+                                        <input type="number" class="config-input" id="longTextThreshold" value="30" min="10" step="5" style="width: 55px;">
+                                        <span class="config-unit">chars</span>
+                                    </div>
+                                    <select class="config-select" id="longTextMethodSelect">
+                                        <option value="sendKeys">⚡ sendKeys (rápido)</option>
+                                        <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
+                                        <option value="jsValue">🚀 JS injection (instantáneo)</option>
+                                        <option value="keyByKey">🐢 Tecla por tecla (lento)</option>
                                     </select>
                                 </div>
-                                <!-- Opciones específicas de keyByKey -->
-                                <div class="config-method-options" id="shortTextKeyByKeyOptions">
-                                    <label class="config-label" style="font-size: 10px;">⏱️ Delay entre teclas:</label>
-                                    <div class="config-row" style="margin-top: 4px;">
+                                
+                                <!-- Tier 3: Textos MUY LARGOS -->
+                                <div style="padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                                        <span style="font-size: 11px; font-weight: 600; color: #f87171;">📚 Textos Muy Largos</span>
+                                        <span style="font-size: 9px; color: #9ca3af;">(>= umbral muy largo)</span>
+                                    </div>
+                                    <div class="config-inline-group" style="margin-bottom: 6px;">
+                                        <label class="config-label" style="margin: 0; font-size: 10px;">Umbral:</label>
+                                        <input type="number" class="config-input" id="veryLongTextThreshold" value="100" min="50" step="10" style="width: 55px;">
+                                        <span class="config-unit">chars</span>
+                                    </div>
+                                    <select class="config-select" id="veryLongTextMethodSelect">
+                                        <option value="jsValue">🚀 JS injection (instantáneo)</option>
+                                        <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
+                                        <option value="sendKeys">⚡ sendKeys (rápido)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- === TIEMPOS DE PREGUNTAS === -->
+                            <div class="config-subsection" style="border-left: 2px solid #10b981; padding-left: 10px; margin-top: 12px;">
+                                <div class="config-subsection-title">⏱️ Tiempos entre Preguntas</div>
+                                <div class="config-checkbox-row" id="overrideDelaysToggle">
+                                    <div class="config-checkbox" id="overrideDelaysCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Sobreescribir delays de tarjetas</span>
+                                </div>
+                                <div id="overrideDelaysFields" style="margin-top: 8px; display: none;">
+                                    <div class="config-row">
                                         <div class="config-input-group">
                                             <label class="config-input-label">Min</label>
-                                            <input type="number" class="config-input" id="typingMinInput" value="30" min="0" step="10" style="width: 60px;">
+                                            <input type="number" class="config-input" id="questionDelayMinInput" value="500" min="0" step="100" style="width: 65px;">
                                             <span class="config-unit">ms</span>
                                         </div>
                                         <div class="config-input-group">
                                             <label class="config-input-label">Max</label>
-                                            <input type="number" class="config-input" id="typingMaxInput" value="120" min="0" step="10" style="width: 60px;">
+                                            <input type="number" class="config-input" id="questionDelayMaxInput" value="1500" min="0" step="100" style="width: 65px;">
                                             <span class="config-unit">ms</span>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Textos LARGOS -->
-                            <div class="config-subsection">
-                                <div class="config-subsection-title">Textos Largos (auto-detectar)</div>
-                                <div class="config-checkbox-row" id="autoDetectToggle">
-                                    <div class="config-checkbox checked" id="autoDetectCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Detectar textos largos automáticamente</span>
-                                </div>
-                                <div id="longTextOptions" style="margin-top: 10px;">
-                                    <div class="config-inline-group">
-                                        <label class="config-label" style="margin: 0; font-size: 10px;">Umbral:</label>
-                                        <input type="number" class="config-input" id="longTextThreshold" value="25" min="10" step="5" style="width: 60px;">
-                                        <span class="config-unit">caracteres</span>
-                                    </div>
-                                    <div class="config-field" style="margin-top: 10px;">
-                                        <label class="config-label" style="margin-bottom: 4px;">Método para textos largos:</label>
-                                        <select class="config-select" id="longTextMethodSelect">
-                                            <option value="sendKeys">⚡ sendKeys directo (rápido)</option>
-                                            <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
-                                            <option value="keyByKey">🐢 Tecla por tecla (lento)</option>
-                                        </select>
                                     </div>
                                 </div>
                             </div>
@@ -2310,16 +2353,15 @@
         const validateSelectToggle = shadow.getElementById('validateSelectToggle');
         const validateSelectCheckbox = shadow.getElementById('validateSelectCheckbox');
 
-        // Fill config
+        // Fill config (3-tier)
         const shortTextMethodSelect = shadow.getElementById('shortTextMethodSelect');
         const shortTextKeyByKeyOptions = shadow.getElementById('shortTextKeyByKeyOptions');
         const typingMinInput = shadow.getElementById('typingMinInput');
         const typingMaxInput = shadow.getElementById('typingMaxInput');
-        const autoDetectToggle = shadow.getElementById('autoDetectToggle');
-        const autoDetectCheckbox = shadow.getElementById('autoDetectCheckbox');
-        const longTextOptions = shadow.getElementById('longTextOptions');
-        const longTextThreshold = shadow.getElementById('longTextThreshold');
+        const longTextThresholdInput = shadow.getElementById('longTextThreshold');
         const longTextMethodSelect = shadow.getElementById('longTextMethodSelect');
+        const veryLongTextThresholdInput = shadow.getElementById('veryLongTextThreshold');
+        const veryLongTextMethodSelect = shadow.getElementById('veryLongTextMethodSelect');
 
         // Visual feedback
         const highlightToggle = shadow.getElementById('highlightToggle');
@@ -2336,9 +2378,6 @@
             fixedDelay: 2000,
             minDelay: 1000,
             maxDelay: 3000,
-            overrideDelays: false,
-            delayMinMs: 500,
-            delayMaxMs: 1500,
 
             // ═══ Sección 2: Human Actions ═══
             humanActionsEnabled: true,
@@ -2350,13 +2389,19 @@
             validateAfterFill: true,
             validateAfterSelect: true,
 
-            // ═══ Sección 4: Fill Config ═══
+            // ═══ Sección 4: Override Config (Llenado + Tiempos) ═══
+            // Métodos de llenado
             shortTextMethod: 'keyByKey',
             typingDelayMinMs: 30,
             typingDelayMaxMs: 120,
-            autoDetectLongText: true,
-            longTextThreshold: 25,
+            longTextThreshold: 30,
             longTextMethod: 'sendKeys',
+            veryLongTextThreshold: 100,
+            veryLongTextMethod: 'jsValue',
+            // Override tiempos
+            overrideDelays: false,
+            delayMinMs: 500,
+            delayMaxMs: 1500,
 
             // ═══ Sección 5: Visual Feedback ═══
             highlightElements: true,
@@ -2371,27 +2416,16 @@
             shortTextKeyByKeyOptions.style.display = method === 'keyByKey' ? 'block' : 'none';
         }
 
-        function updateAutoDetectUI() {
-            const isChecked = autoDetectCheckbox.classList.contains('checked');
-            longTextOptions.style.display = isChecked ? 'block' : 'none';
-        }
-
         function openConfigModal() {
             // ═══ Sección 1: Tiempos Globales ═══
             delayInput.value = configState.fixedDelay;
             delayMinInput.value = configState.minDelay;
             delayMaxInput.value = configState.maxDelay;
-            questionDelayMinInput.value = configState.delayMinMs;
-            questionDelayMaxInput.value = configState.delayMaxMs;
 
             // Random delay
             randomDelayCheckbox.classList.toggle('checked', configState.randomDelay);
             fixedDelayField.style.display = configState.randomDelay ? 'none' : 'block';
             randomDelayField.style.display = configState.randomDelay ? 'block' : 'none';
-
-            // Override delays
-            overrideDelaysCheckbox.classList.toggle('checked', configState.overrideDelays);
-            questionDelayField.style.display = configState.overrideDelays ? 'block' : 'none';
 
             // ═══ Sección 2: Human Actions ═══
             humanActionsCheckbox.classList.toggle('checked', configState.humanActionsEnabled);
@@ -2404,16 +2438,21 @@
             validateFillCheckbox.classList.toggle('checked', configState.validateAfterFill);
             validateSelectCheckbox.classList.toggle('checked', configState.validateAfterSelect);
 
-            // ═══ Sección 4: Fill Config ═══
+            // ═══ Sección 4: Override Config ═══
             shortTextMethodSelect.value = configState.shortTextMethod;
             typingMinInput.value = configState.typingDelayMinMs;
             typingMaxInput.value = configState.typingDelayMaxMs;
             updateShortTextMethodUI();
 
-            autoDetectCheckbox.classList.toggle('checked', configState.autoDetectLongText);
-            longTextThreshold.value = configState.longTextThreshold;
+            longTextThresholdInput.value = configState.longTextThreshold;
             longTextMethodSelect.value = configState.longTextMethod;
-            updateAutoDetectUI();
+            veryLongTextThresholdInput.value = configState.veryLongTextThreshold;
+            veryLongTextMethodSelect.value = configState.veryLongTextMethod;
+
+            overrideDelaysCheckbox.classList.toggle('checked', configState.overrideDelays);
+            questionDelayMinInput.value = configState.delayMinMs;
+            questionDelayMaxInput.value = configState.delayMaxMs;
+            overrideDelaysFields.style.display = configState.overrideDelays ? 'block' : 'none';
 
             // ═══ Sección 5: Visual Feedback ═══
             highlightCheckbox.classList.toggle('checked', configState.highlightElements);
@@ -2445,11 +2484,6 @@
             humanActionsFields.style.display = isChecked ? 'block' : 'none';
         }
 
-        function toggleAutoDetect() {
-            autoDetectCheckbox.classList.toggle('checked');
-            updateAutoDetectUI();
-        }
-
         function toggleCheckbox(checkbox) {
             checkbox.classList.toggle('checked');
         }
@@ -2461,9 +2495,6 @@
                 fixedDelay: parseInt(delayInput.value) || 2000,
                 minDelay: parseInt(delayMinInput.value) || 1000,
                 maxDelay: parseInt(delayMaxInput.value) || 3000,
-                overrideDelays: overrideDelaysCheckbox.classList.contains('checked'),
-                delayMinMs: parseInt(questionDelayMinInput.value) || 500,
-                delayMaxMs: parseInt(questionDelayMaxInput.value) || 1500,
 
                 // ═══ Sección 2: Human Actions ═══
                 humanActionsEnabled: humanActionsCheckbox.classList.contains('checked'),
@@ -2475,13 +2506,19 @@
                 validateAfterFill: validateFillCheckbox.classList.contains('checked'),
                 validateAfterSelect: validateSelectCheckbox.classList.contains('checked'),
 
-                // ═══ Sección 4: Fill Config ═══
+                // ═══ Sección 4: Override Config ═══
+                // Métodos de llenado (3 tiers)
                 shortTextMethod: shortTextMethodSelect.value,
                 typingDelayMinMs: parseInt(typingMinInput.value) || 30,
                 typingDelayMaxMs: parseInt(typingMaxInput.value) || 120,
-                autoDetectLongText: autoDetectCheckbox.classList.contains('checked'),
-                longTextThreshold: parseInt(longTextThreshold.value) || 25,
+                longTextThreshold: parseInt(longTextThresholdInput.value) || 30,
                 longTextMethod: longTextMethodSelect.value,
+                veryLongTextThreshold: parseInt(veryLongTextThresholdInput.value) || 100,
+                veryLongTextMethod: veryLongTextMethodSelect.value,
+                // Override tiempos
+                overrideDelays: overrideDelaysCheckbox.classList.contains('checked'),
+                delayMinMs: parseInt(questionDelayMinInput.value) || 500,
+                delayMaxMs: parseInt(questionDelayMaxInput.value) || 1500,
 
                 // ═══ Sección 5: Visual Feedback ═══
                 highlightElements: highlightCheckbox.classList.contains('checked'),
@@ -2515,7 +2552,6 @@
         validateFillToggle.onclick = () => toggleCheckbox(validateFillCheckbox);
         validateSelectToggle.onclick = () => toggleCheckbox(validateSelectCheckbox);
         highlightToggle.onclick = () => toggleCheckbox(highlightCheckbox);
-        autoDetectToggle.onclick = toggleAutoDetect;
         shortTextMethodSelect.onchange = updateShortTextMethodUI;
 
         configModalOverlay.onclick = (e) => {

@@ -69,15 +69,19 @@ class ExecutorConfig:
     validate_after_select: bool = True
     
     # ═══ Sección 4: Configuración de Llenado (FILL) ═══
-    # Método para textos cortos: 'keyByKey', 'sendKeys', 'ctrlV'
+    # Método para textos cortos (< long_text_threshold): 'keyByKey', 'sendKeys', 'ctrlV', 'jsValue'
     short_text_method: str = 'keyByKey'
     typing_delay_min_ms: int = 30
     typing_delay_max_ms: int = 120
     
-    # Textos largos
+    # Textos largos (>= long_text_threshold y < very_long_text_threshold)
     auto_detect_long_text: bool = True
-    long_text_threshold: int = 25  # Caracteres
-    long_text_method: str = 'sendKeys'  # 'keyByKey', 'sendKeys', 'ctrlV'
+    long_text_threshold: int = 30  # Caracteres
+    long_text_method: str = 'sendKeys'  # 'keyByKey', 'sendKeys', 'ctrlV', 'jsValue'
+    
+    # Textos muy largos (>= very_long_text_threshold)
+    very_long_text_threshold: int = 100  # Caracteres
+    very_long_text_method: str = 'jsValue'  # 'sendKeys', 'ctrlV', 'jsValue'
     
     # ═══ Sección 5: Visual Feedback ═══
     highlight_elements: bool = True
@@ -120,8 +124,10 @@ class ExecutorConfig:
             typing_delay_min_ms=data.get("typingDelayMinMs", 30),
             typing_delay_max_ms=data.get("typingDelayMaxMs", 120),
             auto_detect_long_text=data.get("autoDetectLongText", True),
-            long_text_threshold=data.get("longTextThreshold", 25),
+            long_text_threshold=data.get("longTextThreshold", 30),
             long_text_method=data.get("longTextMethod", "sendKeys"),
+            very_long_text_threshold=data.get("veryLongTextThreshold", 100),
+            very_long_text_method=data.get("veryLongTextMethod", "jsValue"),
             # Visual
             highlight_elements=data.get("highlightElements", True),
             # Delays especiales
@@ -549,6 +555,78 @@ class FormExecutor:
             element.send_keys(text)
         except Exception as e:
             self._log(0, 0, f"Clipboard paste falló: {e}, usando sendKeys", "warning")
+            element.send_keys(text)
+    
+    def _type_via_js(self, element: WebElement, text: str):
+        """Escribir texto via JavaScript (ULTRA RÁPIDO para textos largos de 1000+ chars)."""
+        try:
+            # Setear valor directamente via JS
+            self.driver.execute_script("""
+                const el = arguments[0];
+                const text = arguments[1];
+                
+                // Log inicio
+                console.log('[AutoForms] 🚀 JS VALUE INJECTION iniciando...');
+                console.log('[AutoForms] 📝 Texto longitud: ' + text.length + ' chars');
+                
+                // Setear valor
+                el.value = text;
+                
+                // Disparar eventos para que el formulario detecte el cambio
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                el.dispatchEvent(new Event('blur', { bubbles: true }));
+                
+                console.log('[AutoForms] ✅ JS VALUE INJECTION completado');
+            """, element, text)
+            
+            self._browser_log(f"JS injection exitoso ({len(text)} chars)")
+            
+        except Exception as e:
+            self._browser_log(f"JS injection falló: {e}, usando sendKeys", "error")
+            element.send_keys(text)
+    
+    def _browser_log(self, msg: str, level: str = "info"):
+        """Enviar log quirúrgico a consola del navegador."""
+        icons = {"info": "📍", "success": "✅", "warning": "⚠️", "error": "❌", "action": "🔹", "wait": "⏳"}
+        icon = icons.get(level, "•")
+        try:
+            # Escapar comillas en el mensaje
+            safe_msg = msg.replace("'", "\\'").replace('"', '\\"')
+            self.driver.execute_script(f"console.log('[AutoForms] {icon} {safe_msg}');")
+        except Exception:
+            pass
+        # También imprimir en consola Python
+        print(f"[AutoForms] {icon} {msg}", flush=True)
+    
+    def _check_pause_state(self) -> bool:
+        """Chequear si está pausado. Retorna True si debe continuar, False si debe abortar."""
+        if self.should_stop:
+            self._browser_log("STOP detectado - abortando", "error")
+            return False
+        
+        if self.is_paused:
+            self._browser_log("PAUSE detectado - esperando resume...", "wait")
+            while self.is_paused:
+                time.sleep(0.3)
+                if self.should_stop:
+                    self._browser_log("STOP detectado durante pausa - abortando", "error")
+                    return False
+            self._browser_log("RESUME detectado - continuando", "success")
+        
+        return True
+    
+    def _execute_write_method(self, element: WebElement, text: str, method: str):
+        """Ejecutar escritura según el método especificado."""
+        if method == 'jsValue':
+            self._type_via_js(element, text)
+        elif method == 'ctrlV':
+            self._type_via_clipboard(element, text)
+        elif method == 'keyByKey' and self.config.human_actions_enabled:
+            typing_info = f"(delay: {self.config.typing_delay_min_ms}-{self.config.typing_delay_max_ms}ms/tecla)"
+            self._browser_log(f"Escribiendo tecla por tecla {typing_info}...", "info")
+            self._human_type(element, text)
+        else:  # sendKeys (default)
             element.send_keys(text)
     
     def _validate_input_value(self, element: WebElement, expected_value: str) -> bool:
@@ -1261,29 +1339,33 @@ class FormExecutor:
             time.sleep(0.1)
             
             # Paso 7: Escribir usando el método configurado
+            if not self._check_pause_state():
+                return ActionResult(success=False, question_key=key, action_type=ActionType.FILL, error_message="Execution paused/stopped")
+            
             text_length = len(answer)
             is_long_text = (self.config.auto_detect_long_text and 
                            text_length >= self.config.long_text_threshold)
+            is_very_long_text = text_length >= self.config.very_long_text_threshold
             
-            # Determinar método a usar
-            if is_long_text:
+            # Log detallado en navegador
+            self._browser_log(f"PASO 7: Texto de {text_length} chars", "info")
+            
+            # Determinar método según tier
+            if is_very_long_text:
+                # Tier 3: Textos MUY largos
+                method = self.config.very_long_text_method
+                self._browser_log(f"Texto MUY largo ({text_length} chars >= {self.config.very_long_text_threshold}), método: {method}", "info")
+                self._execute_write_method(element, answer, method)
+            elif is_long_text:
+                # Tier 2: Textos largos
                 method = self.config.long_text_method
-                self._log(7, 9, f"Texto largo ({text_length} chars >= {self.config.long_text_threshold}), usando: {method}", "info")
+                self._browser_log(f"Texto largo ({text_length} chars >= {self.config.long_text_threshold}), método: {method}", "info")
+                self._execute_write_method(element, answer, method)
             else:
+                # Tier 1: Textos cortos
                 method = self.config.short_text_method
-                self._log(7, 9, f"Texto corto ({text_length} chars), usando: {method}", "info")
-            
-            # Ejecutar según método
-            if method == 'keyByKey' and self.config.human_actions_enabled:
-                typing_info = f"(delay: {self.config.typing_delay_min_ms}-{self.config.typing_delay_max_ms}ms/tecla)"
-                self._log(7, 9, f"Escribiendo tecla por tecla {typing_info}...", "info")
-                self._human_type(element, answer)
-            elif method == 'ctrlV':
-                self._log(7, 9, "Escribiendo via clipboard (Ctrl+V)...", "info")
-                self._type_via_clipboard(element, answer)
-            else:  # sendKeys (default)
-                self._log(7, 9, "Escribiendo via sendKeys directo...", "info")
-                element.send_keys(answer)
+                self._browser_log(f"Texto corto ({text_length} chars), método: {method}", "info")
+                self._execute_write_method(element, answer, method)
             
             time.sleep(0.2)
             
@@ -1352,24 +1434,22 @@ class FormExecutor:
         total = len(self.questions_ordered)
         is_branch = question.get("isBranch", False)
         
-        # Helper para log en navegador
-        def browser_log(msg, level="info"):
-            icons = {"info": "📍", "success": "✅", "warning": "⚠️", "error": "❌", "action": "🔹"}
-            icon = icons.get(level, "•")
-            try:
-                self.driver.execute_script(f"console.log('[AutoForms] {icon} {msg}');")
-            except:
-                pass
-            self._log(0, 0, msg, level)
-        
         print(f"\n{'='*60}", flush=True)
         branch_tag = " [BRANCH]" if is_branch else ""
-        browser_log(f"═══ INICIANDO SELECT{branch_tag} {idx}/{total}: {key} ═══", "action")
-        browser_log(f"Respuesta esperada: {answer}", "info")
+        self._browser_log(f"═══ INICIANDO SELECT{branch_tag} {idx}/{total}: {key} ═══", "action")
+        self._browser_log(f"Respuesta esperada: {answer}", "info")
+        
+        # Helper local para compatibilidad
+        def browser_log(msg, level="info"):
+            self._browser_log(msg, level)
         
         try:
+            # CHECK PAUSA ANTES DE BUSCAR
+            if not self._check_pause_state():
+                return ActionResult(success=False, question_key=key, action_type=ActionType.SELECT, error_message="Execution paused/stopped")
+            
             # ═══ PASO 1: Buscar elemento opción ═══
-            browser_log(f"PASO 1: Buscando elemento para opción: '{answer[:40]}...'", "info")
+            browser_log(f"PASO 1: Buscando elemento para opción: '{answer[:40] if len(answer) > 40 else answer}'...", "info")
             
             element = self._find_option_element(question, answer)
             if not element:
@@ -1423,6 +1503,12 @@ class FormExecutor:
                     browser_log("PASO 4: ✓ Glow aplicado al contenedor", "success")
                 except Exception as e:
                     browser_log(f"PASO 4: ⚠ Error aplicando glow: {e}", "warning")
+            
+            # CHECK PAUSA ANTES DE INTERACTUAR
+            if not self._check_pause_state():
+                if container:
+                    self._remove_highlight(container)
+                return ActionResult(success=False, question_key=key, action_type=ActionType.SELECT, error_message="Execution paused/stopped")
             
             # ═══ PASO 5: Mouse move a la opción (si human actions) ═══
             if self.config.human_actions_enabled and self.config.move_mouse_to_element:

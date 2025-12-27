@@ -505,8 +505,10 @@ class SeleniumProcessBooster:
             "typingDelayMinMs": config_data.get("typingDelayMinMs", 30),
             "typingDelayMaxMs": config_data.get("typingDelayMaxMs", 120),
             "autoDetectLongText": config_data.get("autoDetectLongText", True),
-            "longTextThreshold": config_data.get("longTextThreshold", 25),
+            "longTextThreshold": config_data.get("longTextThreshold", 30),
             "longTextMethod": config_data.get("longTextMethod", "sendKeys"),
+            "veryLongTextThreshold": config_data.get("veryLongTextThreshold", 100),
+            "veryLongTextMethod": config_data.get("veryLongTextMethod", "jsValue"),
             
             # ═══ Sección 5: Visual Feedback ═══
             "highlightElements": config_data.get("highlightElements", True),
