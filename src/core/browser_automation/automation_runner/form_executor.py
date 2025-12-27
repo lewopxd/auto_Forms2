@@ -27,7 +27,19 @@ from selenium.common.exceptions import (
     TimeoutException,
     StaleElementReferenceException,
     ElementNotInteractableException,
-    NoSuchElementException
+    NoSuchElementException,
+    ElementClickInterceptedException
+)
+
+# Arquitectura modular
+from .modules import (
+    WidgetController,
+    Timing,
+    VisualFeedback,
+    ViewportController,
+    ElementFinder,
+    Interaction,
+    Validator
 )
 
 
@@ -202,6 +214,18 @@ class FormExecutor:
         self.current_row_index = 0
         self.current_page_index = 0
         self.current_question_index = 0
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # MÓDULOS DE ARQUITECTURA LIMPIA
+        # ═══════════════════════════════════════════════════════════════════
+        # Cada módulo tiene una responsabilidad única
+        self.widget = WidgetController(driver)
+        self.timing = Timing()
+        self.visual = VisualFeedback(driver)
+        self.viewport = ViewportController(driver)
+        self.finder = ElementFinder(driver, timeout=self.config.element_wait_timeout)
+        self.interaction = Interaction(driver, self.widget)
+        self.validator = Validator(driver)
         
         # Índice de preguntas para acceso rápido
         self._build_question_index()
@@ -1333,12 +1357,10 @@ class FormExecutor:
             
             # Paso 6: Click en INPUT para dar focus + limpiar
             self._log(6, 9, "Click en input y limpiando campo...", "info")
-            try:
-                element.click()
-                time.sleep(0.05)
-            except Exception:
-                pass
-            element.clear()
+            # Usar safe_click para evitar intercepción por el widget
+            self.interaction.safe_click(element)
+            time.sleep(0.05)
+            self.interaction.clear_input(element)
             time.sleep(0.1)
             
             # Paso 7: Escribir usando el método configurado
@@ -1521,14 +1543,18 @@ class FormExecutor:
             else:
                 browser_log("PASO 5: Omitido (human_actions deshabilitado)", "info")
             
-            # ═══ PASO 6: CLICK EN OPCIÓN ═══
-            browser_log("PASO 6: ★★★ HACIENDO CLICK EN OPCIÓN ★★★", "action")
+            # ═══ PASO 6: CLICK EN OPCIÓN (SAFE) ═══
+            browser_log("PASO 6: ★★★ HACIENDO CLICK EN OPCIÓN (safe_click) ★★★", "action")
             self.driver.execute_script("""
                 console.log('[AutoForms] PASO 6: === CLICK EN OPCIÓN ===');
                 console.log('[AutoForms] PASO 6: Elemento a clickear:', arguments[0]);
             """, element)
             
-            element.click()
+            # Usar safe_click para evitar intercepción por el widget
+            if not self.interaction.safe_click(element):
+                browser_log("PASO 6: ⚠ safe_click falló, intentando JS click directo...", "warning")
+                self.interaction.js_click(element)
+            
             browser_log("PASO 6: Click ejecutado, esperando 500ms para DOM update...", "info")
             time.sleep(0.5)
             browser_log("PASO 6: ✓ Click completado", "success")
@@ -1541,7 +1567,7 @@ class FormExecutor:
                 
                 if not validation_result:
                     browser_log("PASO 7: ⚠ Primera validación falló, reintentando click...", "warning")
-                    element.click()
+                    self.interaction.safe_click(element)
                     time.sleep(0.6)
                     
                     validation_result = self._validate_select_value(element, answer)
