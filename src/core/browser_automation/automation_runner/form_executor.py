@@ -740,9 +740,10 @@ class FormExecutor:
         
         for i, opt in enumerate(options):
             opt_value = opt.get("value", "")
-            self.driver.execute_script(f"""
-                console.log('[AutoForms]   [{i}] "{opt_value}"' + ({'"' + opt_value + '"' === '"{answer_value}"'} ? ' ✓ MATCH' : ''));
-            """)
+            is_match = "✓ MATCH" if opt_value == answer_value else ""
+            self.driver.execute_script(
+                f"console.log('[AutoForms]   [{i}] \"{opt_value}\" {is_match}');"
+            )
             if opt_value == answer_value:
                 target_option = opt
                 break
