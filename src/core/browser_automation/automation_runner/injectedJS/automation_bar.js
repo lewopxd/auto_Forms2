@@ -868,23 +868,20 @@
                 }
                 
                 /* ═══════════════════════════════════════════════════════════
-                   TARJETAS DE ACCIÓN (reutilizables)
+                   TARJETAS DE ACCIÓN (rediseño: círculo en header, drag, colapso)
                    ═══════════════════════════════════════════════════════════ */
                 
                 .action-container {
                     position: fixed;
                     top: 60px;
-                    left: 16px;
+                    right: 16px;
                     z-index: 9999;
                 }
                 
                 .action-wrapper {
                     position: absolute;
                     top: 0;
-                    left: 0;
-                    display: flex;
-                    align-items: flex-start;
-                    gap: 10px;
+                    right: 0;
                     opacity: 0;
                     transform: translateY(50px);
                     pointer-events: none;
@@ -903,21 +900,102 @@
                     pointer-events: none;
                 }
                 
-                /* Círculo indicador exterior */
+                .action-wrapper.dragging {
+                    transition: none !important;
+                    user-select: none;
+                }
+                
+                .action-wrapper.collapsed .action-card-body,
+                .action-wrapper.collapsed .action-card-header-content {
+                    display: none !important;
+                }
+                
+                .action-wrapper.collapsed .action-card {
+                    width: auto !important;
+                    min-width: 0 !important;
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                
+                /* Tarjeta */
+                .action-card {
+                    width: 200px;
+                    min-width: 180px;
+                    max-width: 400px;
+                    background: white;
+                    border-radius: 8px;
+                    border: 1px solid #d1d5db;
+                    border-left-width: 3px;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    overflow: visible;
+                    display: flex;
+                    flex-direction: column;
+                    resize: horizontal;
+                }
+                
+                .action-card.fill { border-left-color: #3b82f6; }
+                .action-card.select { border-left-color: #8b5cf6; }
+                .action-card.click { border-left-color: #f97316; }
+                
+                .action-card-header {
+                    display: flex;
+                    align-items: center;
+                    padding: 6px 10px;
+                    background: #f9fafb;
+                    border-bottom: 1px solid #e5e7eb;
+                    gap: 8px;
+                    position: relative;
+                }
+                
+                .action-card-header-content {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                
+                .action-type-chip {
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 9px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.3px;
+                }
+                
+                .action-type-chip.fill { background: #dbeafe; color: #1e40af; }
+                .action-type-chip.select { background: #ede9fe; color: #5b21b6; }
+                .action-type-chip.click { background: #ffedd5; color: #c2410c; }
+                
+                /* Círculo indicador (ahora en el header, esquina derecha) */
                 .action-indicator {
-                    width: 32px;
-                    height: 32px;
+                    width: 28px;
+                    height: 28px;
                     border-radius: 50%;
                     border: 3px solid #e5e7eb;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 12px;
+                    font-size: 11px;
                     font-weight: 700;
                     color: #6b7280;
                     background: white;
                     flex-shrink: 0;
                     position: relative;
+                    cursor: grab;
+                    user-select: none;
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                
+                .action-indicator:hover {
+                    transform: scale(1.08);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                }
+                
+                .action-indicator:active {
+                    cursor: grabbing;
+                    transform: scale(0.95);
                 }
                 
                 /* Colores por tipo (anillo estático) */
@@ -944,7 +1022,6 @@
                     to { transform: rotate(360deg); }
                 }
                 
-                
                 /* Estado: Success */
                 .action-indicator.success {
                     border-color: #22c55e;
@@ -952,8 +1029,8 @@
                 }
                 
                 .action-indicator.success svg {
-                    width: 16px;
-                    height: 16px;
+                    width: 14px;
+                    height: 14px;
                 }
                 
                 /* Estado: Error */
@@ -963,54 +1040,19 @@
                 }
                 
                 .action-indicator.error svg {
-                    width: 16px;
-                    height: 16px;
-                }
-                
-                .action-indicator svg {
                     width: 14px;
                     height: 14px;
                 }
                 
-                /* Tarjeta */
-                .action-card {
-                    width: 260px;
-                    background: white;
-                    border-radius: 8px;
-                    border: 1px solid #d1d5db;
-                    border-left-width: 3px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-                    overflow: hidden;
+                .action-indicator svg {
+                    width: 12px;
+                    height: 12px;
                 }
-                
-                .action-card.fill { border-left-color: #3b82f6; }
-                .action-card.select { border-left-color: #8b5cf6; }
-                .action-card.click { border-left-color: #f97316; }
-                
-                .action-card-header {
-                    display: flex;
-                    align-items: center;
-                    padding: 6px 10px;
-                    background: #f9fafb;
-                    border-bottom: 1px solid #e5e7eb;
-                    gap: 8px;
-                }
-                
-                .action-type-chip {
-                    padding: 2px 6px;
-                    border-radius: 3px;
-                    font-size: 9px;
-                    font-weight: 700;
-                    text-transform: uppercase;
-                    letter-spacing: 0.3px;
-                }
-                
-                .action-type-chip.fill { background: #dbeafe; color: #1e40af; }
-                .action-type-chip.select { background: #ede9fe; color: #5b21b6; }
-                .action-type-chip.click { background: #ffedd5; color: #c2410c; }
                 
                 .action-card-body {
                     padding: 10px;
+                    max-height: 200px;
+                    overflow-y: auto;
                 }
                 
                 .action-question {
@@ -1058,6 +1100,25 @@
                     border-radius: 3px;
                     color: #c2410c;
                     font-family: monospace;
+                }
+                
+                /* Resize handles */
+                .action-resize-left,
+                .action-resize-right {
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    width: 6px;
+                    cursor: ew-resize;
+                    z-index: 10;
+                }
+                
+                .action-resize-left { left: -3px; }
+                .action-resize-right { right: -3px; }
+                
+                .action-resize-left:hover,
+                .action-resize-right:hover {
+                    background: rgba(102, 126, 234, 0.3);
                 }
                 
                 /* ═══════════════════════════════════════════════════════════
@@ -1732,24 +1793,32 @@
             <div class="action-container" id="actionContainer">
                 <!-- Tarjeta A -->
                 <div class="action-wrapper" id="actionWrapperA">
-                    <div class="action-indicator" id="actionIndicatorA">
-                        <span id="actionNumTextA">1</span>
-                    </div>
                     <div class="action-card" id="actionCardA">
+                        <div class="action-resize-left" data-resize="left"></div>
+                        <div class="action-resize-right" data-resize="right"></div>
                         <div class="action-card-header">
-                            <span class="action-type-chip" id="actionTypeChipA">FILL</span>
+                            <div class="action-card-header-content">
+                                <span class="action-type-chip" id="actionTypeChipA">FILL</span>
+                            </div>
+                            <div class="action-indicator" id="actionIndicatorA" title="Click para colapsar, arrastrar para mover">
+                                <span id="actionNumTextA">1</span>
+                            </div>
                         </div>
                         <div class="action-card-body" id="actionCardBodyA"></div>
                     </div>
                 </div>
                 <!-- Tarjeta B -->
                 <div class="action-wrapper" id="actionWrapperB">
-                    <div class="action-indicator" id="actionIndicatorB">
-                        <span id="actionNumTextB">2</span>
-                    </div>
                     <div class="action-card" id="actionCardB">
+                        <div class="action-resize-left" data-resize="left"></div>
+                        <div class="action-resize-right" data-resize="right"></div>
                         <div class="action-card-header">
-                            <span class="action-type-chip" id="actionTypeChipB">FILL</span>
+                            <div class="action-card-header-content">
+                                <span class="action-type-chip" id="actionTypeChipB">FILL</span>
+                            </div>
+                            <div class="action-indicator" id="actionIndicatorB" title="Click para colapsar, arrastrar para mover">
+                                <span id="actionNumTextB">2</span>
+                            </div>
                         </div>
                         <div class="action-card-body" id="actionCardBodyB"></div>
                     </div>
@@ -2558,12 +2627,219 @@
 
         const testPanel = shadow.getElementById('testPanel');
         const testPanelList = shadow.getElementById('testPanelList');
+        const actionContainer = shadow.getElementById('actionContainer');
 
         // Iconos para estados
         const STATE_ICONS = {
             check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,
-            alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`
+            alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+            robot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>`
         };
+
+        // Estado de automatización (para bloquear drag/resize durante play)
+        let isAutomationRunning = false;
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SISTEMA DE DRAG, COLAPSO Y RESIZE
+        // ═══════════════════════════════════════════════════════════════════
+
+        let isDragging = false;
+        let isResizing = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let containerStartX = 0;
+        let containerStartY = 0;
+        let resizeSide = null;
+        let resizeStartWidth = 0;
+        let resizeStartX = 0;
+        let activeResizeCard = null;
+        let isCollapsed = false;
+        let dragThreshold = 5;
+        let hasDragged = false;
+
+        // Obtener posición actual del contenedor
+        function getContainerPosition() {
+            const rect = actionContainer.getBoundingClientRect();
+            return { x: rect.left, y: rect.top };
+        }
+
+        // Aplicar posición al contenedor (con límites de pantalla)
+        function setContainerPosition(x, y) {
+            const containerRect = actionContainer.getBoundingClientRect();
+            const padding = 10;
+
+            // Limitar a los bordes de la pantalla
+            const maxX = window.innerWidth - containerRect.width - padding;
+            const maxY = window.innerHeight - containerRect.height - padding;
+
+            x = Math.max(padding, Math.min(x, maxX));
+            y = Math.max(BAR_HEIGHT + padding, Math.min(y, maxY));
+
+            // Cambiar de right a left positioning para drag
+            actionContainer.style.right = 'auto';
+            actionContainer.style.left = x + 'px';
+            actionContainer.style.top = y + 'px';
+        }
+
+        // Handler de inicio de drag (mousedown en el indicador)
+        function handleDragStart(e, wrapper) {
+            // Si la automatización está corriendo, no permitir drag/colapso
+            if (isAutomationRunning) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            // Prevenir default y propagación
+            e.preventDefault();
+            e.stopPropagation();
+
+            isDragging = true;
+            hasDragged = false;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+
+            const rect = actionContainer.getBoundingClientRect();
+            containerStartX = rect.left;
+            containerStartY = rect.top;
+
+            wrapper.classList.add('dragging');
+            document.body.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+        }
+
+        // Handler de drag (mousemove)
+        function handleDragMove(e) {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+
+            // Solo marcar como "dragged" si movió más que el threshold
+            if (Math.abs(deltaX) > dragThreshold || Math.abs(deltaY) > dragThreshold) {
+                hasDragged = true;
+            }
+
+            if (hasDragged) {
+                setContainerPosition(containerStartX + deltaX, containerStartY + deltaY);
+            }
+        }
+
+        // Handler de fin de drag (mouseup)
+        function handleDragEnd(e) {
+            if (!isDragging) return;
+
+            isDragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+
+            wrapperA.classList.remove('dragging');
+            wrapperB.classList.remove('dragging');
+
+            // Si no se movió (click simple), toggle colapso
+            if (!hasDragged) {
+                toggleCollapse();
+            }
+        }
+
+        // Toggle colapso de la tarjeta
+        function toggleCollapse() {
+            isCollapsed = !isCollapsed;
+            wrapperA.classList.toggle('collapsed', isCollapsed);
+            wrapperB.classList.toggle('collapsed', isCollapsed);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RESIZE HANDLERS
+        // ═══════════════════════════════════════════════════════════════════
+
+        function handleResizeStart(e, card, side) {
+            // Si la automatización está corriendo, no permitir resize
+            if (isAutomationRunning) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            isResizing = true;
+            resizeSide = side;
+            resizeStartX = e.clientX;
+            resizeStartWidth = card.offsetWidth;
+            activeResizeCard = card;
+
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+        }
+
+        function handleResizeMove(e) {
+            if (!isResizing || !activeResizeCard) return;
+
+            const deltaX = e.clientX - resizeStartX;
+            let newWidth;
+
+            if (resizeSide === 'right') {
+                newWidth = resizeStartWidth + deltaX;
+            } else {
+                newWidth = resizeStartWidth - deltaX;
+            }
+
+            // Aplicar límites
+            newWidth = Math.max(180, Math.min(400, newWidth));
+            activeResizeCard.style.width = newWidth + 'px';
+
+            // Si resize desde la izquierda, también mover el contenedor
+            if (resizeSide === 'left') {
+                const containerRect = actionContainer.getBoundingClientRect();
+                const widthDiff = resizeStartWidth - newWidth;
+                setContainerPosition(containerRect.left + widthDiff, containerRect.top);
+            }
+        }
+
+        function handleResizeEnd(e) {
+            if (!isResizing) return;
+
+            isResizing = false;
+            resizeSide = null;
+            activeResizeCard = null;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // EVENT BINDINGS
+        // ═══════════════════════════════════════════════════════════════════
+
+        // Bind drag events al indicador
+        indicatorA.addEventListener('mousedown', (e) => handleDragStart(e, wrapperA));
+        indicatorB.addEventListener('mousedown', (e) => handleDragStart(e, wrapperB));
+
+        // Bind resize events
+        cardA.querySelector('.action-resize-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'left'));
+        cardA.querySelector('.action-resize-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'right'));
+        cardB.querySelector('.action-resize-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'left'));
+        cardB.querySelector('.action-resize-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'right'));
+
+        // Global mouse events para drag y resize
+        document.addEventListener('mousemove', (e) => {
+            handleDragMove(e);
+            handleResizeMove(e);
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            handleDragEnd(e);
+            handleResizeEnd(e);
+        });
+
+        // Prevenir propagación de clicks durante drag
+        actionContainer.addEventListener('click', (e) => {
+            if (hasDragged) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        }, true);
 
         // Alternar entre tarjetas A y B
         let useCardA = true;
@@ -2628,8 +2904,9 @@
                     bodyHtml += `<div class="action-opt ${isSelected ? 'selected' : ''}">${escHtml(opt)}</div>`;
                 });
                 bodyHtml += '</div>';
-            } else if (type === 'click' && selector) {
-                bodyHtml += `<div class="action-selector">${escHtml(selector)}</div>`;
+            } else if (type === 'click') {
+                // Navegación: Usar estilo naranja para la respuesta
+                bodyHtml += `<div class="action-answer" style="background: #fff7ed; border-color: #fdba74; color: #c2410c;">${escHtml(answer)}</div>`;
             }
 
             activeBody.innerHTML = bodyHtml;
@@ -2762,6 +3039,18 @@
         window.__autoforms_updateStatus = function (status, message) {
             statusDot.className = 'status-dot ' + status;
             statusText.textContent = message || 'Listo';
+
+            // Actualizar estado de automatización para bloquear/desbloquear drag/resize
+            isAutomationRunning = (status === 'running');
+
+            // Actualizar clase visual del indicador para reflejar estado
+            if (isAutomationRunning) {
+                indicatorA.style.cursor = 'default';
+                indicatorB.style.cursor = 'default';
+            } else {
+                indicatorA.style.cursor = 'grab';
+                indicatorB.style.cursor = 'grab';
+            }
         };
 
         // Update current row (called by Python)
@@ -2805,6 +3094,47 @@
         window.__autoforms_hideAction = function () {
             hideActionCard();
         };
+
+        // Set automation running state (for blocking drag/resize)
+        window.__autoforms_setRunning = function (running) {
+            isAutomationRunning = running;
+
+            if (isAutomationRunning) {
+                indicatorA.style.cursor = 'default';
+                indicatorB.style.cursor = 'default';
+            } else {
+                indicatorA.style.cursor = 'grab';
+                indicatorB.style.cursor = 'grab';
+            }
+        };
+
+        // Show initial "Ready" state card
+        function showReadyCard() {
+            const readyAction = {
+                num: '',
+                type: 'click',  // Naranja
+                question: '¡Preparado!',
+                answer: 'Listo para iniciar automatización'
+            };
+
+            // Mostrar en tarjeta A
+            chipA.textContent = 'READY';
+            chipA.className = 'action-type-chip click';
+            cardA.className = 'action-card click';
+            indicatorA.className = 'action-indicator click';
+            numTextA.innerHTML = STATE_ICONS.robot;
+            bodyA.innerHTML = `
+                <div class="action-question">¡Preparado!</div>
+                <div class="action-answer" style="background: #fff7ed; border-color: #fdba74; color: #c2410c;">
+                    Arrastra el círculo para mover • Click para colapsar
+                </div>
+            `;
+
+            wrapperA.classList.add('visible');
+        }
+
+        // Mostrar tarjeta inicial al cargar
+        showReadyCard();
 
         console.log('[AutoForms] Automation Bar ready');
         console.log('[AutoForms] Package:', pkg.filename, '|', pkg.totalRows, 'rows |', pkg.totalQuestions, 'questions');

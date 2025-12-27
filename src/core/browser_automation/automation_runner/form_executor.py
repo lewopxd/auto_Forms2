@@ -1703,6 +1703,16 @@ class FormExecutor:
         self._browser_log(f"═══ CLICK_BUTTON: {label.upper()} ═══", "action")
         
         try:
+            # === Notificar inicio de acción (PARA WIDGET UI) ===
+            action_info = {
+                "num": "NAV",
+                "type": "click",
+                "question": "Navegación",
+                "answer": f"Click en {label.upper()}",
+                "key": f"nav_{button_type}"
+            }
+            self._emit_action_start(action_info)
+
             # ═══ PASO 1: Buscar botón ═══
             self._browser_log(f"PASO 1: Buscando botón '{label}'...", "info")
             
@@ -1786,23 +1796,28 @@ class FormExecutor:
             
             self._browser_log(f"✅ {label.upper()} completado", "success")
             
-            return ActionResult(
+            result = ActionResult(
                 success=True,
                 question_key=f"nav_{button_type}",
                 action_type=ActionType.CLICK,
                 value_filled=button_type
             )
+            # Notificar acción completada
+            self._emit_action_complete(result)
+            return result
             
         except Exception as e:
             self._browser_log(f"ERROR CRÍTICO en click_button: {e}", "error")
             import traceback
             traceback.print_exc()
-            return ActionResult(
+            result = ActionResult(
                 success=False,
                 question_key=f"nav_{button_type}",
                 action_type=ActionType.CLICK,
                 error_message=str(e)
             )
+            self._emit_action_complete(result)
+            return result
     
     def _navigate_to_next_page(self, current_page: dict) -> bool:
         """Navegar a la siguiente página usando el patrón estándar de click."""

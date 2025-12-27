@@ -353,25 +353,11 @@ class ElementFinder:
                 except Exception:
                     pass
             
-            # ═══════════════════════════════════════════════════════════════════
-            # ESTRATEGIA 4: Último recurso - buscar por posición
-            # ═══════════════════════════════════════════════════════════════════
-            element = self.driver.execute_script('''
-                const navType = arguments[0];
-                const buttons = document.querySelectorAll('button, [role="button"]');
-                const visibleButtons = Array.from(buttons).filter(b => b.offsetParent !== null);
-                
-                if (navType === 'next' || navType === 'submit') {
-                    // Botón más a la derecha o el último
-                    return visibleButtons[visibleButtons.length - 1];
-                } else if (navType === 'back') {
-                    // Primer botón o el más a la izquierda
-                    return visibleButtons[0];
-                }
-                return null;
-            ''', nav_type)
-            
-            return element
+            # Si llegamos aquí, el botón no fue encontrado
+            # NO usamos fallback por posición porque es demasiado arriesgado
+            # (podría encontrar opciones de select u otros elementos)
+            print(f"[ElementFinder] Botón {nav_type} no encontrado con ninguna estrategia")
+            return None
             
         except Exception as e:
             print(f"[ElementFinder] Error buscando botón {nav_type}: {e}")
