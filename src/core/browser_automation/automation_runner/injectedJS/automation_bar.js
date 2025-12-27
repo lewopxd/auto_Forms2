@@ -2688,7 +2688,6 @@
         let containerInitialLeft = 0;
         let containerInitialTop = 0;
         let activeResizeCard = null;
-        let activeResizeCard = null;
         let isCollapsed = false;
         let dragThreshold = 5;
         let hasDragged = false;
