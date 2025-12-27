@@ -108,6 +108,10 @@ class ExecutorConfig:
     page_change_delay_ms: int = 2000
     branch_delay_ms: int = 1500
     
+    # ═══ Sección 7: Post Submit Actions ═══
+    post_submit_enabled: bool = False
+    post_submit_timeout_ms: int = 60000
+    
     # ═══ Error Handling & Timeouts ═══
     stop_on_error: bool = True
     max_retries: int = 1
@@ -151,6 +155,9 @@ class ExecutorConfig:
             # Delays especiales
             page_change_delay_ms=data.get("pageChangeDelayMs", 2000),
             branch_delay_ms=data.get("branchDelayMs", 1500),
+            # Post Submit
+            post_submit_enabled=data.get("postSubmitEnabled", False),
+            post_submit_timeout_ms=data.get("postSubmitTimeoutMs", 60000),
             # Error handling
             stop_on_error=data.get("stopOnError", True),
             max_retries=data.get("maxRetries", 1),
@@ -236,12 +243,8 @@ class FormExecutor:
         # ═══════════════════════════════════════════════════════════════════
         # POSTSUBMIT MODULES
         # ═══════════════════════════════════════════════════════════════════
-        # Extraer config de PostSubmit del paquete
-        automation_config = full_data.get("automationConfig", {})
-        postsubmit_config = automation_config.get("postSubmit", {})
-        
-        # Inicializar PostSubmit si está habilitado
-        self.postsubmit_enabled = postsubmit_config.get("enabled", False)
+        # PostSubmit se configura desde ExecutorConfig (viene de la UI inyectada)
+        self.postsubmit_enabled = self.config.post_submit_enabled
         self.postsubmit_executor = None
         self.result_storage = None
         
@@ -249,8 +252,8 @@ class FormExecutor:
             # Configurar PostSubmit
             ps_config = PostSubmitConfig(
                 enabled=True,
-                url_capture_timeout_ms=postsubmit_config.get("timeoutMs", 60000),
-                relogin_timeout_ms=postsubmit_config.get("reloginTimeoutMs", 600000)
+                url_capture_timeout_ms=self.config.post_submit_timeout_ms,
+                relogin_timeout_ms=600000  # 10 minutos por defecto
             )
             self.postsubmit_executor = PostSubmitExecutor(driver, ps_config)
             
@@ -261,6 +264,7 @@ class FormExecutor:
                 package_name=package_name,
                 package_path=package_path
             )
+            print(f"[FormExecutor] PostSubmit habilitado con timeout {self.config.post_submit_timeout_ms}ms")
         
         # Índice de preguntas para acceso rápido
         self._build_question_index()

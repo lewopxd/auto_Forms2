@@ -1806,6 +1806,29 @@
                             <p style="font-size: 9px; color: #9ca3af; margin-top: 6px;">Branch: después de click en pregunta condicional. Página: después de click en Siguiente.</p>
                         </div>
                         
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 7: Post Submit Actions ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">📤 Post Submit Actions</div>
+                            <div class="config-checkbox-row" id="postSubmitToggle">
+                                <div class="config-checkbox" id="postSubmitCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Guardar respuesta (capturar edit URL)</span>
+                            </div>
+                            <div id="postSubmitFields" style="margin-top: 8px; display: none;">
+                                <div class="config-subsection" style="border-left: 2px solid #f97316;">
+                                    <p style="font-size: 10px; color: #6b7280; margin-bottom: 8px;">
+                                        Después de enviar el formulario, hace clic en "Guardar respuestas" y captura el link de edición.
+                                    </p>
+                                    <div class="config-input-group">
+                                        <label class="config-label" style="margin: 0;">Timeout:</label>
+                                        <input type="number" class="config-input" id="postSubmitTimeoutInput" value="60000" min="10000" step="5000" style="width: 80px;">
+                                        <span class="config-unit">ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                     </div>
                     <div class="config-modal-footer">
                         <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
@@ -2449,6 +2472,12 @@
         const branchDelayInput = shadow.getElementById('branchDelayInput');
         const pageChangeDelayInput = shadow.getElementById('pageChangeDelayInput');
 
+        // Post Submit Actions
+        const postSubmitToggle = shadow.getElementById('postSubmitToggle');
+        const postSubmitCheckbox = shadow.getElementById('postSubmitCheckbox');
+        const postSubmitFields = shadow.getElementById('postSubmitFields');
+        const postSubmitTimeoutInput = shadow.getElementById('postSubmitTimeoutInput');
+
         // Estado de configuración completo
         let configState = {
             // ═══ Sección 1: Tiempos Globales ═══
@@ -2486,7 +2515,11 @@
 
             // ═══ Sección 6: Delays Especiales ═══
             branchDelayMs: 1500,
-            pageChangeDelayMs: 2000
+            pageChangeDelayMs: 2000,
+
+            // ═══ Sección 7: Post Submit Actions ═══
+            postSubmitEnabled: false,
+            postSubmitTimeoutMs: 60000
         };
 
         function updateShortTextMethodUI() {
@@ -2538,6 +2571,11 @@
             // ═══ Sección 6: Delays Especiales ═══
             branchDelayInput.value = configState.branchDelayMs;
             pageChangeDelayInput.value = configState.pageChangeDelayMs;
+
+            // ═══ Sección 7: Post Submit Actions ═══
+            postSubmitCheckbox.classList.toggle('checked', configState.postSubmitEnabled);
+            postSubmitTimeoutInput.value = configState.postSubmitTimeoutMs;
+            postSubmitFields.style.display = configState.postSubmitEnabled ? 'block' : 'none';
 
             configModalOverlay.classList.add('open');
         }
@@ -2603,7 +2641,11 @@
 
                 // ═══ Sección 6: Delays Especiales ═══
                 branchDelayMs: parseInt(branchDelayInput.value) || 1500,
-                pageChangeDelayMs: parseInt(pageChangeDelayInput.value) || 2000
+                pageChangeDelayMs: parseInt(pageChangeDelayInput.value) || 2000,
+
+                // ═══ Sección 7: Post Submit Actions ═══
+                postSubmitEnabled: postSubmitCheckbox.classList.contains('checked'),
+                postSubmitTimeoutMs: parseInt(postSubmitTimeoutInput.value) || 60000
             };
 
             // Enviar configuración al backend
@@ -2631,6 +2673,12 @@
         validateSelectToggle.onclick = () => toggleCheckbox(validateSelectCheckbox);
         highlightToggle.onclick = () => toggleCheckbox(highlightCheckbox);
         shortTextMethodSelect.onchange = updateShortTextMethodUI;
+
+        // Post Submit toggle
+        postSubmitToggle.onclick = () => {
+            const isChecked = postSubmitCheckbox.classList.toggle('checked');
+            postSubmitFields.style.display = isChecked ? 'block' : 'none';
+        };
 
         configModalOverlay.onclick = (e) => {
             if (e.target === configModalOverlay) closeConfigModal();

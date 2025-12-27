@@ -516,6 +516,10 @@ class SeleniumProcessBooster:
             # ═══ Sección 6: Delays Especiales ═══
             "branchDelayMs": config_data.get("branchDelayMs", 1500),
             "pageChangeDelayMs": config_data.get("pageChangeDelayMs", 2000),
+            
+            # ═══ Sección 7: Post Submit Actions ═══
+            "postSubmitEnabled": config_data.get("postSubmitEnabled", False),
+            "postSubmitTimeoutMs": config_data.get("postSubmitTimeoutMs", 60000),
         })
         
         if cls._executor:
