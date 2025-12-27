@@ -1103,21 +1103,46 @@
                 }
                 
                 /* Resize handles */
-                .action-resize-left,
-                .action-resize-right {
+                .action-resize-left, .action-resize-right {
                     position: absolute;
                     top: 0;
                     bottom: 0;
-                    width: 6px;
+                    width: 8px;
                     cursor: ew-resize;
                     z-index: 10;
                 }
+                .action-resize-left { left: -4px; }
+                .action-resize-right { right: -4px; }
+
+                .action-resize-bottom {
+                    position: absolute;
+                    bottom: -4px;
+                    left: 0;
+                    right: 0;
+                    height: 8px;
+                    cursor: ns-resize;
+                    z-index: 10;
+                }
+
+                .action-resize-bottom-left, .action-resize-bottom-right {
+                    position: absolute;
+                    bottom: -4px;
+                    width: 12px;
+                    height: 12px;
+                    z-index: 11;
+                }
+                .action-resize-bottom-left { 
+                    left: -4px; 
+                    cursor: nesw-resize;
+                }
+                .action-resize-bottom-right { 
+                    right: -4px; 
+                    cursor: nwse-resize;
+                }
                 
-                .action-resize-left { left: -3px; }
-                .action-resize-right { right: -3px; }
-                
-                .action-resize-left:hover,
-                .action-resize-right:hover {
+                .action-resize-left:hover, .action-resize-right:hover,
+                .action-resize-bottom:hover,
+                .action-resize-bottom-left:hover, .action-resize-bottom-right:hover {
                     background: rgba(102, 126, 234, 0.3);
                 }
                 
@@ -1796,6 +1821,9 @@
                     <div class="action-card" id="actionCardA">
                         <div class="action-resize-left" data-resize="left"></div>
                         <div class="action-resize-right" data-resize="right"></div>
+                        <div class="action-resize-bottom" data-resize="bottom"></div>
+                        <div class="action-resize-bottom-left" data-resize="bottom-left"></div>
+                        <div class="action-resize-bottom-right" data-resize="bottom-right"></div>
                         <div class="action-card-header">
                             <div class="action-card-header-content">
                                 <span class="action-type-chip" id="actionTypeChipA">FILL</span>
@@ -1812,6 +1840,9 @@
                     <div class="action-card" id="actionCardB">
                         <div class="action-resize-left" data-resize="left"></div>
                         <div class="action-resize-right" data-resize="right"></div>
+                        <div class="action-resize-bottom" data-resize="bottom"></div>
+                        <div class="action-resize-bottom-left" data-resize="bottom-left"></div>
+                        <div class="action-resize-bottom-right" data-resize="bottom-right"></div>
                         <div class="action-card-header">
                             <div class="action-card-header-content">
                                 <span class="action-type-chip" id="actionTypeChipB">FILL</span>
@@ -2651,7 +2682,12 @@
         let containerStartY = 0;
         let resizeSide = null;
         let resizeStartWidth = 0;
+        let resizeStartHeight = 0;
         let resizeStartX = 0;
+        let resizeStartY = 0;
+        let containerInitialLeft = 0;
+        let containerInitialTop = 0;
+        let activeResizeCard = null;
         let activeResizeCard = null;
         let isCollapsed = false;
         let dragThreshold = 5;
@@ -2767,10 +2803,25 @@
             isResizing = true;
             resizeSide = side;
             resizeStartX = e.clientX;
+            resizeStartY = e.clientY;
+
             resizeStartWidth = card.offsetWidth;
+            resizeStartHeight = card.offsetHeight;
+
+            // Guardar posición inicial del contenedor para correcciones de lado izquierdo
+            const rect = actionContainer.getBoundingClientRect();
+            containerInitialLeft = rect.left;
+            containerInitialTop = rect.top;
+
             activeResizeCard = card;
 
-            document.body.style.cursor = 'ew-resize';
+            // Cursor apropiado
+            let cursor = 'ew-resize';
+            if (side === 'bottom') cursor = 'ns-resize';
+            else if (side === 'bottom-left') cursor = 'nesw-resize';
+            else if (side === 'bottom-right') cursor = 'nwse-resize';
+
+            document.body.style.cursor = cursor;
             document.body.style.userSelect = 'none';
         }
 
@@ -2778,23 +2829,51 @@
             if (!isResizing || !activeResizeCard) return;
 
             const deltaX = e.clientX - resizeStartX;
-            let newWidth;
+            const deltaY = e.clientY - resizeStartY;
+            let newWidth = resizeStartWidth;
 
-            if (resizeSide === 'right') {
+            // === HORIZONTAL ===
+            if (resizeSide.includes('right')) {
                 newWidth = resizeStartWidth + deltaX;
-            } else {
+            } else if (resizeSide.includes('left')) {
                 newWidth = resizeStartWidth - deltaX;
             }
 
-            // Aplicar límites
-            newWidth = Math.max(180, Math.min(400, newWidth));
-            activeResizeCard.style.width = newWidth + 'px';
+            // Aplicar límites HORIZONTALES (aumentado max a 600)
+            newWidth = Math.max(180, Math.min(600, newWidth));
 
-            // Si resize desde la izquierda, también mover el contenedor
-            if (resizeSide === 'left') {
-                const containerRect = actionContainer.getBoundingClientRect();
-                const widthDiff = resizeStartWidth - newWidth;
-                setContainerPosition(containerRect.left + widthDiff, containerRect.top);
+            // Aplicar width solo si es side horizontal o esquina
+            if (resizeSide.includes('left') || resizeSide.includes('right')) {
+                activeResizeCard.style.width = newWidth + 'px';
+            }
+
+            // Corrección de posición IZQUIERDA
+            if (resizeSide.includes('left')) {
+                // Cuánto creció realmente hacia la izquierda (positivo = creció)
+                const expandedBy = newWidth - resizeStartWidth;
+
+                // Mover contenedor a la izquierda esa cantidad
+                const newLeft = containerInitialLeft - expandedBy;
+
+                // Aplicar posición (setContainerPosition manejará límites de pantalla)
+                setContainerPosition(newLeft, containerInitialTop);
+            }
+
+            // === VERTICAL ===
+            if (resizeSide.includes('bottom')) {
+                let newHeight = resizeStartHeight + deltaY;
+                newHeight = Math.max(100, newHeight); // Min height 100px
+
+                // Forzar altura explícita
+                activeResizeCard.style.height = newHeight + 'px';
+                activeResizeCard.style.maxHeight = 'none';
+
+                // Asegurar que el body crezca
+                const body = activeResizeCard.querySelector('.action-card-body');
+                if (body) {
+                    body.style.maxHeight = 'none';
+                    body.style.flex = '1';
+                }
             }
         }
 
@@ -2819,8 +2898,15 @@
         // Bind resize events
         cardA.querySelector('.action-resize-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'left'));
         cardA.querySelector('.action-resize-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'right'));
+        cardA.querySelector('.action-resize-bottom')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'bottom'));
+        cardA.querySelector('.action-resize-bottom-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'bottom-left'));
+        cardA.querySelector('.action-resize-bottom-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardA, 'bottom-right'));
+
         cardB.querySelector('.action-resize-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'left'));
         cardB.querySelector('.action-resize-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'right'));
+        cardB.querySelector('.action-resize-bottom')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'bottom'));
+        cardB.querySelector('.action-resize-bottom-left')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'bottom-left'));
+        cardB.querySelector('.action-resize-bottom-right')?.addEventListener('mousedown', (e) => handleResizeStart(e, cardB, 'bottom-right'));
 
         // Global mouse events para drag y resize
         document.addEventListener('mousemove', (e) => {
