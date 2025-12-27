@@ -2183,18 +2183,21 @@
             overrideDelays: false,
             delayMinMs: 500,
             delayMaxMs: 1500,
-            // Human actions (ahora true por defecto)
+            // Page/Branch delays
+            pageChangeDelayMs: 2000,
+            branchDelayMs: 1500,
+            // Validation (separado de Human Actions)
+            validateAfterFill: true,
+            validateAfterSelect: true,
+            // Human actions
             humanActionsEnabled: true,
             scrollToElement: true,
             moveMouseToElement: true,
             clickQuestionFirst: true,
-            validateAfterFill: true,
             typingDelayMinMs: 30,
             typingDelayMaxMs: 120,
             // Visual feedback
-            highlightElements: true,
-            // Branch delay (nuevo)
-            branchDelayMs: 1500
+            highlightElements: true
         };
 
         function openConfigModal() {
@@ -2286,18 +2289,21 @@
                 overrideDelays: overrideDelaysCheckbox.classList.contains('checked'),
                 delayMinMs: parseInt(questionDelayMinInput.value) || 500,
                 delayMaxMs: parseInt(questionDelayMaxInput.value) || 1500,
+                // Page/Branch delays
+                pageChangeDelayMs: configState.pageChangeDelayMs || 2000,  // Mantener valor actual
+                branchDelayMs: parseInt(branchDelayInput.value) || 1500,
+                // Validation
+                validateAfterFill: validateCheckbox.classList.contains('checked'),
+                validateAfterSelect: true,  // Siempre true por ahora (infalible)
                 // Human actions
                 humanActionsEnabled: humanActionsCheckbox.classList.contains('checked'),
                 scrollToElement: scrollCheckbox.classList.contains('checked'),
                 moveMouseToElement: mouseCheckbox.classList.contains('checked'),
                 clickQuestionFirst: clickFirstCheckbox.classList.contains('checked'),
-                validateAfterFill: validateCheckbox.classList.contains('checked'),
                 typingDelayMinMs: parseInt(typingMinInput.value) || 30,
                 typingDelayMaxMs: parseInt(typingMaxInput.value) || 120,
                 // Visual feedback
-                highlightElements: highlightCheckbox.classList.contains('checked'),
-                // Branch delay
-                branchDelayMs: parseInt(branchDelayInput.value) || 1500
+                highlightElements: highlightCheckbox.classList.contains('checked')
             };
 
             // Enviar configuración al backend

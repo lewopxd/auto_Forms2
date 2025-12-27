@@ -485,18 +485,24 @@ class SeleniumProcessBooster:
             "delayBetweenRowsMs": int(config_data.get("fixedDelay", 2) * 1000),
             "delayBetweenRowsMinMs": int(config_data.get("minDelay", 1) * 1000),
             "delayBetweenRowsMaxMs": int(config_data.get("maxDelay", 3) * 1000),
-            "humanActionsEnabled": config_data.get("humanActionsEnabled", False),
+            # Page/Branch delays
+            "pageChangeDelayMs": config_data.get("pageChangeDelayMs", 2000),
+            "branchDelayMs": config_data.get("branchDelayMs", 1500),
+            # Validation
+            "validateAfterFill": config_data.get("validateAfterFill", True),
+            "validateAfterSelect": config_data.get("validateAfterSelect", True),
+            # Human actions
+            "humanActionsEnabled": config_data.get("humanActionsEnabled", True),
             "typingDelayMinMs": config_data.get("typingDelayMinMs", 30),
             "typingDelayMaxMs": config_data.get("typingDelayMaxMs", 120),
+            "scrollToElement": config_data.get("scrollToElement", True),
+            "moveMouseToElement": config_data.get("moveMouseToElement", True),
+            "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
+            # Other
             "overrideDelays": config_data.get("overrideDelays", False),
             "delayMinMs": config_data.get("delayMinMs", 500),
             "delayMaxMs": config_data.get("delayMaxMs", 1500),
             "highlightElements": config_data.get("highlightElements", True),
-            "scrollToElement": config_data.get("scrollToElement", True),
-            "moveMouseToElement": config_data.get("moveMouseToElement", True),
-            "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
-            "validateAfterFill": config_data.get("validateAfterFill", True),
-            "branchDelayMs": config_data.get("branchDelayMs", 1500),
         })
         
         if cls._executor:

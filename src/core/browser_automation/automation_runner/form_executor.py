@@ -56,6 +56,16 @@ class ExecutorConfig:
     delay_between_rows_min_ms: int = 1000
     delay_between_rows_max_ms: int = 3000
     
+    # Page change delay (after clicking Next)
+    page_change_delay_ms: int = 2000
+    
+    # Branch delay (tiempo de espera después de click en pregunta branch)
+    branch_delay_ms: int = 1500
+    
+    # Validation
+    validate_after_fill: bool = True
+    validate_after_select: bool = True
+    
     # Human actions
     human_actions_enabled: bool = True
     scroll_to_element: bool = True
@@ -63,13 +73,13 @@ class ExecutorConfig:
     click_question_first: bool = True
     typing_delay_min_ms: int = 30
     typing_delay_max_ms: int = 120
-    validate_after_fill: bool = True
     
     # Visual feedback
     highlight_elements: bool = True
     
     # Error handling
     stop_on_error: bool = True  # Detener ejecución si hay error
+    max_retries: int = 1  # Reintentos si falla validación
     
     # Timeouts
     element_wait_timeout: int = 10
@@ -77,9 +87,6 @@ class ExecutorConfig:
     
     # Ejecución
     one_by_one_mode: bool = False
-    
-    # Branch delay (tiempo de espera después de click en pregunta branch)
-    branch_delay_ms: int = 1500
     
     @classmethod
     def from_dict(cls, data: dict) -> 'ExecutorConfig':
@@ -92,18 +99,21 @@ class ExecutorConfig:
             delay_between_rows_random=data.get("delayBetweenRowsRandom", True),
             delay_between_rows_min_ms=data.get("delayBetweenRowsMinMs", 1000),
             delay_between_rows_max_ms=data.get("delayBetweenRowsMaxMs", 3000),
+            page_change_delay_ms=data.get("pageChangeDelayMs", 2000),
+            branch_delay_ms=data.get("branchDelayMs", 1500),
+            validate_after_fill=data.get("validateAfterFill", True),
+            validate_after_select=data.get("validateAfterSelect", True),
             human_actions_enabled=data.get("humanActionsEnabled", True),
             scroll_to_element=data.get("scrollToElement", True),
             move_mouse_to_element=data.get("moveMouseToElement", True),
             click_question_first=data.get("clickQuestionFirst", True),
             typing_delay_min_ms=data.get("typingDelayMinMs", 30),
             typing_delay_max_ms=data.get("typingDelayMaxMs", 120),
-            validate_after_fill=data.get("validateAfterFill", True),
             highlight_elements=data.get("highlightElements", True),
             stop_on_error=data.get("stopOnError", True),
+            max_retries=data.get("maxRetries", 1),
             element_wait_timeout=data.get("elementWaitTimeout", 10),
             one_by_one_mode=data.get("oneByOne", False),
-            branch_delay_ms=data.get("branchDelayMs", 1500),
         )
 
 
@@ -224,6 +234,99 @@ class FormExecutor:
             return (timing.get("minMs", 500), timing.get("maxMs", 1500))
         
         return (500, 1500)  # Default
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # LOGGING & DEBUG
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def _log(self, step: int, total: int, message: str, level: str = "info"):
+        """Logging estructurado con pasos numerados para debug."""
+        icons = {
+            "info": "📍",
+            "success": "✅",
+            "warning": "⚠️",
+            "error": "❌",
+            "wait": "⏳",
+            "action": "🔹"
+        }
+        icon = icons.get(level, "•")
+        step_str = f"[{step}/{total}]" if total > 0 else ""
+        print(f"[FormExecutor] {icon} {step_str} {message}")
+    
+    def _get_question_index(self, key: str) -> int:
+        """Obtener índice de pregunta en la lista ordenada."""
+        for i, q in enumerate(self.questions_ordered):
+            if q.get("key") == key:
+                return i + 1
+        return 0
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # ELEMENT HELPERS
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def _get_question_container(self, question: dict) -> Optional[WebElement]:
+        """Obtener el contenedor padre de la pregunta para focus seguro.
+        
+        Esto evita errores al hacer click directo en opciones de SELECT.
+        """
+        try:
+            selenium_info = question.get("selenium", {})
+            full_selector = selenium_info.get("fullSelector", "")
+            
+            if not full_selector:
+                return None
+            
+            # Extraer QuestionId del selector
+            import re
+            match = re.search(r'QuestionId_r([a-f0-9]+)', full_selector)
+            if match:
+                q_id = f"QuestionId_r{match.group(1)}"
+                container = self.driver.find_element(By.ID, q_id)
+                return container
+        except Exception as e:
+            self._log(0, 0, f"No se pudo encontrar contenedor padre: {e}", "warning")
+        
+        return None
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # VALIDATION (FOOLPROOF - usando mismo elemento)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def _validate_fill_value(self, element: WebElement, expected: str) -> bool:
+        """Validación INFALIBLE para FILL usando JS value property.
+        
+        Usa el MISMO elemento donde escribimos, lee .value via JavaScript
+        (funciona con React donde el atributo HTML value no se actualiza).
+        """
+        try:
+            actual = self.driver.execute_script("return arguments[0].value;", element)
+            is_valid = (actual or "").strip() == expected.strip()
+            if is_valid:
+                self._log(0, 0, f"Validación OK: '{actual[:30]}...' = esperado", "success")
+            else:
+                self._log(0, 0, f"Validación FALLÓ: obtuve '{actual}', esperaba '{expected}'", "error")
+            return is_valid
+        except Exception as e:
+            self._log(0, 0, f"Error en validación FILL: {e}", "error")
+            return False
+    
+    def _validate_select_value(self, element: WebElement) -> bool:
+        """Validación INFALIBLE para SELECT usando aria-checked del MISMO elemento.
+        
+        Después de hacer click en un radio/checkbox, verificamos que 
+        aria-checked cambió a 'true' en ESE MISMO elemento.
+        """
+        try:
+            aria_checked = element.get_attribute("aria-checked")
+            is_valid = aria_checked == "true"
+            if is_valid:
+                self._log(0, 0, f"Validación OK: aria-checked='true'", "success")
+            else:
+                self._log(0, 0, f"Validación FALLÓ: aria-checked='{aria_checked}'", "error")
+            return is_valid
+        except Exception as e:
+            self._log(0, 0, f"Error en validación SELECT: {e}", "error")
+            return False
     
     # ═══════════════════════════════════════════════════════════════════════
     # HUMAN ACTIONS
@@ -473,78 +576,100 @@ class FormExecutor:
     # ═══════════════════════════════════════════════════════════════════════
     
     def _execute_fill(self, question: dict, answer: str) -> ActionResult:
-        """Ejecutar acción de rellenar texto."""
+        """Ejecutar acción de rellenar texto con logging detallado y validación infalible."""
         key = question.get("key", "unknown")
+        idx = self._get_question_index(key)
+        total = len(self.questions_ordered)
+        
+        print(f"\n{'='*60}")
+        self._log(1, 9, f"INICIANDO FILL {idx}/{total}: {key}", "action")
         
         try:
-            # 1. Buscar elemento
+            # Paso 2: Buscar elemento
+            self._log(2, 9, "Buscando input...", "info")
             element = self._find_text_input(question)
             if not element:
+                self._log(2, 9, "Input NO encontrado", "error")
                 return ActionResult(
                     success=False,
                     question_key=key,
                     action_type=ActionType.FILL,
                     error_message="Input element not found"
                 )
+            self._log(2, 9, "Input encontrado", "success")
             
-            # 2. PRIMERO scroll para que el elemento sea visible antes de resaltarlo
+            # Paso 3: Click en contenedor padre para focus seguro
+            self._log(3, 9, "Click en contenedor padre para focus...", "info")
+            container = self._get_question_container(question)
+            if container:
+                try:
+                    container.click()
+                    time.sleep(0.1)
+                    self._log(3, 9, "Focus en contenedor OK", "success")
+                except Exception:
+                    self._log(3, 9, "Click en contenedor falló (ignorado)", "warning")
+            
+            # Paso 4: Scroll para centrar
+            self._log(4, 9, "Scroll para centrar elemento...", "info")
             if self.config.scroll_to_element:
                 self._scroll_to_element(element)
             
-            # 3. Highlight del elemento (ahora visible en viewport)
+            # Paso 5: Highlight
+            self._log(5, 9, "Aplicando glow al input", "info")
             self._highlight_element(element)
             
-            # 4. Human actions adicionales (si están habilitadas)
-            if self.config.human_actions_enabled:
-                if self.config.move_mouse_to_element:
-                    self._move_mouse_to_element(element)
-                
-                if self.config.click_question_first:
-                    element.click()
-                    time.sleep(0.1)
-            else:
-                # Incluso sin human actions, hacer click para asegurar foco
-                try:
-                    element.click()
-                    time.sleep(0.05)
-                except Exception:
-                    pass
-            
-            # 4. Limpiar campo existente
+            # Paso 6: Click en input + limpiar
+            self._log(6, 9, "Click en input y limpiando campo...", "info")
+            try:
+                element.click()
+                time.sleep(0.05)
+            except Exception:
+                pass
             element.clear()
             time.sleep(0.1)
             
-            # 5. Escribir valor
+            # Paso 7: Escribir
             if self.config.human_actions_enabled:
+                typing_info = f"(delay: {self.config.typing_delay_min_ms}-{self.config.typing_delay_max_ms}ms/tecla)"
+                self._log(7, 9, f"Escribiendo respuesta {typing_info}...", "info")
                 self._human_type(element, answer)
             else:
+                self._log(7, 9, "Escribiendo respuesta (modo rápido)...", "info")
                 element.send_keys(answer)
+            time.sleep(0.2)
             
-            time.sleep(0.2)  # Pequeño delay para que el DOM se actualice
+            # Paso 8: Validación INFALIBLE
+            self._log(8, 9, "Validando respuesta (JS value)...", "info")
+            if self.config.validate_after_fill:
+                if not self._validate_fill_value(element, answer):
+                    # Reintento
+                    self._log(8, 9, "Reintentando escritura...", "warning")
+                    element.clear()
+                    time.sleep(0.1)
+                    element.send_keys(answer)
+                    time.sleep(0.2)
+                    
+                    if not self._validate_fill_value(element, answer):
+                        self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
+                        self._remove_highlight(element)
+                        return ActionResult(
+                            success=False,
+                            question_key=key,
+                            action_type=ActionType.FILL,
+                            error_message="Validation failed: value not set correctly"
+                        )
             
-            # 6. SIEMPRE Validar después de fill
-            if not self._validate_input_value(element, answer):
-                print(f"[FormExecutor] Validation failed for {key}, retrying...")
-                # Reintentar: limpiar y escribir de nuevo
-                element.clear()
-                time.sleep(0.1)
-                element.send_keys(answer)
-                time.sleep(0.2)
-                
-                # Verificar de nuevo
-                if not self._validate_input_value(element, answer):
-                    self._remove_highlight(element)
-                    return ActionResult(
-                        success=False,
-                        question_key=key,
-                        action_type=ActionType.FILL,
-                        error_message=f"Validation failed: value not set correctly"
-                    )
-            
-            # 7. Cambiar color de highlight a verde (éxito)
+            # Paso 9: Éxito
+            self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
             self._highlight_element(element, "#10b981")  # Verde
-            time.sleep(0.3)  # Mostrar brevemente el éxito
+            time.sleep(0.3)
             self._remove_highlight(element)
+            
+            # Delay antes de siguiente pregunta
+            delay_min, delay_max = self._get_question_delay(question)
+            delay_ms = random.randint(delay_min, delay_max)
+            self._log(0, 0, f"Esperando {delay_ms}ms antes de siguiente pregunta...", "wait")
+            time.sleep(delay_ms / 1000.0)
             
             return ActionResult(
                 success=True,
@@ -554,6 +679,7 @@ class FormExecutor:
             )
             
         except Exception as e:
+            self._log(0, 0, f"ERROR: {e}", "error")
             self._remove_all_highlights()
             return ActionResult(
                 success=False,
@@ -563,39 +689,98 @@ class FormExecutor:
             )
     
     def _execute_select(self, question: dict, answer: str) -> ActionResult:
-        """Ejecutar acción de seleccionar opción."""
+        """Ejecutar acción de seleccionar opción con logging detallado y validación infalible."""
         key = question.get("key", "unknown")
+        idx = self._get_question_index(key)
+        total = len(self.questions_ordered)
+        is_branch = question.get("isBranch", False)
+        
+        print(f"\n{'='*60}")
+        branch_tag = " [BRANCH]" if is_branch else ""
+        self._log(1, 9, f"INICIANDO SELECT{branch_tag} {idx}/{total}: {key}", "action")
+        self._log(0, 0, f"   Respuesta: {answer}", "info")
         
         try:
-            # 1. Buscar elemento de opción
+            # Paso 2: Buscar elemento opción
+            self._log(2, 9, f"Buscando opción: '{answer[:40]}...'", "info")
             element = self._find_option_element(question, answer)
             if not element:
+                self._log(2, 9, "Opción NO encontrada", "error")
                 return ActionResult(
                     success=False,
                     question_key=key,
                     action_type=ActionType.SELECT,
                     error_message=f"Option element not found for value: {answer}"
                 )
+            self._log(2, 9, "Opción encontrada", "success")
             
-            # 2. PRIMERO scroll para que el elemento sea visible antes de resaltarlo
+            # Paso 3: Click en contenedor padre para focus seguro
+            self._log(3, 9, "Click en contenedor padre para focus...", "info")
+            container = self._get_question_container(question)
+            if container:
+                try:
+                    container.click()
+                    time.sleep(0.1)
+                    self._log(3, 9, "Focus en contenedor OK", "success")
+                except Exception:
+                    self._log(3, 9, "Click en contenedor falló (ignorado)", "warning")
+            
+            # Paso 4: Scroll para centrar
+            self._log(4, 9, "Scroll para centrar opción...", "info")
             if self.config.scroll_to_element:
                 self._scroll_to_element(element)
             
-            # 3. Highlight del elemento (ahora visible en viewport)
+            # Paso 5: Highlight
+            self._log(5, 9, "Aplicando glow a opción", "info")
             self._highlight_element(element)
             
-            # 4. Human actions adicionales
-            if self.config.human_actions_enabled:
-                if self.config.move_mouse_to_element:
-                    self._move_mouse_to_element(element)
+            # Paso 6: Mouse move (human)
+            if self.config.human_actions_enabled and self.config.move_mouse_to_element:
+                self._log(6, 9, "Moviendo mouse a opción...", "info")
+                self._move_mouse_to_element(element)
             
-            # 4. Click en la opción
+            # Paso 7: Click en opción
+            self._log(7, 9, "Haciendo click en opción...", "info")
             element.click()
+            time.sleep(0.3)  # Esperar DOM update
             
-            # 5. Cambiar highlight a verde y remover
-            self._highlight_element(element, "#10b981")
+            # Paso 8: Validación INFALIBLE (aria-checked del mismo elemento)
+            self._log(8, 9, "Validando selección (aria-checked)...", "info")
+            if self.config.validate_after_select:
+                if not self._validate_select_value(element):
+                    # Reintento
+                    self._log(8, 9, "Reintentando click...", "warning")
+                    element.click()
+                    time.sleep(0.4)
+                    
+                    if not self._validate_select_value(element):
+                        self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
+                        self._remove_highlight(element)
+                        return ActionResult(
+                            success=False,
+                            question_key=key,
+                            action_type=ActionType.SELECT,
+                            error_message="Select validation failed: option not selected"
+                        )
+            
+            # Paso 9: Éxito
+            self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
+            self._highlight_element(element, "#10b981")  # Verde
             time.sleep(0.3)
             self._remove_highlight(element)
+            
+            # Delay antes de siguiente pregunta
+            delay_min, delay_max = self._get_question_delay(question)
+            delay_ms = random.randint(delay_min, delay_max)
+            
+            # Si es pregunta BRANCH, usar delay especial para esperar DOM
+            if is_branch:
+                delay_ms = max(delay_ms, self.config.branch_delay_ms)
+                self._log(0, 0, f"Pregunta BRANCH: esperando {delay_ms}ms para carga de nuevas preguntas...", "wait")
+            else:
+                self._log(0, 0, f"Esperando {delay_ms}ms antes de siguiente pregunta...", "wait")
+            
+            time.sleep(delay_ms / 1000.0)
             
             return ActionResult(
                 success=True,
@@ -605,6 +790,7 @@ class FormExecutor:
             )
             
         except Exception as e:
+            self._log(0, 0, f"ERROR: {e}", "error")
             self._remove_all_highlights()
             return ActionResult(
                 success=False,
@@ -659,27 +845,63 @@ class FormExecutor:
     # ═══════════════════════════════════════════════════════════════════════
     
     def _navigate_to_next_page(self, current_page: dict) -> bool:
-        """Navegar a la siguiente página."""
+        """Navegar a la siguiente página con delay configurable."""
+        print(f"\n{'='*60}")
+        self._log(0, 0, "📄 NAVEGANDO A SIGUIENTE PÁGINA", "action")
+        
         nav_button = self._find_navigation_button("next", current_page)
         if nav_button:
-            if self.config.human_actions_enabled:
+            self._log(1, 4, "Botón 'Siguiente' encontrado", "success")
+            
+            # Scroll y mouse (human actions)
+            self._log(2, 4, "Scroll al botón...", "info")
+            if self.config.scroll_to_element:
                 self._scroll_to_element(nav_button)
+            
+            if self.config.human_actions_enabled and self.config.move_mouse_to_element:
+                self._log(3, 4, "Moviendo mouse al botón...", "info")
                 self._move_mouse_to_element(nav_button)
+            
+            # Click
+            self._log(4, 4, "Click en 'Siguiente'", "info")
             nav_button.click()
-            time.sleep(1.0)  # Esperar carga de página
+            
+            # Delay configurable
+            delay_s = self.config.page_change_delay_ms / 1000.0
+            self._log(0, 0, f"Esperando {delay_s}s para carga de página...", "wait")
+            time.sleep(delay_s)
+            
+            self._log(0, 0, "✅ Página cargada", "success")
             return True
+        
+        self._log(0, 0, "Botón 'Siguiente' NO encontrado", "error")
         return False
     
     def _submit_form(self, current_page: dict) -> bool:
-        """Enviar el formulario."""
+        """Enviar el formulario con logging."""
+        print(f"\n{'='*60}")
+        self._log(0, 0, "📤 ENVIANDO FORMULARIO", "action")
+        
         submit_button = self._find_navigation_button("submit", current_page)
         if submit_button:
-            if self.config.human_actions_enabled:
+            self._log(1, 3, "Botón 'Enviar' encontrado", "success")
+            
+            if self.config.scroll_to_element:
                 self._scroll_to_element(submit_button)
+            
+            if self.config.human_actions_enabled and self.config.move_mouse_to_element:
                 self._move_mouse_to_element(submit_button)
+            
+            self._log(2, 3, "Click en 'Enviar'", "info")
             submit_button.click()
-            time.sleep(2.0)  # Esperar confirmación
+            
+            self._log(3, 3, "Esperando confirmación (2s)...", "wait")
+            time.sleep(2.0)
+            
+            self._log(0, 0, "✅ Formulario enviado", "success")
             return True
+        
+        self._log(0, 0, "Botón 'Enviar' NO encontrado", "error")
         return False
     
     # ═══════════════════════════════════════════════════════════════════════
