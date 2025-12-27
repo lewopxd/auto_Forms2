@@ -1667,68 +1667,158 @@ class FormExecutor:
         return result
     
     # ═══════════════════════════════════════════════════════════════════════
-    # PAGE NAVIGATION
+    # PAGE NAVIGATION (CLICK_BUTTON actions)
     # ═══════════════════════════════════════════════════════════════════════
     
-    def _navigate_to_next_page(self, current_page: dict) -> bool:
-        """Navegar a la siguiente página con delay configurable."""
+    def _execute_click_button(self, button_type: str, page: dict) -> ActionResult:
+        """
+        Ejecutar click en botón de navegación con patrón estándar.
+        
+        Sigue el mismo patrón robusto que FILL y SELECT:
+        1. Buscar botón (con fallback)
+        2. Scroll al botón
+        3. Highlight naranja al botón
+        4. Mouse move (si human_actions)
+        5. Preparar validación (event listener)
+        6. safe_click()
+        7. Validar click ejecutado
+        8. Highlight verde → remover
+        9. Delay configurado
+        
+        Args:
+            button_type: Tipo de botón ('next', 'submit', 'back')
+            page: Diccionario con datos de la página actual
+            
+        Returns:
+            ActionResult con el resultado de la operación
+        """
+        LABELS = {
+            'next': 'Siguiente',
+            'submit': 'Enviar',
+            'back': 'Atrás'
+        }
+        label = LABELS.get(button_type, button_type)
+        
         print(f"\n{'='*60}")
-        self._log(0, 0, "📄 NAVEGANDO A SIGUIENTE PÁGINA", "action")
+        self._browser_log(f"═══ CLICK_BUTTON: {label.upper()} ═══", "action")
         
-        nav_button = self._find_navigation_button("next", current_page)
-        if nav_button:
-            self._log(1, 4, "Botón 'Siguiente' encontrado", "success")
+        try:
+            # ═══ PASO 1: Buscar botón ═══
+            self._browser_log(f"PASO 1: Buscando botón '{label}'...", "info")
             
-            # Scroll y mouse (human actions)
-            self._log(2, 4, "Scroll al botón...", "info")
+            button = self.finder.find_navigation_button(page, button_type)
+            if not button:
+                self._browser_log(f"PASO 1: ✗ Botón '{label}' NO encontrado", "error")
+                return ActionResult(
+                    success=False,
+                    question_key=f"nav_{button_type}",
+                    action_type=ActionType.CLICK,
+                    error_message=f"Botón {label} no encontrado"
+                )
+            self._browser_log(f"PASO 1: ✓ Botón '{label}' encontrado", "success")
+            
+            # ═══ PASO 2: Scroll al botón ═══
+            self._browser_log("PASO 2: Scroll al botón...", "info")
             if self.config.scroll_to_element:
-                self._scroll_to_element(nav_button)
+                self._scroll_to_element(button)
+                self._browser_log("PASO 2: ✓ Scroll completado", "success")
             
+            # ═══ PASO 3: Highlight naranja al botón ═══
+            self._browser_log("PASO 3: Aplicando glow naranja...", "info")
+            self.visual.apply_glow(button, action_type='click')
+            
+            # ═══ PASO 4: Mouse move (si human_actions) ═══
             if self.config.human_actions_enabled and self.config.move_mouse_to_element:
-                self._log(3, 4, "Moviendo mouse al botón...", "info")
-                self._move_mouse_to_element(nav_button)
+                self._browser_log("PASO 4: Moviendo mouse al botón...", "info")
+                self.interaction.move_mouse_to(button)
             
-            # Click
-            self._log(4, 4, "Click en 'Siguiente'", "info")
-            nav_button.click()
+            # ═══ PASO 5: Preparar validación (inyectar listener) ═══
+            self._browser_log("PASO 5: Inyectando listener de validación...", "info")
+            self.validator.prepare_click_validation(button)
             
-            # Delay configurable
-            delay_s = self.config.page_change_delay_ms / 1000.0
-            self._log(0, 0, f"Esperando {delay_s}s para carga de página...", "wait")
-            time.sleep(delay_s)
+            # CHECK PAUSA antes de click
+            if not self._check_pause_state():
+                self.visual.remove_glow(button)
+                return ActionResult(
+                    success=False,
+                    question_key=f"nav_{button_type}",
+                    action_type=ActionType.CLICK,
+                    error_message="Ejecución pausada/detenida"
+                )
             
-            self._log(0, 0, "✅ Página cargada", "success")
-            return True
-        
-        self._log(0, 0, "Botón 'Siguiente' NO encontrado", "error")
-        return False
+            # ═══ PASO 6: Safe click ═══
+            self._browser_log(f"PASO 6: ★★★ CLICK en '{label}' (safe_click) ★★★", "action")
+            click_ok = self.interaction.safe_click(button)
+            
+            if not click_ok:
+                self._browser_log("PASO 6: ⚠ safe_click falló, intentando JS click...", "warning")
+                self.interaction.js_click(button)
+            
+            # Pequeña espera para que el evento se procese
+            time.sleep(0.15)
+            self._browser_log("PASO 6: ✓ Click ejecutado", "success")
+            
+            # ═══ PASO 7: Validar click ejecutado ═══
+            self._browser_log("PASO 7: ★★★ VALIDANDO CLICK ★★★", "action")
+            click_validated = self.validator.validate_click_executed(button, button_type)
+            
+            if not click_validated:
+                # Intentar validación con fallback
+                self._browser_log("PASO 7: ⚠ Listener no confirmó, probando fallbacks...", "warning")
+                click_validated = self.validator.validate_click_with_fallback(button, button_type)
+            
+            if click_validated:
+                self._browser_log("PASO 7: ✓ Click VALIDADO", "success")
+            else:
+                # Aun sin confirmación, continuamos (el click pudo haberse ejecutado)
+                self._browser_log("PASO 7: ⚠ Click no confirmado, continuando...", "warning")
+            
+            # ═══ PASO 8: Glow verde de éxito ═══
+            self._browser_log("PASO 8: ✅ BOTÓN CLICKEADO OK", "success")
+            self.visual.apply_glow(button, color='#22c55e')  # Verde
+            time.sleep(0.25)
+            self.visual.remove_glow(button)
+            
+            # ═══ PASO 9: Delay post-navegación ═══
+            delay_ms = self.config.page_change_delay_ms
+            self._browser_log(f"PASO 9: Esperando {delay_ms}ms para carga de página...", "wait")
+            time.sleep(delay_ms / 1000.0)
+            
+            self._browser_log(f"✅ {label.upper()} completado", "success")
+            
+            return ActionResult(
+                success=True,
+                question_key=f"nav_{button_type}",
+                action_type=ActionType.CLICK,
+                value_filled=button_type
+            )
+            
+        except Exception as e:
+            self._browser_log(f"ERROR CRÍTICO en click_button: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return ActionResult(
+                success=False,
+                question_key=f"nav_{button_type}",
+                action_type=ActionType.CLICK,
+                error_message=str(e)
+            )
+    
+    def _navigate_to_next_page(self, current_page: dict) -> bool:
+        """Navegar a la siguiente página usando el patrón estándar de click."""
+        result = self._execute_click_button("next", current_page)
+        return result.success
     
     def _submit_form(self, current_page: dict) -> bool:
-        """Enviar el formulario con logging."""
-        print(f"\n{'='*60}")
-        self._log(0, 0, "📤 ENVIANDO FORMULARIO", "action")
-        
-        submit_button = self._find_navigation_button("submit", current_page)
-        if submit_button:
-            self._log(1, 3, "Botón 'Enviar' encontrado", "success")
-            
-            if self.config.scroll_to_element:
-                self._scroll_to_element(submit_button)
-            
-            if self.config.human_actions_enabled and self.config.move_mouse_to_element:
-                self._move_mouse_to_element(submit_button)
-            
-            self._log(2, 3, "Click en 'Enviar'", "info")
-            submit_button.click()
-            
-            self._log(3, 3, "Esperando confirmación (2s)...", "wait")
-            time.sleep(2.0)
-            
-            self._log(0, 0, "✅ Formulario enviado", "success")
-            return True
-        
-        self._log(0, 0, "Botón 'Enviar' NO encontrado", "error")
-        return False
+        """Enviar el formulario usando el patrón estándar de click."""
+        result = self._execute_click_button("submit", current_page)
+        return result.success
+    
+    def _navigate_back(self, current_page: dict) -> bool:
+        """Navegar a la página anterior usando el patrón estándar de click."""
+        result = self._execute_click_button("back", current_page)
+        return result.success
+
     
     # ═══════════════════════════════════════════════════════════════════════
     # ROW EXECUTION

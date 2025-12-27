@@ -276,7 +276,7 @@ class ElementFinder:
     
     def find_navigation_button(self, page: dict, nav_type: str) -> Optional[WebElement]:
         """
-        Encontrar botón de navegación (next/submit/back).
+        Encontrar botón de navegación (next/submit/back) con fallback strategies.
         
         Args:
             page: Diccionario con datos de la página
@@ -287,21 +287,96 @@ class ElementFinder:
         """
         try:
             navigation = page.get("navigation", {})
-            nav_info = navigation.get(nav_type)
+            nav_info = navigation.get(nav_type, {})
             
-            if not nav_info:
-                return None
+            # ═══════════════════════════════════════════════════════════════════
+            # ESTRATEGIA 1: Selector del AFPKG
+            # ═══════════════════════════════════════════════════════════════════
+            selector = nav_info.get("selector") if nav_info else None
+            if selector:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.is_displayed():
+                        return element
+                except NoSuchElementException:
+                    pass
             
-            selector = nav_info.get("selector")
-            if not selector:
-                return None
+            # ═══════════════════════════════════════════════════════════════════
+            # ESTRATEGIA 2: data-automation-id estándar de MS Forms
+            # ═══════════════════════════════════════════════════════════════════
+            automation_ids = {
+                'next': 'nextButton',
+                'submit': 'submitButton',
+                'back': 'backButton'
+            }
+            auto_id = automation_ids.get(nav_type)
+            if auto_id:
+                try:
+                    element = self.driver.find_element(
+                        By.CSS_SELECTOR, 
+                        f'[data-automation-id="{auto_id}"]'
+                    )
+                    if element and element.is_displayed():
+                        return element
+                except NoSuchElementException:
+                    pass
             
-            return self.driver.find_element(By.CSS_SELECTOR, selector)
+            # ═══════════════════════════════════════════════════════════════════
+            # ESTRATEGIA 3: Buscar por texto del botón
+            # ═══════════════════════════════════════════════════════════════════
+            button_texts = {
+                'next': ['Siguiente', 'Next', 'Continuar', 'Continue'],
+                'submit': ['Enviar', 'Submit', 'Enviar respuestas', 'Submit responses'],
+                'back': ['Atrás', 'Back', 'Anterior', 'Previous']
+            }
+            texts = button_texts.get(nav_type, [])
+            button_text = nav_info.get("text") if nav_info else None
+            if button_text:
+                texts.insert(0, button_text)
             
-        except NoSuchElementException:
+            for text in texts:
+                try:
+                    element = self.driver.execute_script('''
+                        const text = arguments[0];
+                        const buttons = document.querySelectorAll('button, [role="button"]');
+                        for (const btn of buttons) {
+                            if (btn.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
+                                if (btn.offsetParent !== null) {
+                                    return btn;
+                                }
+                            }
+                        }
+                        return null;
+                    ''', text)
+                    if element:
+                        return element
+                except Exception:
+                    pass
+            
+            # ═══════════════════════════════════════════════════════════════════
+            # ESTRATEGIA 4: Último recurso - buscar por posición
+            # ═══════════════════════════════════════════════════════════════════
+            element = self.driver.execute_script('''
+                const navType = arguments[0];
+                const buttons = document.querySelectorAll('button, [role="button"]');
+                const visibleButtons = Array.from(buttons).filter(b => b.offsetParent !== null);
+                
+                if (navType === 'next' || navType === 'submit') {
+                    // Botón más a la derecha o el último
+                    return visibleButtons[visibleButtons.length - 1];
+                } else if (navType === 'back') {
+                    // Primer botón o el más a la izquierda
+                    return visibleButtons[0];
+                }
+                return null;
+            ''', nav_type)
+            
+            return element
+            
+        except Exception as e:
+            print(f"[ElementFinder] Error buscando botón {nav_type}: {e}")
             return None
-        except Exception:
-            return None
+
     
     def wait_for_element(
         self, 

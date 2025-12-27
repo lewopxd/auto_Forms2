@@ -244,3 +244,159 @@ class Validator:
             ''', container)
         except Exception:
             return None
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # CLICK VALIDATION (para botones de navegación)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def prepare_click_validation(self, element: WebElement) -> bool:
+        """
+        Preparar validación de click inyectando un event listener temporal.
+        
+        DEBE llamarse ANTES de ejecutar el click.
+        El listener marcará __clickConfirmed = true cuando el click se dispare.
+        
+        Args:
+            element: Botón que será clickeado
+            
+        Returns:
+            True si se inyectó correctamente el listener
+        """
+        try:
+            self.driver.execute_script('''
+                const el = arguments[0];
+                
+                // Resetear estado
+                el.__clickConfirmed = false;
+                el.__clickTimestamp = null;
+                
+                // Inyectar listener de un solo uso
+                el.addEventListener('click', function __clickValidator(e) {
+                    el.__clickConfirmed = true;
+                    el.__clickTimestamp = Date.now();
+                    // Remover listener después de capturar
+                    el.removeEventListener('click', __clickValidator);
+                }, { once: true, capture: true });
+                
+                console.log('[AutoForms] ✓ Click validation listener inyectado');
+            ''', element)
+            return True
+        except Exception as e:
+            print(f"[Validator] Error preparando validación de click: {e}")
+            return False
+    
+    def validate_click_executed(
+        self, 
+        element: WebElement, 
+        button_type: str = "button"
+    ) -> bool:
+        """
+        Validar que el click en un botón se ejecutó correctamente.
+        
+        Verifica que el event listener inyectado por prepare_click_validation()
+        haya capturado el evento click.
+        
+        Args:
+            element: Botón que fue clickeado
+            button_type: Tipo de botón para logging ('next', 'submit', 'back')
+            
+        Returns:
+            True si el click fue confirmado por el listener
+        """
+        try:
+            result = self.driver.execute_script('''
+                const el = arguments[0];
+                const buttonType = arguments[1];
+                
+                const confirmed = el.__clickConfirmed === true;
+                const timestamp = el.__clickTimestamp;
+                
+                if (confirmed) {
+                    console.log('[AutoForms] ✓✓✓ CLICK CONFIRMADO en botón ' + buttonType);
+                    console.log('[AutoForms]   Timestamp:', timestamp);
+                } else {
+                    console.error('[AutoForms] ❌ CLICK NO CONFIRMADO en botón ' + buttonType);
+                    console.error('[AutoForms]   __clickConfirmed:', el.__clickConfirmed);
+                }
+                
+                // Limpiar propiedades temporales
+                delete el.__clickConfirmed;
+                delete el.__clickTimestamp;
+                
+                return confirmed;
+            ''', element, button_type)
+            
+            return bool(result)
+        except Exception as e:
+            print(f"[Validator] Error validando click: {e}")
+            return False
+    
+    def validate_click_with_fallback(
+        self, 
+        element: WebElement,
+        button_type: str = "button"
+    ) -> bool:
+        """
+        Validación de click con estrategias de fallback.
+        
+        Si el listener no capturó el click, intenta validar por otros medios.
+        
+        Args:
+            element: Botón que fue clickeado
+            button_type: Tipo de botón
+            
+        Returns:
+            True si alguna estrategia confirma el click
+        """
+        try:
+            result = self.driver.execute_script('''
+                const el = arguments[0];
+                const buttonType = arguments[1];
+                
+                console.log('[AutoForms] 🔍 Validando click con fallbacks...');
+                
+                // ESTRATEGIA 1: Click listener
+                if (el.__clickConfirmed === true) {
+                    console.log('[AutoForms] ✓ Estrategia 1: Click listener confirmó');
+                    delete el.__clickConfirmed;
+                    delete el.__clickTimestamp;
+                    return { success: true, method: 'listener' };
+                }
+                
+                // ESTRATEGIA 2: Botón deshabilitado
+                if (el.disabled || el.getAttribute('aria-disabled') === 'true') {
+                    console.log('[AutoForms] ✓ Estrategia 2: Botón deshabilitado');
+                    return { success: true, method: 'disabled' };
+                }
+                
+                // ESTRATEGIA 3: Clase de loading añadida
+                if (el.classList.contains('loading') || 
+                    el.classList.contains('submitting') ||
+                    el.classList.contains('disabled')) {
+                    console.log('[AutoForms] ✓ Estrategia 3: Clase de loading');
+                    return { success: true, method: 'loading-class' };
+                }
+                
+                // ESTRATEGIA 4: Spinner visible
+                const parent = el.parentElement;
+                if (parent) {
+                    const spinner = parent.querySelector('[class*="spinner"], [class*="loading"]');
+                    if (spinner && spinner.offsetParent !== null) {
+                        console.log('[AutoForms] ✓ Estrategia 4: Spinner visible');
+                        return { success: true, method: 'spinner' };
+                    }
+                }
+                
+                console.log('[AutoForms] ⚠️ Ninguna estrategia confirmó el click');
+                return { success: false, method: 'none' };
+                
+            ''', element, button_type)
+            
+            if result and result.get('success'):
+                print(f"[Validator] Click confirmado via: {result.get('method')}")
+                return True
+            return False
+            
+        except Exception as e:
+            print(f"[Validator] Error en validate_click_with_fallback: {e}")
+            return False
