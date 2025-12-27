@@ -2807,8 +2807,14 @@
             resizeStartWidth = card.offsetWidth;
             resizeStartHeight = card.offsetHeight;
 
-            // Guardar posición inicial del contenedor para correcciones de lado izquierdo
+            // CRÍTICO: Convertir de right a left positioning ANTES de resize
+            // Esto evita que el navegador mueva el borde izquierdo automáticamente
             const rect = actionContainer.getBoundingClientRect();
+            actionContainer.style.right = 'auto';
+            actionContainer.style.left = rect.left + 'px';
+            actionContainer.style.top = rect.top + 'px';
+
+            // Guardar posición inicial del contenedor para correcciones de lado izquierdo
             containerInitialLeft = rect.left;
             containerInitialTop = rect.top;
 

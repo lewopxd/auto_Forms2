@@ -1758,6 +1758,11 @@ class FormExecutor:
             
             # ═══ PASO 6: Safe click ═══
             self._browser_log(f"PASO 6: ★★★ CLICK en '{label}' (safe_click) ★★★", "action")
+            
+            # IMPORTANTE: Remover glow ANTES del click para evitar que quede pegado
+            # si la página navega inmediatamente
+            self.visual.remove_glow(button)
+            
             click_ok = self.interaction.safe_click(button)
             
             if not click_ok:
@@ -1783,11 +1788,15 @@ class FormExecutor:
                 # Aun sin confirmación, continuamos (el click pudo haberse ejecutado)
                 self._browser_log("PASO 7: ⚠ Click no confirmado, continuando...", "warning")
             
-            # ═══ PASO 8: Glow verde de éxito ═══
+            # ═══ PASO 8: Glow verde de éxito (protegido de stale elements) ═══
             self._browser_log("PASO 8: ✅ BOTÓN CLICKEADO OK", "success")
-            self.visual.apply_glow(button, color='#22c55e')  # Verde
-            time.sleep(0.25)
-            self.visual.remove_glow(button)
+            try:
+                self.visual.apply_glow(button, color='#22c55e')  # Verde
+                time.sleep(0.25)
+                self.visual.remove_glow(button)
+            except Exception:
+                # Elemento stale (página ya navegó), limpiar cualquier glow restante
+                self.visual.remove_all_glows()
             
             # ═══ PASO 9: Delay post-navegación ═══
             delay_ms = self.config.page_change_delay_ms
