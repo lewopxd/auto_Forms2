@@ -1342,6 +1342,81 @@
                 .config-btn-save:hover {
                     background: #5a6fd6;
                 }
+                
+                /* ═══ New: Config Sections ═══ */
+                .config-section {
+                    margin-bottom: 8px;
+                }
+                
+                .config-section-title {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #4b5563;
+                    margin-bottom: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                
+                .config-divider {
+                    border-top: 1px solid #e5e7eb;
+                    margin: 14px 0;
+                }
+                
+                .config-subsection {
+                    background: #f9fafb;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 6px;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                }
+                
+                .config-subsection-title {
+                    font-size: 10px;
+                    font-weight: 600;
+                    color: #6b7280;
+                    margin-bottom: 8px;
+                    text-transform: uppercase;
+                }
+                
+                .config-select {
+                    width: 100%;
+                    height: 30px;
+                    padding: 0 8px;
+                    border: 1px solid #d1d5db;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    color: #374151;
+                    background: white;
+                    cursor: pointer;
+                    outline: none;
+                }
+                
+                .config-select:focus {
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+                }
+                
+                .config-method-options {
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 1px dashed #e5e7eb;
+                }
+                
+                .config-inline-group {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-top: 6px;
+                }
+                
+                .config-inline-group .config-input {
+                    width: 70px;
+                    height: 26px;
+                    font-size: 11px;
+                }
             </style>
             
             <div class="bar">
@@ -1421,141 +1496,209 @@
             
             <!-- Modal de Configuración -->
             <div class="config-modal-overlay" id="configModalOverlay">
-                <div class="config-modal" style="width: 420px;">
+                <div class="config-modal" style="width: 480px;">
                     <div class="config-modal-header">
-                        <span class="config-modal-title">Configuración de Automatización</span>
+                        <span class="config-modal-title">⚙️ Configuración de Automatización</span>
                         <button class="config-modal-close" id="configModalClose">${ICONS.close}</button>
                     </div>
-                    <div class="config-modal-body" style="max-height: 400px; overflow-y: auto;">
-                        <!-- Sección: Retardo entre filas -->
-                        <div class="config-field">
-                            <label class="config-label">⏱️ Retardo entre filas</label>
-                            <div class="config-checkbox-row" id="randomDelayToggle">
-                                <div class="config-checkbox" id="randomDelayCheckbox">${ICONS.check}</div>
-                                <span class="config-checkbox-label">Random</span>
-                            </div>
-                        </div>
-                        <div class="config-field" id="fixedDelayField">
-                            <div class="config-input-group">
-                                <input type="number" class="config-input" id="delayInput" value="2000" min="0" step="100">
-                                <span class="config-unit">ms</span>
-                            </div>
-                        </div>
-                        <div class="config-field" id="randomDelayField" style="display: none;">
-                            <div class="config-row">
-                                <div class="config-input-group">
-                                    <label class="config-input-label">Min</label>
-                                    <input type="number" class="config-input" id="delayMinInput" value="1000" min="0" step="100">
-                                    <span class="config-unit">ms</span>
-                                </div>
-                                <div class="config-input-group">
-                                    <label class="config-input-label">Max</label>
-                                    <input type="number" class="config-input" id="delayMaxInput" value="3000" min="0" step="100">
-                                    <span class="config-unit">ms</span>
-                                </div>
-                            </div>
-                        </div>
+                    <div class="config-modal-body" style="max-height: 500px; overflow-y: auto;">
                         
-                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
-                        
-                        <!-- Sección: Sobreescribir tiempos por pregunta -->
-                        <div class="config-field">
-                            <label class="config-label">⏳ Tiempo entre preguntas</label>
-                            <div class="config-checkbox-row" id="overrideDelaysToggle">
+                        <!-- ═══ SECCIÓN 1: Tiempos Globales ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">⏱️ Tiempos Globales</div>
+                            
+                            <!-- Tiempo entre filas -->
+                            <div class="config-subsection">
+                                <div class="config-subsection-title">Tiempo entre filas (formularios)</div>
+                                <div class="config-checkbox-row" id="randomDelayToggle">
+                                    <div class="config-checkbox" id="randomDelayCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Delay aleatorio</span>
+                                </div>
+                                <div class="config-field" id="fixedDelayField" style="margin-top: 8px;">
+                                    <div class="config-input-group">
+                                        <label class="config-input-label">Fijo:</label>
+                                        <input type="number" class="config-input" id="delayInput" value="2000" min="0" step="100" style="width: 80px;">
+                                        <span class="config-unit">ms</span>
+                                    </div>
+                                </div>
+                                <div class="config-field" id="randomDelayField" style="display: none; margin-top: 8px;">
+                                    <div class="config-row">
+                                        <div class="config-input-group">
+                                            <label class="config-input-label">Min</label>
+                                            <input type="number" class="config-input" id="delayMinInput" value="1000" min="0" step="100" style="width: 70px;">
+                                            <span class="config-unit">ms</span>
+                                        </div>
+                                        <div class="config-input-group">
+                                            <label class="config-input-label">Max</label>
+                                            <input type="number" class="config-input" id="delayMaxInput" value="3000" min="0" step="100" style="width: 70px;">
+                                            <span class="config-unit">ms</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tiempo entre preguntas (override) -->
+                            <div class="config-checkbox-row" id="overrideDelaysToggle" style="margin-top: 10px;">
                                 <div class="config-checkbox" id="overrideDelaysCheckbox">${ICONS.check}</div>
-                                <span class="config-checkbox-label">Sobreescribir tiempos por pregunta</span>
+                                <span class="config-checkbox-label">Sobreescribir tiempos de tarjetas</span>
                             </div>
-                        </div>
-                        <div class="config-field" id="questionDelayField" style="display: none;">
-                            <div class="config-row">
-                                <div class="config-input-group">
-                                    <label class="config-input-label">Min</label>
-                                    <input type="number" class="config-input" id="questionDelayMinInput" value="500" min="0" step="100">
-                                    <span class="config-unit">ms</span>
-                                </div>
-                                <div class="config-input-group">
-                                    <label class="config-input-label">Max</label>
-                                    <input type="number" class="config-input" id="questionDelayMaxInput" value="1500" min="0" step="100">
-                                    <span class="config-unit">ms</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
-                        
-                        <!-- Sección: Human Actions -->
-                        <div class="config-field">
-                            <label class="config-label">🤖 Human Actions (Anti-bot)</label>
-                            <div class="config-checkbox-row" id="humanActionsToggle">
-                                <div class="config-checkbox" id="humanActionsCheckbox">${ICONS.check}</div>
-                                <span class="config-checkbox-label">Habilitar acciones humanas</span>
-                            </div>
-                        </div>
-                        <div id="humanActionsFields" style="display: none; margin-left: 20px;">
-                            <div class="config-field" style="margin-bottom: 8px;">
-                                <div class="config-checkbox-row" id="scrollToggle">
-                                    <div class="config-checkbox checked" id="scrollCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Scroll hasta el elemento</span>
-                                </div>
-                            </div>
-                            <div class="config-field" style="margin-bottom: 8px;">
-                                <div class="config-checkbox-row" id="mouseToggle">
-                                    <div class="config-checkbox checked" id="mouseCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Mover mouse al elemento</span>
-                                </div>
-                            </div>
-                            <div class="config-field" style="margin-bottom: 8px;">
-                                <div class="config-checkbox-row" id="clickFirstToggle">
-                                    <div class="config-checkbox checked" id="clickFirstCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Click en pregunta antes de responder</span>
-                                </div>
-                            </div>
-                            <div class="config-field" style="margin-bottom: 8px;">
-                                <div class="config-checkbox-row" id="validateToggle">
-                                    <div class="config-checkbox checked" id="validateCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Validar valor después de llenar</span>
-                                </div>
-                            </div>
-                            <div class="config-field">
-                                <label class="config-label" style="font-size: 10px;">⌨️ Velocidad de escritura (ms entre caracteres)</label>
+                            <div class="config-field" id="questionDelayField" style="display: none; margin-top: 8px; margin-left: 24px;">
                                 <div class="config-row">
                                     <div class="config-input-group">
                                         <label class="config-input-label">Min</label>
-                                        <input type="number" class="config-input" id="typingMinInput" value="30" min="0" step="10">
+                                        <input type="number" class="config-input" id="questionDelayMinInput" value="500" min="0" step="100" style="width: 70px;">
                                         <span class="config-unit">ms</span>
                                     </div>
                                     <div class="config-input-group">
                                         <label class="config-input-label">Max</label>
-                                        <input type="number" class="config-input" id="typingMaxInput" value="120" min="0" step="10">
+                                        <input type="number" class="config-input" id="questionDelayMaxInput" value="1500" min="0" step="100" style="width: 70px;">
                                         <span class="config-unit">ms</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+                        <div class="config-divider"></div>
                         
-                        <div class="config-field">
-                            <label class="config-label">✨ Visual Feedback</label>
-                            <div class="config-checkbox-row" id="highlightToggle">
-                                <div class="config-checkbox checked" id="highlightCheckbox">${ICONS.check}</div>
-                                <span class="config-checkbox-label">Resaltar elemento activo (glow)</span>
+                        <!-- ═══ SECCIÓN 2: Human Actions ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">🤖 Human Actions (Anti-bot)</div>
+                            <div class="config-checkbox-row" id="humanActionsToggle">
+                                <div class="config-checkbox checked" id="humanActionsCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Habilitar acciones humanas</span>
                             </div>
-                        </div>
-                        
-                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
-                        
-                        <!-- Sección: Branch Delay -->
-                        <div class="config-field">
-                            <label class="config-label">🔀 Delay para Preguntas Branch</label>
-                            <p style="font-size: 10px; color: #6b7280; margin-bottom: 8px;">Tiempo de espera después de hacer clic en pregunta branch para que el DOM cargue las nuevas preguntas.</p>
-                            <div class="config-row">
-                                <div class="config-input-group">
-                                    <input type="number" class="config-input" id="branchDelayInput" value="1500" min="500" step="100" style="width: 80px;">
-                                    <span class="config-unit">ms</span>
+                            <div id="humanActionsFields" style="margin-left: 24px; margin-top: 10px;">
+                                <div class="config-field" style="margin-bottom: 6px;">
+                                    <div class="config-checkbox-row" id="scrollToggle">
+                                        <div class="config-checkbox checked" id="scrollCheckbox">${ICONS.check}</div>
+                                        <span class="config-checkbox-label">Scroll hasta el elemento</span>
+                                    </div>
+                                </div>
+                                <div class="config-field" style="margin-bottom: 6px;">
+                                    <div class="config-checkbox-row" id="mouseToggle">
+                                        <div class="config-checkbox checked" id="mouseCheckbox">${ICONS.check}</div>
+                                        <span class="config-checkbox-label">Mover mouse al elemento</span>
+                                    </div>
+                                </div>
+                                <div class="config-field">
+                                    <div class="config-checkbox-row" id="clickFirstToggle">
+                                        <div class="config-checkbox checked" id="clickFirstCheckbox">${ICONS.check}</div>
+                                        <span class="config-checkbox-label">Click en pregunta antes de responder</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 3: Validación ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">✅ Validación</div>
+                            <div class="config-field" style="margin-bottom: 6px;">
+                                <div class="config-checkbox-row" id="validateFillToggle">
+                                    <div class="config-checkbox checked" id="validateFillCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Validar después de FILL (texto)</span>
+                                </div>
+                            </div>
+                            <div class="config-field">
+                                <div class="config-checkbox-row" id="validateSelectToggle">
+                                    <div class="config-checkbox checked" id="validateSelectCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Validar después de SELECT (opción)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 4: Configuración de Llenado (FILL) ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">⌨️ Configuración de Llenado</div>
+                            
+                            <!-- Textos CORTOS -->
+                            <div class="config-subsection">
+                                <div class="config-subsection-title">Textos Cortos</div>
+                                <div class="config-field">
+                                    <label class="config-label" style="margin-bottom: 4px;">Método de escritura:</label>
+                                    <select class="config-select" id="shortTextMethodSelect">
+                                        <option value="keyByKey">🐢 Tecla por tecla (más humano)</option>
+                                        <option value="sendKeys">⚡ sendKeys directo (rápido)</option>
+                                        <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
+                                    </select>
+                                </div>
+                                <!-- Opciones específicas de keyByKey -->
+                                <div class="config-method-options" id="shortTextKeyByKeyOptions">
+                                    <label class="config-label" style="font-size: 10px;">⏱️ Delay entre teclas:</label>
+                                    <div class="config-row" style="margin-top: 4px;">
+                                        <div class="config-input-group">
+                                            <label class="config-input-label">Min</label>
+                                            <input type="number" class="config-input" id="typingMinInput" value="30" min="0" step="10" style="width: 60px;">
+                                            <span class="config-unit">ms</span>
+                                        </div>
+                                        <div class="config-input-group">
+                                            <label class="config-input-label">Max</label>
+                                            <input type="number" class="config-input" id="typingMaxInput" value="120" min="0" step="10" style="width: 60px;">
+                                            <span class="config-unit">ms</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Textos LARGOS -->
+                            <div class="config-subsection">
+                                <div class="config-subsection-title">Textos Largos (auto-detectar)</div>
+                                <div class="config-checkbox-row" id="autoDetectToggle">
+                                    <div class="config-checkbox checked" id="autoDetectCheckbox">${ICONS.check}</div>
+                                    <span class="config-checkbox-label">Detectar textos largos automáticamente</span>
+                                </div>
+                                <div id="longTextOptions" style="margin-top: 10px;">
+                                    <div class="config-inline-group">
+                                        <label class="config-label" style="margin: 0; font-size: 10px;">Umbral:</label>
+                                        <input type="number" class="config-input" id="longTextThreshold" value="25" min="10" step="5" style="width: 60px;">
+                                        <span class="config-unit">caracteres</span>
+                                    </div>
+                                    <div class="config-field" style="margin-top: 10px;">
+                                        <label class="config-label" style="margin-bottom: 4px;">Método para textos largos:</label>
+                                        <select class="config-select" id="longTextMethodSelect">
+                                            <option value="sendKeys">⚡ sendKeys directo (rápido)</option>
+                                            <option value="ctrlV">📋 Ctrl+V (clipboard)</option>
+                                            <option value="keyByKey">🐢 Tecla por tecla (lento)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 5: Visual Feedback ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">✨ Visual Feedback</div>
+                            <div class="config-checkbox-row" id="highlightToggle">
+                                <div class="config-checkbox checked" id="highlightCheckbox">${ICONS.check}</div>
+                                <span class="config-checkbox-label">Resaltar pregunta activa (glow)</span>
+                            </div>
+                        </div>
+                        
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 6: Delays Especiales ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">🔀 Delays Especiales</div>
+                            <div class="config-row" style="gap: 20px;">
+                                <div class="config-input-group">
+                                    <label class="config-label" style="margin: 0; min-width: fit-content;">Branch:</label>
+                                    <input type="number" class="config-input" id="branchDelayInput" value="1500" min="500" step="100" style="width: 70px;">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                                <div class="config-input-group">
+                                    <label class="config-label" style="margin: 0; min-width: fit-content;">Página:</label>
+                                    <input type="number" class="config-input" id="pageChangeDelayInput" value="2000" min="500" step="100" style="width: 70px;">
+                                    <span class="config-unit">ms</span>
+                                </div>
+                            </div>
+                            <p style="font-size: 9px; color: #9ca3af; margin-top: 6px;">Branch: después de click en pregunta condicional. Página: después de click en Siguiente.</p>
+                        </div>
+                        
                     </div>
                     <div class="config-modal-footer">
                         <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
@@ -2143,14 +2286,14 @@
         const delayMinInput = shadow.getElementById('delayMinInput');
         const delayMaxInput = shadow.getElementById('delayMaxInput');
 
-        // Nuevos elementos para override delays
+        // Override delays
         const overrideDelaysToggle = shadow.getElementById('overrideDelaysToggle');
         const overrideDelaysCheckbox = shadow.getElementById('overrideDelaysCheckbox');
         const questionDelayField = shadow.getElementById('questionDelayField');
         const questionDelayMinInput = shadow.getElementById('questionDelayMinInput');
         const questionDelayMaxInput = shadow.getElementById('questionDelayMaxInput');
 
-        // Nuevos elementos para human actions
+        // Human actions
         const humanActionsToggle = shadow.getElementById('humanActionsToggle');
         const humanActionsCheckbox = shadow.getElementById('humanActionsCheckbox');
         const humanActionsFields = shadow.getElementById('humanActionsFields');
@@ -2160,96 +2303,124 @@
         const mouseCheckbox = shadow.getElementById('mouseCheckbox');
         const clickFirstToggle = shadow.getElementById('clickFirstToggle');
         const clickFirstCheckbox = shadow.getElementById('clickFirstCheckbox');
-        const validateToggle = shadow.getElementById('validateToggle');
-        const validateCheckbox = shadow.getElementById('validateCheckbox');
+
+        // Validation (separado)
+        const validateFillToggle = shadow.getElementById('validateFillToggle');
+        const validateFillCheckbox = shadow.getElementById('validateFillCheckbox');
+        const validateSelectToggle = shadow.getElementById('validateSelectToggle');
+        const validateSelectCheckbox = shadow.getElementById('validateSelectCheckbox');
+
+        // Fill config
+        const shortTextMethodSelect = shadow.getElementById('shortTextMethodSelect');
+        const shortTextKeyByKeyOptions = shadow.getElementById('shortTextKeyByKeyOptions');
         const typingMinInput = shadow.getElementById('typingMinInput');
         const typingMaxInput = shadow.getElementById('typingMaxInput');
+        const autoDetectToggle = shadow.getElementById('autoDetectToggle');
+        const autoDetectCheckbox = shadow.getElementById('autoDetectCheckbox');
+        const longTextOptions = shadow.getElementById('longTextOptions');
+        const longTextThreshold = shadow.getElementById('longTextThreshold');
+        const longTextMethodSelect = shadow.getElementById('longTextMethodSelect');
 
-        // Elemento para visual feedback
+        // Visual feedback
         const highlightToggle = shadow.getElementById('highlightToggle');
         const highlightCheckbox = shadow.getElementById('highlightCheckbox');
 
-        // Branch delay input
+        // Delays especiales
         const branchDelayInput = shadow.getElementById('branchDelayInput');
+        const pageChangeDelayInput = shadow.getElementById('pageChangeDelayInput');
 
         // Estado de configuración completo
         let configState = {
-            // Retardo entre filas
+            // ═══ Sección 1: Tiempos Globales ═══
             randomDelay: false,
             fixedDelay: 2000,
             minDelay: 1000,
             maxDelay: 3000,
-            // Override tiempos por pregunta
             overrideDelays: false,
             delayMinMs: 500,
             delayMaxMs: 1500,
-            // Page/Branch delays
-            pageChangeDelayMs: 2000,
-            branchDelayMs: 1500,
-            // Validation (separado de Human Actions)
-            validateAfterFill: true,
-            validateAfterSelect: true,
-            // Human actions
+
+            // ═══ Sección 2: Human Actions ═══
             humanActionsEnabled: true,
             scrollToElement: true,
             moveMouseToElement: true,
             clickQuestionFirst: true,
+
+            // ═══ Sección 3: Validación ═══
+            validateAfterFill: true,
+            validateAfterSelect: true,
+
+            // ═══ Sección 4: Fill Config ═══
+            shortTextMethod: 'keyByKey',
             typingDelayMinMs: 30,
             typingDelayMaxMs: 120,
-            // Visual feedback
-            highlightElements: true
+            autoDetectLongText: true,
+            longTextThreshold: 25,
+            longTextMethod: 'sendKeys',
+
+            // ═══ Sección 5: Visual Feedback ═══
+            highlightElements: true,
+
+            // ═══ Sección 6: Delays Especiales ═══
+            branchDelayMs: 1500,
+            pageChangeDelayMs: 2000
         };
 
+        function updateShortTextMethodUI() {
+            const method = shortTextMethodSelect.value;
+            shortTextKeyByKeyOptions.style.display = method === 'keyByKey' ? 'block' : 'none';
+        }
+
+        function updateAutoDetectUI() {
+            const isChecked = autoDetectCheckbox.classList.contains('checked');
+            longTextOptions.style.display = isChecked ? 'block' : 'none';
+        }
+
         function openConfigModal() {
-            // Cargar valores actuales en los inputs
+            // ═══ Sección 1: Tiempos Globales ═══
             delayInput.value = configState.fixedDelay;
             delayMinInput.value = configState.minDelay;
             delayMaxInput.value = configState.maxDelay;
             questionDelayMinInput.value = configState.delayMinMs;
             questionDelayMaxInput.value = configState.delayMaxMs;
-            typingMinInput.value = configState.typingDelayMinMs;
-            typingMaxInput.value = configState.typingDelayMaxMs;
 
-            // Actualizar checkboxes y campos visibles - Random delay
-            if (configState.randomDelay) {
-                randomDelayCheckbox.classList.add('checked');
-                fixedDelayField.style.display = 'none';
-                randomDelayField.style.display = 'block';
-            } else {
-                randomDelayCheckbox.classList.remove('checked');
-                fixedDelayField.style.display = 'block';
-                randomDelayField.style.display = 'none';
-            }
+            // Random delay
+            randomDelayCheckbox.classList.toggle('checked', configState.randomDelay);
+            fixedDelayField.style.display = configState.randomDelay ? 'none' : 'block';
+            randomDelayField.style.display = configState.randomDelay ? 'block' : 'none';
 
             // Override delays
-            if (configState.overrideDelays) {
-                overrideDelaysCheckbox.classList.add('checked');
-                questionDelayField.style.display = 'block';
-            } else {
-                overrideDelaysCheckbox.classList.remove('checked');
-                questionDelayField.style.display = 'none';
-            }
+            overrideDelaysCheckbox.classList.toggle('checked', configState.overrideDelays);
+            questionDelayField.style.display = configState.overrideDelays ? 'block' : 'none';
 
-            // Human actions
-            if (configState.humanActionsEnabled) {
-                humanActionsCheckbox.classList.add('checked');
-                humanActionsFields.style.display = 'block';
-            } else {
-                humanActionsCheckbox.classList.remove('checked');
-                humanActionsFields.style.display = 'none';
-            }
-
-            // Sub-checkboxes de human actions
+            // ═══ Sección 2: Human Actions ═══
+            humanActionsCheckbox.classList.toggle('checked', configState.humanActionsEnabled);
+            humanActionsFields.style.display = configState.humanActionsEnabled ? 'block' : 'none';
             scrollCheckbox.classList.toggle('checked', configState.scrollToElement);
             mouseCheckbox.classList.toggle('checked', configState.moveMouseToElement);
             clickFirstCheckbox.classList.toggle('checked', configState.clickQuestionFirst);
-            validateCheckbox.classList.toggle('checked', configState.validateAfterFill);
 
-            // Visual feedback
+            // ═══ Sección 3: Validación ═══
+            validateFillCheckbox.classList.toggle('checked', configState.validateAfterFill);
+            validateSelectCheckbox.classList.toggle('checked', configState.validateAfterSelect);
+
+            // ═══ Sección 4: Fill Config ═══
+            shortTextMethodSelect.value = configState.shortTextMethod;
+            typingMinInput.value = configState.typingDelayMinMs;
+            typingMaxInput.value = configState.typingDelayMaxMs;
+            updateShortTextMethodUI();
+
+            autoDetectCheckbox.classList.toggle('checked', configState.autoDetectLongText);
+            longTextThreshold.value = configState.longTextThreshold;
+            longTextMethodSelect.value = configState.longTextMethod;
+            updateAutoDetectUI();
+
+            // ═══ Sección 5: Visual Feedback ═══
             highlightCheckbox.classList.toggle('checked', configState.highlightElements);
 
-            // Branch delay
+            // ═══ Sección 6: Delays Especiales ═══
             branchDelayInput.value = configState.branchDelayMs;
+            pageChangeDelayInput.value = configState.pageChangeDelayMs;
 
             configModalOverlay.classList.add('open');
         }
@@ -2274,36 +2445,50 @@
             humanActionsFields.style.display = isChecked ? 'block' : 'none';
         }
 
+        function toggleAutoDetect() {
+            autoDetectCheckbox.classList.toggle('checked');
+            updateAutoDetectUI();
+        }
+
         function toggleCheckbox(checkbox) {
             checkbox.classList.toggle('checked');
         }
 
         function saveConfig() {
             configState = {
-                // Retardo entre filas
+                // ═══ Sección 1: Tiempos Globales ═══
                 randomDelay: randomDelayCheckbox.classList.contains('checked'),
                 fixedDelay: parseInt(delayInput.value) || 2000,
                 minDelay: parseInt(delayMinInput.value) || 1000,
                 maxDelay: parseInt(delayMaxInput.value) || 3000,
-                // Override tiempos por pregunta
                 overrideDelays: overrideDelaysCheckbox.classList.contains('checked'),
                 delayMinMs: parseInt(questionDelayMinInput.value) || 500,
                 delayMaxMs: parseInt(questionDelayMaxInput.value) || 1500,
-                // Page/Branch delays
-                pageChangeDelayMs: configState.pageChangeDelayMs || 2000,  // Mantener valor actual
-                branchDelayMs: parseInt(branchDelayInput.value) || 1500,
-                // Validation
-                validateAfterFill: validateCheckbox.classList.contains('checked'),
-                validateAfterSelect: true,  // Siempre true por ahora (infalible)
-                // Human actions
+
+                // ═══ Sección 2: Human Actions ═══
                 humanActionsEnabled: humanActionsCheckbox.classList.contains('checked'),
                 scrollToElement: scrollCheckbox.classList.contains('checked'),
                 moveMouseToElement: mouseCheckbox.classList.contains('checked'),
                 clickQuestionFirst: clickFirstCheckbox.classList.contains('checked'),
+
+                // ═══ Sección 3: Validación ═══
+                validateAfterFill: validateFillCheckbox.classList.contains('checked'),
+                validateAfterSelect: validateSelectCheckbox.classList.contains('checked'),
+
+                // ═══ Sección 4: Fill Config ═══
+                shortTextMethod: shortTextMethodSelect.value,
                 typingDelayMinMs: parseInt(typingMinInput.value) || 30,
                 typingDelayMaxMs: parseInt(typingMaxInput.value) || 120,
-                // Visual feedback
-                highlightElements: highlightCheckbox.classList.contains('checked')
+                autoDetectLongText: autoDetectCheckbox.classList.contains('checked'),
+                longTextThreshold: parseInt(longTextThreshold.value) || 25,
+                longTextMethod: longTextMethodSelect.value,
+
+                // ═══ Sección 5: Visual Feedback ═══
+                highlightElements: highlightCheckbox.classList.contains('checked'),
+
+                // ═══ Sección 6: Delays Especiales ═══
+                branchDelayMs: parseInt(branchDelayInput.value) || 1500,
+                pageChangeDelayMs: parseInt(pageChangeDelayInput.value) || 2000
             };
 
             // Enviar configuración al backend
@@ -2327,8 +2512,11 @@
         scrollToggle.onclick = () => toggleCheckbox(scrollCheckbox);
         mouseToggle.onclick = () => toggleCheckbox(mouseCheckbox);
         clickFirstToggle.onclick = () => toggleCheckbox(clickFirstCheckbox);
-        validateToggle.onclick = () => toggleCheckbox(validateCheckbox);
+        validateFillToggle.onclick = () => toggleCheckbox(validateFillCheckbox);
+        validateSelectToggle.onclick = () => toggleCheckbox(validateSelectCheckbox);
         highlightToggle.onclick = () => toggleCheckbox(highlightCheckbox);
+        autoDetectToggle.onclick = toggleAutoDetect;
+        shortTextMethodSelect.onchange = updateShortTextMethodUI;
 
         configModalOverlay.onclick = (e) => {
             if (e.target === configModalOverlay) closeConfigModal();

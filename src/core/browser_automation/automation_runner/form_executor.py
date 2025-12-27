@@ -47,41 +47,48 @@ class ActionState(Enum):
 @dataclass
 class ExecutorConfig:
     """Configuración del executor."""
-    # Delays globales (sobreescriben tiempos por pregunta si están activos)
+    # ═══ Sección 1: Tiempos Globales ═══
+    # Override tiempos por pregunta
     override_delays: bool = False
     delay_min_ms: int = 500
     delay_max_ms: int = 1500
+    # Delay entre filas (formularios)
     delay_between_rows_ms: int = 2000
     delay_between_rows_random: bool = True
     delay_between_rows_min_ms: int = 1000
     delay_between_rows_max_ms: int = 3000
     
-    # Page change delay (after clicking Next)
-    page_change_delay_ms: int = 2000
-    
-    # Branch delay (tiempo de espera después de click en pregunta branch)
-    branch_delay_ms: int = 1500
-    
-    # Validation
-    validate_after_fill: bool = True
-    validate_after_select: bool = True
-    
-    # Human actions
+    # ═══ Sección 2: Human Actions ═══
     human_actions_enabled: bool = True
     scroll_to_element: bool = True
     move_mouse_to_element: bool = True
     click_question_first: bool = True
+    
+    # ═══ Sección 3: Validación ═══
+    validate_after_fill: bool = True
+    validate_after_select: bool = True
+    
+    # ═══ Sección 4: Configuración de Llenado (FILL) ═══
+    # Método para textos cortos: 'keyByKey', 'sendKeys', 'ctrlV'
+    short_text_method: str = 'keyByKey'
     typing_delay_min_ms: int = 30
     typing_delay_max_ms: int = 120
     
-    # Visual feedback
+    # Textos largos
+    auto_detect_long_text: bool = True
+    long_text_threshold: int = 25  # Caracteres
+    long_text_method: str = 'sendKeys'  # 'keyByKey', 'sendKeys', 'ctrlV'
+    
+    # ═══ Sección 5: Visual Feedback ═══
     highlight_elements: bool = True
     
-    # Error handling
-    stop_on_error: bool = True  # Detener ejecución si hay error
-    max_retries: int = 1  # Reintentos si falla validación
+    # ═══ Sección 6: Delays Especiales ═══
+    page_change_delay_ms: int = 2000
+    branch_delay_ms: int = 1500
     
-    # Timeouts
+    # ═══ Error Handling & Timeouts ═══
+    stop_on_error: bool = True
+    max_retries: int = 1
     element_wait_timeout: int = 10
     page_load_timeout: int = 30
     
@@ -92,6 +99,7 @@ class ExecutorConfig:
     def from_dict(cls, data: dict) -> 'ExecutorConfig':
         """Crear config desde diccionario."""
         return cls(
+            # Tiempos globales
             override_delays=data.get("overrideDelays", False),
             delay_min_ms=data.get("delayMinMs", 500),
             delay_max_ms=data.get("delayMaxMs", 1500),
@@ -99,17 +107,27 @@ class ExecutorConfig:
             delay_between_rows_random=data.get("delayBetweenRowsRandom", True),
             delay_between_rows_min_ms=data.get("delayBetweenRowsMinMs", 1000),
             delay_between_rows_max_ms=data.get("delayBetweenRowsMaxMs", 3000),
-            page_change_delay_ms=data.get("pageChangeDelayMs", 2000),
-            branch_delay_ms=data.get("branchDelayMs", 1500),
-            validate_after_fill=data.get("validateAfterFill", True),
-            validate_after_select=data.get("validateAfterSelect", True),
+            # Human actions
             human_actions_enabled=data.get("humanActionsEnabled", True),
             scroll_to_element=data.get("scrollToElement", True),
             move_mouse_to_element=data.get("moveMouseToElement", True),
             click_question_first=data.get("clickQuestionFirst", True),
+            # Validation
+            validate_after_fill=data.get("validateAfterFill", True),
+            validate_after_select=data.get("validateAfterSelect", True),
+            # Fill config
+            short_text_method=data.get("shortTextMethod", "keyByKey"),
             typing_delay_min_ms=data.get("typingDelayMinMs", 30),
             typing_delay_max_ms=data.get("typingDelayMaxMs", 120),
+            auto_detect_long_text=data.get("autoDetectLongText", True),
+            long_text_threshold=data.get("longTextThreshold", 25),
+            long_text_method=data.get("longTextMethod", "sendKeys"),
+            # Visual
             highlight_elements=data.get("highlightElements", True),
+            # Delays especiales
+            page_change_delay_ms=data.get("pageChangeDelayMs", 2000),
+            branch_delay_ms=data.get("branchDelayMs", 1500),
+            # Error handling
             stop_on_error=data.get("stopOnError", True),
             max_retries=data.get("maxRetries", 1),
             element_wait_timeout=data.get("elementWaitTimeout", 10),
@@ -510,6 +528,28 @@ class FormExecutor:
                 self.config.typing_delay_max_ms
             )
             time.sleep(delay_ms / 1000.0)
+    
+    def _type_via_clipboard(self, element: WebElement, text: str):
+        """Escribir texto via clipboard (Ctrl+V). Más rápido para textos largos."""
+        try:
+            from selenium.webdriver.common.keys import Keys
+            import pyperclip
+            
+            # Copiar texto al clipboard
+            pyperclip.copy(text)
+            
+            # Pegar con Ctrl+V
+            element.send_keys(Keys.CONTROL, 'v')
+            time.sleep(0.1)
+            
+            self._log(0, 0, f"Clipboard paste exitoso ({len(text)} chars)", "success")
+        except ImportError:
+            # Si pyperclip no está disponible, usar fallback
+            self._log(0, 0, "pyperclip no disponible, usando sendKeys", "warning")
+            element.send_keys(text)
+        except Exception as e:
+            self._log(0, 0, f"Clipboard paste falló: {e}, usando sendKeys", "warning")
+            element.send_keys(text)
     
     def _validate_input_value(self, element: WebElement, expected_value: str) -> bool:
         """Validar que el input contiene el valor esperado."""
@@ -1186,9 +1226,12 @@ class FormExecutor:
                 )
             self._log(2, 9, "Input encontrado", "success")
             
-            # Paso 3: Click en contenedor padre para focus seguro
-            self._log(3, 9, "Click en contenedor padre para focus...", "info")
-            container = self._get_question_container(question)
+            # Paso 3: Buscar contenedor padre para focus y glow
+            self._log(3, 9, "Buscando contenedor padre (questionItem)...", "info")
+            selenium_info = question.get("selenium", {})
+            question_id = selenium_info.get("questionId")
+            container = self._find_question_container_by_id(question_id) if question_id else None
+            
             if container:
                 try:
                     container.click()
@@ -1202,9 +1245,12 @@ class FormExecutor:
             if self.config.scroll_to_element:
                 self._scroll_to_element(element)
             
-            # Paso 5: Highlight
-            self._log(5, 9, "Aplicando glow al input", "info")
-            self._highlight_element(element)
+            # Paso 5: Highlight en CONTENEDOR (no en input)
+            self._log(5, 9, "Aplicando glow al contenedor", "info")
+            if container:
+                self._highlight_element(container)
+            else:
+                self._highlight_element(element)  # Fallback al input
             
             # Paso 6: Click en input + limpiar
             self._log(6, 9, "Click en input y limpiando campo...", "info")
@@ -1216,14 +1262,31 @@ class FormExecutor:
             element.clear()
             time.sleep(0.1)
             
-            # Paso 7: Escribir
-            if self.config.human_actions_enabled:
-                typing_info = f"(delay: {self.config.typing_delay_min_ms}-{self.config.typing_delay_max_ms}ms/tecla)"
-                self._log(7, 9, f"Escribiendo respuesta {typing_info}...", "info")
-                self._human_type(element, answer)
+            # Paso 7: Escribir usando el método configurado
+            text_length = len(answer)
+            is_long_text = (self.config.auto_detect_long_text and 
+                           text_length >= self.config.long_text_threshold)
+            
+            # Determinar método a usar
+            if is_long_text:
+                method = self.config.long_text_method
+                self._log(7, 9, f"Texto largo ({text_length} chars >= {self.config.long_text_threshold}), usando: {method}", "info")
             else:
-                self._log(7, 9, "Escribiendo respuesta (modo rápido)...", "info")
+                method = self.config.short_text_method
+                self._log(7, 9, f"Texto corto ({text_length} chars), usando: {method}", "info")
+            
+            # Ejecutar según método
+            if method == 'keyByKey' and self.config.human_actions_enabled:
+                typing_info = f"(delay: {self.config.typing_delay_min_ms}-{self.config.typing_delay_max_ms}ms/tecla)"
+                self._log(7, 9, f"Escribiendo tecla por tecla {typing_info}...", "info")
+                self._human_type(element, answer)
+            elif method == 'ctrlV':
+                self._log(7, 9, "Escribiendo via clipboard (Ctrl+V)...", "info")
+                self._type_via_clipboard(element, answer)
+            else:  # sendKeys (default)
+                self._log(7, 9, "Escribiendo via sendKeys directo...", "info")
                 element.send_keys(answer)
+            
             time.sleep(0.2)
             
             # Paso 8: Validación INFALIBLE
@@ -1324,7 +1387,10 @@ class FormExecutor:
             # ═══ PASO 2: Buscar contenedor padre (questionItem) ═══
             browser_log("PASO 2: Buscando contenedor padre (questionItem)...", "info")
             
-            container = self._get_question_container(question)
+            # Usar el método que funciona (el mismo que usa _find_option_element)
+            selenium_info = question.get("selenium", {})
+            question_id = selenium_info.get("questionId")
+            container = self._find_question_container_by_id(question_id) if question_id else None
             if container:
                 browser_log("PASO 2: ✓ Contenedor encontrado", "success")
                 self.driver.execute_script("""

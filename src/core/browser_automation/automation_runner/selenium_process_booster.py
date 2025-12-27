@@ -481,28 +481,39 @@ class SeleniumProcessBooster:
         """Update executor configuration from UI."""
         # Map UI config to executor config format
         cls._executor_config.update({
+            # ═══ Sección 1: Tiempos Globales ═══
             "delayBetweenRowsRandom": config_data.get("randomDelay", False),
-            "delayBetweenRowsMs": int(config_data.get("fixedDelay", 2) * 1000),
-            "delayBetweenRowsMinMs": int(config_data.get("minDelay", 1) * 1000),
-            "delayBetweenRowsMaxMs": int(config_data.get("maxDelay", 3) * 1000),
-            # Page/Branch delays
-            "pageChangeDelayMs": config_data.get("pageChangeDelayMs", 2000),
-            "branchDelayMs": config_data.get("branchDelayMs", 1500),
-            # Validation
-            "validateAfterFill": config_data.get("validateAfterFill", True),
-            "validateAfterSelect": config_data.get("validateAfterSelect", True),
-            # Human actions
-            "humanActionsEnabled": config_data.get("humanActionsEnabled", True),
-            "typingDelayMinMs": config_data.get("typingDelayMinMs", 30),
-            "typingDelayMaxMs": config_data.get("typingDelayMaxMs", 120),
-            "scrollToElement": config_data.get("scrollToElement", True),
-            "moveMouseToElement": config_data.get("moveMouseToElement", True),
-            "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
-            # Other
+            "delayBetweenRowsMs": config_data.get("fixedDelay", 2000),
+            "delayBetweenRowsMinMs": config_data.get("minDelay", 1000),
+            "delayBetweenRowsMaxMs": config_data.get("maxDelay", 3000),
             "overrideDelays": config_data.get("overrideDelays", False),
             "delayMinMs": config_data.get("delayMinMs", 500),
             "delayMaxMs": config_data.get("delayMaxMs", 1500),
+            
+            # ═══ Sección 2: Human Actions ═══
+            "humanActionsEnabled": config_data.get("humanActionsEnabled", True),
+            "scrollToElement": config_data.get("scrollToElement", True),
+            "moveMouseToElement": config_data.get("moveMouseToElement", True),
+            "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
+            
+            # ═══ Sección 3: Validación ═══
+            "validateAfterFill": config_data.get("validateAfterFill", True),
+            "validateAfterSelect": config_data.get("validateAfterSelect", True),
+            
+            # ═══ Sección 4: Fill Config ═══
+            "shortTextMethod": config_data.get("shortTextMethod", "keyByKey"),
+            "typingDelayMinMs": config_data.get("typingDelayMinMs", 30),
+            "typingDelayMaxMs": config_data.get("typingDelayMaxMs", 120),
+            "autoDetectLongText": config_data.get("autoDetectLongText", True),
+            "longTextThreshold": config_data.get("longTextThreshold", 25),
+            "longTextMethod": config_data.get("longTextMethod", "sendKeys"),
+            
+            # ═══ Sección 5: Visual Feedback ═══
             "highlightElements": config_data.get("highlightElements", True),
+            
+            # ═══ Sección 6: Delays Especiales ═══
+            "branchDelayMs": config_data.get("branchDelayMs", 1500),
+            "pageChangeDelayMs": config_data.get("pageChangeDelayMs", 2000),
         })
         
         if cls._executor:
