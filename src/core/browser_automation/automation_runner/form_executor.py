@@ -1226,33 +1226,31 @@ class FormExecutor:
                 )
             self._log(2, 9, "Input encontrado", "success")
             
-            # Paso 3: Buscar contenedor padre para focus y glow
+            # Paso 3: Buscar contenedor padre para glow
             self._log(3, 9, "Buscando contenedor padre (questionItem)...", "info")
             selenium_info = question.get("selenium", {})
             question_id = selenium_info.get("questionId")
             container = self._find_question_container_by_id(question_id) if question_id else None
             
             if container:
-                try:
-                    container.click()
-                    time.sleep(0.1)
-                    self._log(3, 9, "Focus en contenedor OK", "success")
-                except Exception:
-                    self._log(3, 9, "Click en contenedor falló (ignorado)", "warning")
+                self._log(3, 9, "Contenedor encontrado", "success")
+            else:
+                self._log(3, 9, "Contenedor no encontrado (usando input como fallback)", "warning")
             
-            # Paso 4: Scroll para centrar
-            self._log(4, 9, "Scroll para centrar elemento...", "info")
+            # Paso 4: Scroll para centrar el CONTENEDOR (no el input)
+            self._log(4, 9, "Scroll para centrar contenedor...", "info")
             if self.config.scroll_to_element:
-                self._scroll_to_element(element)
+                target_scroll = container if container else element
+                self._scroll_to_element(target_scroll)
             
-            # Paso 5: Highlight en CONTENEDOR (no en input)
+            # Paso 5: Highlight en CONTENEDOR
             self._log(5, 9, "Aplicando glow al contenedor", "info")
             if container:
                 self._highlight_element(container)
             else:
                 self._highlight_element(element)  # Fallback al input
             
-            # Paso 6: Click en input + limpiar
+            # Paso 6: Click en INPUT para dar focus + limpiar
             self._log(6, 9, "Click en input y limpiando campo...", "info")
             try:
                 element.click()
@@ -1302,7 +1300,10 @@ class FormExecutor:
                     
                     if not self._validate_fill_value(element, answer):
                         self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
-                        self._remove_highlight(element)
+                        if container:
+                            self._remove_highlight(container)
+                        else:
+                            self._remove_highlight(element)
                         return ActionResult(
                             success=False,
                             question_key=key,
@@ -1310,11 +1311,16 @@ class FormExecutor:
                             error_message="Validation failed: value not set correctly"
                         )
             
-            # Paso 9: Éxito
+            # Paso 9: Éxito - cambiar glow a verde y quitar
             self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
-            self._highlight_element(element, "#10b981")  # Verde
-            time.sleep(0.3)
-            self._remove_highlight(element)
+            if container:
+                self._highlight_element(container, "#10b981")  # Verde
+                time.sleep(0.3)
+                self._remove_highlight(container)
+            else:
+                self._highlight_element(element, "#10b981")
+                time.sleep(0.3)
+                self._remove_highlight(element)
             
             # Delay antes de siguiente pregunta
             delay_min, delay_max = self._get_question_delay(question)
@@ -1400,74 +1406,58 @@ class FormExecutor:
             else:
                 browser_log("PASO 2: ⚠ No se encontró contenedor, continuando sin él", "warning")
             
-            # ═══ PASO 3: Highlight en contenedor ═══
-            browser_log("PASO 3: Aplicando glow al contenedor...", "info")
+            # ═══ PASO 3: Scroll al contenedor (NO click - evita seleccionar opción accidentalmente) ═══
+            browser_log("PASO 3: Scroll al contenedor...", "info")
+            if container and self.config.scroll_to_element:
+                try:
+                    self._scroll_to_element(container)
+                    browser_log("PASO 3: ✓ Scroll completado", "success")
+                except Exception as e:
+                    browser_log(f"PASO 3: ⚠ Error en scroll: {e}", "warning")
+            
+            # ═══ PASO 4: Aplicar glow al contenedor ═══
+            browser_log("PASO 4: Aplicando glow al contenedor...", "info")
             if container:
                 try:
                     self._highlight_element(container)
-                    browser_log("PASO 3: ✓ Glow aplicado al contenedor", "success")
+                    browser_log("PASO 4: ✓ Glow aplicado al contenedor", "success")
                 except Exception as e:
-                    browser_log(f"PASO 3: ⚠ Error aplicando glow: {e}", "warning")
+                    browser_log(f"PASO 4: ⚠ Error aplicando glow: {e}", "warning")
             
-            # ═══ PASO 4: Click en contenedor para focus ═══
-            browser_log("PASO 4: Click en contenedor para focus...", "info")
-            if container:
-                try:
-                    container.click()
-                    time.sleep(0.15)
-                    browser_log("PASO 4: ✓ Click en contenedor OK", "success")
-                except Exception as e:
-                    browser_log(f"PASO 4: ⚠ Click en contenedor falló: {e}", "warning")
-            
-            # ═══ PASO 5: Scroll para centrar la opción ═══
-            browser_log("PASO 5: Scroll para centrar opción...", "info")
-            if self.config.scroll_to_element:
-                self._scroll_to_element(element)
-                browser_log("PASO 5: ✓ Scroll completado", "success")
-            
-            # ═══ PASO 6: Highlight en la opción ═══
-            browser_log("PASO 6: Aplicando glow a la opción específica...", "info")
-            self._highlight_element(element)
-            self.driver.execute_script("""
-                console.log('[AutoForms] PASO 6: Opción con glow:', arguments[0]);
-            """, element)
-            browser_log("PASO 6: ✓ Glow aplicado a opción", "success")
-            
-            # ═══ PASO 7: Mouse move (si human actions) ═══
+            # ═══ PASO 5: Mouse move a la opción (si human actions) ═══
             if self.config.human_actions_enabled and self.config.move_mouse_to_element:
-                browser_log("PASO 7: Moviendo mouse a opción...", "info")
+                browser_log("PASO 5: Moviendo mouse a opción...", "info")
                 self._move_mouse_to_element(element)
-                browser_log("PASO 7: ✓ Mouse movido", "success")
+                browser_log("PASO 5: ✓ Mouse movido", "success")
             else:
-                browser_log("PASO 7: Omitido (human_actions deshabilitado)", "info")
+                browser_log("PASO 5: Omitido (human_actions deshabilitado)", "info")
             
-            # ═══ PASO 8: CLICK EN OPCIÓN ═══
-            browser_log("PASO 8: ★★★ HACIENDO CLICK EN OPCIÓN ★★★", "action")
+            # ═══ PASO 6: CLICK EN OPCIÓN ═══
+            browser_log("PASO 6: ★★★ HACIENDO CLICK EN OPCIÓN ★★★", "action")
             self.driver.execute_script("""
-                console.log('[AutoForms] PASO 8: === CLICK EN OPCIÓN ===');
-                console.log('[AutoForms] PASO 8: Elemento a clickear:', arguments[0]);
+                console.log('[AutoForms] PASO 6: === CLICK EN OPCIÓN ===');
+                console.log('[AutoForms] PASO 6: Elemento a clickear:', arguments[0]);
             """, element)
             
             element.click()
-            browser_log("PASO 8: Click ejecutado, esperando 500ms para DOM update...", "info")
+            browser_log("PASO 6: Click ejecutado, esperando 500ms para DOM update...", "info")
             time.sleep(0.5)
-            browser_log("PASO 8: ✓ Click completado", "success")
+            browser_log("PASO 6: ✓ Click completado", "success")
             
-            # ═══ PASO 9: VALIDACIÓN ═══
-            browser_log("PASO 9: ★★★ VALIDANDO SELECCIÓN ★★★", "action")
+            # ═══ PASO 7: VALIDACIÓN ═══
+            browser_log("PASO 7: ★★★ VALIDANDO SELECCIÓN ★★★", "action")
             
             if self.config.validate_after_select:
                 validation_result = self._validate_select_value(element, answer)
                 
                 if not validation_result:
-                    browser_log("PASO 9: ⚠ Primera validación falló, reintentando click...", "warning")
+                    browser_log("PASO 7: ⚠ Primera validación falló, reintentando click...", "warning")
                     element.click()
                     time.sleep(0.6)
                     
                     validation_result = self._validate_select_value(element, answer)
                     if not validation_result:
-                        browser_log("PASO 9: ✗ VALIDACIÓN FALLÓ después de reintento", "error")
-                        self._remove_highlight(element)
+                        browser_log("PASO 7: ✗ VALIDACIÓN FALLÓ después de reintento", "error")
                         if container:
                             self._remove_highlight(container)
                         return ActionResult(
@@ -1477,19 +1467,15 @@ class FormExecutor:
                             error_message="Select validation failed: option not selected"
                         )
                 
-                browser_log("PASO 9: ✓ VALIDACIÓN OK", "success")
+                browser_log("PASO 7: ✓ VALIDACIÓN OK", "success")
             else:
-                browser_log("PASO 9: Validación deshabilitada, asumiendo OK", "info")
+                browser_log("PASO 7: Validación deshabilitada, asumiendo OK", "info")
             
-            # ═══ PASO 10: Éxito - cambiar a verde ═══
-            browser_log("PASO 10: ✅ PREGUNTA RESPONDIDA OK", "success")
-            self._highlight_element(element, "#10b981")  # Verde
+            # ═══ PASO 8: Éxito - cambiar glow a verde y luego quitar ═══
+            browser_log("PASO 8: ✅ PREGUNTA RESPONDIDA OK", "success")
             if container:
-                self._highlight_element(container, "#10b981")
-            
-            time.sleep(0.3)
-            self._remove_highlight(element)
-            if container:
+                self._highlight_element(container, "#10b981")  # Verde
+                time.sleep(0.3)
                 self._remove_highlight(container)
             
             # Delay antes de siguiente pregunta
