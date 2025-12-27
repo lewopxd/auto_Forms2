@@ -265,41 +265,82 @@ class FormExecutor:
     # ═══════════════════════════════════════════════════════════════════════
     
     def _get_question_container(self, question: dict) -> Optional[WebElement]:
-        """Obtener el contenedor padre de la pregunta para focus seguro.
+        """Obtener el contenedor padre de la pregunta (div[data-automation-id='questionItem']).
         
-        Esto evita errores al hacer click directo en opciones de SELECT.
+        Busca el contenedor que contiene el QuestionId específico.
         """
         try:
             selenium_info = question.get("selenium", {})
             full_selector = selenium_info.get("fullSelector", "")
             
             if not full_selector:
+                self._log(0, 0, "DEBUG: No hay fullSelector en question", "warning")
                 return None
             
             # Extraer QuestionId del selector
             import re
             match = re.search(r'QuestionId_r([a-f0-9]+)', full_selector)
-            if match:
-                q_id = f"QuestionId_r{match.group(1)}"
-                container = self.driver.find_element(By.ID, q_id)
-                return container
+            if not match:
+                self._log(0, 0, f"DEBUG: No se encontró QuestionId en: {full_selector[:50]}...", "warning")
+                return None
+            
+            q_id = f"QuestionId_r{match.group(1)}"
+            self._log(0, 0, f"DEBUG: Buscando contenedor para {q_id}", "info")
+            
+            # Log en consola del navegador
+            self.driver.execute_script(f"""
+                console.log('[AutoForms DEBUG] Buscando contenedor para: {q_id}');
+            """)
+            
+            # Buscar el elemento con ese ID y luego subir al questionItem padre
+            try:
+                q_element = self.driver.find_element(By.ID, q_id)
+                # Subir hasta encontrar div[data-automation-id="questionItem"]
+                container = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let maxDepth = 10;
+                    while (el && maxDepth > 0) {
+                        if (el.getAttribute && el.getAttribute('data-automation-id') === 'questionItem') {
+                            console.log('[AutoForms DEBUG] ✓ Contenedor encontrado:', el);
+                            return el;
+                        }
+                        el = el.parentElement;
+                        maxDepth--;
+                    }
+                    console.log('[AutoForms DEBUG] ✗ No se encontró questionItem container');
+                    return null;
+                """, q_element)
+                
+                if container:
+                    self._log(0, 0, f"DEBUG: ✓ Contenedor questionItem encontrado", "success")
+                    return container
+                else:
+                    self._log(0, 0, f"DEBUG: No se encontró questionItem padre", "warning")
+                    return q_element  # Fallback al elemento directo
+                    
+            except NoSuchElementException:
+                self._log(0, 0, f"DEBUG: Elemento {q_id} no existe en DOM", "error")
+                return None
+                
         except Exception as e:
-            self._log(0, 0, f"No se pudo encontrar contenedor padre: {e}", "warning")
+            self._log(0, 0, f"DEBUG Error en _get_question_container: {e}", "error")
+            import traceback
+            traceback.print_exc()
         
         return None
     
     # ═══════════════════════════════════════════════════════════════════════
-    # VALIDATION (FOOLPROOF - usando mismo elemento)
+    # VALIDATION (con debug en navegador)
     # ═══════════════════════════════════════════════════════════════════════
     
     def _validate_fill_value(self, element: WebElement, expected: str) -> bool:
-        """Validación INFALIBLE para FILL usando JS value property.
-        
-        Usa el MISMO elemento donde escribimos, lee .value via JavaScript
-        (funciona con React donde el atributo HTML value no se actualiza).
-        """
+        """Validación INFALIBLE para FILL usando JS value property."""
         try:
-            actual = self.driver.execute_script("return arguments[0].value;", element)
+            actual = self.driver.execute_script("""
+                let val = arguments[0].value;
+                console.log('[AutoForms DEBUG] FILL value:', val);
+                return val;
+            """, element)
             is_valid = (actual or "").strip() == expected.strip()
             if is_valid:
                 self._log(0, 0, f"Validación OK: '{actual[:30]}...' = esperado", "success")
@@ -310,49 +351,120 @@ class FormExecutor:
             self._log(0, 0, f"Error en validación FILL: {e}", "error")
             return False
     
-    def _validate_select_value(self, question: dict, expected_answer: str) -> bool:
+    def _validate_select_value(self, clicked_element: WebElement, expected_answer: str) -> bool:
         """Validación INFALIBLE para SELECT.
         
-        Busca DENTRO del contenedor de la pregunta cualquier input con
-        aria-checked='true' y verifica que su value coincida con la respuesta esperada.
+        Busca el INPUT con aria-checked='true' DENTRO o cerca del elemento clickeado.
         
-        Esta estrategia funciona porque:
-        1. Hacemos click en label/span pero el input es quien tiene aria-checked
-        2. Después del click, buscamos el input seleccionado
-        3. Comparamos su value con la respuesta esperada
+        Estructura del DOM de MS Forms:
+        <span data-automation-value="..." data-automation-id="radio">
+            <input aria-checked="true" type="radio" value="...">
+            ...
+        </span>
+        
+        El input está DENTRO del span que clickeamos.
         """
         try:
-            # Obtener el contenedor de la pregunta
-            container = self._get_question_container(question)
-            if not container:
-                self._log(0, 0, "No se pudo encontrar contenedor para validación", "warning")
-                # Fallback: buscar en todo el documento
-                container = self.driver.find_element(By.TAG_NAME, "body")
+            # Ejecutar validación en JavaScript usando el elemento clickeado
+            result = self.driver.execute_script("""
+                const clickedElement = arguments[0];
+                const expectedAnswer = arguments[1];
+                
+                console.log('='.repeat(50));
+                console.log('[AutoForms VALIDACIÓN] ★★★ VALIDANDO SELECT ★★★');
+                console.log('[AutoForms VALIDACIÓN] Elemento clickeado:', clickedElement);
+                console.log('[AutoForms VALIDACIÓN] Tag:', clickedElement.tagName);
+                console.log('[AutoForms VALIDACIÓN] data-automation-value:', clickedElement.getAttribute('data-automation-value'));
+                console.log('[AutoForms VALIDACIÓN] Respuesta esperada:', expectedAnswer);
+                
+                // ESTRATEGIA 1: Buscar input DENTRO del elemento clickeado
+                let inputElement = clickedElement.querySelector('input[type="radio"], input[type="checkbox"]');
+                
+                if (inputElement) {
+                    console.log('[AutoForms VALIDACIÓN] ✓ Input encontrado DENTRO del elemento');
+                    console.log('[AutoForms VALIDACIÓN]   aria-checked:', inputElement.getAttribute('aria-checked'));
+                    console.log('[AutoForms VALIDACIÓN]   value:', inputElement.value);
+                    
+                    const isChecked = inputElement.getAttribute('aria-checked') === 'true';
+                    if (isChecked) {
+                        console.log('[AutoForms VALIDACIÓN] ✓✓✓ VALIDACIÓN OK - aria-checked=true');
+                        return { success: true, method: 'input-inside', value: inputElement.value };
+                    }
+                }
+                
+                // ESTRATEGIA 2: Si el elemento clickeado ES el input
+                if (clickedElement.tagName === 'INPUT') {
+                    console.log('[AutoForms VALIDACIÓN] El elemento clickeado ES un input');
+                    const isChecked = clickedElement.getAttribute('aria-checked') === 'true';
+                    console.log('[AutoForms VALIDACIÓN]   aria-checked:', clickedElement.getAttribute('aria-checked'));
+                    if (isChecked) {
+                        console.log('[AutoForms VALIDACIÓN] ✓✓✓ VALIDACIÓN OK');
+                        return { success: true, method: 'direct-input', value: clickedElement.value };
+                    }
+                }
+                
+                // ESTRATEGIA 3: Buscar input como hermano
+                const parent = clickedElement.parentElement;
+                if (parent) {
+                    const siblingInput = parent.querySelector('input[aria-checked="true"]');
+                    if (siblingInput) {
+                        console.log('[AutoForms VALIDACIÓN] ✓ Input encontrado como HERMANO');
+                        console.log('[AutoForms VALIDACIÓN]   value:', siblingInput.value);
+                        return { success: true, method: 'sibling', value: siblingInput.value };
+                    }
+                }
+                
+                // ESTRATEGIA 4: Subir hasta el label y buscar
+                let searchElement = clickedElement;
+                for (let i = 0; i < 5; i++) {
+                    if (!searchElement) break;
+                    
+                    const foundInput = searchElement.querySelector('input[aria-checked="true"]');
+                    if (foundInput) {
+                        console.log('[AutoForms VALIDACIÓN] ✓ Input encontrado subiendo ' + i + ' niveles');
+                        console.log('[AutoForms VALIDACIÓN]   value:', foundInput.value);
+                        return { success: true, method: 'ancestor-' + i, value: foundInput.value };
+                    }
+                    searchElement = searchElement.parentElement;
+                }
+                
+                // ESTRATEGIA 5: Buscar por data-automation-value
+                const automationValue = clickedElement.getAttribute('data-automation-value');
+                if (automationValue) {
+                    console.log('[AutoForms VALIDACIÓN] Buscando por data-automation-value:', automationValue);
+                    const matchingInput = document.querySelector(`input[value="${automationValue}"]`);
+                    if (matchingInput) {
+                        const isChecked = matchingInput.getAttribute('aria-checked') === 'true';
+                        console.log('[AutoForms VALIDACIÓN]   aria-checked:', matchingInput.getAttribute('aria-checked'));
+                        if (isChecked) {
+                            console.log('[AutoForms VALIDACIÓN] ✓✓✓ VALIDACIÓN OK por data-automation-value');
+                            return { success: true, method: 'data-automation-value', value: automationValue };
+                        }
+                    }
+                }
+                
+                // DEBUG: Mostrar todos los inputs cercanos
+                console.log('[AutoForms VALIDACIÓN] ✗ No se encontró input seleccionado');
+                console.log('[AutoForms VALIDACIÓN] DEBUG - Inputs en el documento con aria-checked=true:');
+                const allChecked = document.querySelectorAll('input[aria-checked="true"]');
+                allChecked.forEach((inp, i) => {
+                    console.log('[AutoForms VALIDACIÓN]   [' + i + '] value=' + inp.value);
+                });
+                
+                return { success: false, error: 'No aria-checked=true found', checkedCount: allChecked.length };
+                
+            """, clicked_element, expected_answer)
             
-            # Buscar el input con aria-checked="true" dentro del contenedor
-            try:
-                selected_input = container.find_element(
-                    By.CSS_SELECTOR, 
-                    "input[aria-checked='true']"
-                )
-                selected_value = selected_input.get_attribute("value") or ""
-                
-                # Comparar valores (normalizar espacios y HTML entities)
-                expected_clean = expected_answer.strip().replace("&nbsp;", " ")
-                selected_clean = selected_value.strip().replace("&nbsp;", " ")
-                
-                is_valid = expected_clean == selected_clean
-                
-                if is_valid:
-                    self._log(0, 0, f"✓ Validación SELECT OK: '{selected_clean[:30]}...'", "success")
-                else:
-                    self._log(0, 0, f"✗ Validación SELECT: seleccionado='{selected_clean}', esperaba='{expected_clean}'", "error")
-                
-                return is_valid
-                
-            except NoSuchElementException:
-                # No hay ningún input seleccionado - el click no funcionó
-                self._log(0, 0, "✗ No se encontró ningún input con aria-checked='true'", "error")
+            # Procesar resultado
+            if result and result.get("success"):
+                method = result.get("method", "unknown")
+                value = result.get("value", "")
+                self._log(0, 0, f"✓ Validación SELECT OK (método: {method}, valor: {value[:30]}...)", "success")
+                return True
+            else:
+                error = result.get("error", "Unknown") if result else "No result"
+                checked_count = result.get("checkedCount", 0) if result else 0
+                self._log(0, 0, f"✗ Validación SELECT FALLÓ: {error} (inputs checked en doc: {checked_count})", "error")
                 return False
                 
         except Exception as e:
@@ -559,36 +671,478 @@ class FormExecutor:
         return None
     
     def _find_option_element(self, question: dict, answer_value: str) -> Optional[WebElement]:
-        """Encontrar opción para seleccionar."""
-        options = question.get("options", [])
+        """
+        Encontrar opción DENTRO del contenedor de la pregunta.
         
-        # Buscar la opción que coincide con el valor de respuesta
+        CRÍTICO: Busca SOLO dentro del contenedor de la pregunta específica,
+        NO hace búsqueda global que podría encontrar elementos de otras preguntas.
+        """
+        key = question.get("key", "unknown")
+        selenium_info = question.get("selenium", {})
+        question_id = selenium_info.get("questionId")  # ej: "r18ff53ab00554484ae4cee5b04ab442d"
+        
+        # ══════════════════════════════════════════════════════════════════════
+        # DEBUG QUIRÚRGICO: Log inicial
+        # ══════════════════════════════════════════════════════════════════════
+        self.driver.execute_script(f"""
+            console.log('');
+            console.log('╔══════════════════════════════════════════════════════════════╗');
+            console.log('║ 🔍 _find_option_element - BÚSQUEDA QUIRÚRGICA                ║');
+            console.log('╠══════════════════════════════════════════════════════════════╣');
+            console.log('║ Pregunta: {key}');
+            console.log('║ QuestionId: {question_id or "⚠️ NO DISPONIBLE"}');
+            console.log('║ Respuesta buscada: "{answer_value}"');
+            console.log('╚══════════════════════════════════════════════════════════════╝');
+        """)
+        
+        # ══════════════════════════════════════════════════════════════════════
+        # PASO 1: Verificar que tenemos questionId
+        # ══════════════════════════════════════════════════════════════════════
+        if not question_id:
+            self._log(0, 0, f"❌ {key}: No tiene questionId, imposible buscar de forma segura", "error")
+            self.driver.execute_script(f"""
+                console.error('[AutoForms] ❌ FATAL: Pregunta {key} no tiene questionId');
+                console.error('[AutoForms] Sin questionId no podemos limitar la búsqueda');
+            """)
+            return None
+        
+        # ══════════════════════════════════════════════════════════════════════
+        # PASO 2: Encontrar contenedor de la pregunta
+        # ══════════════════════════════════════════════════════════════════════
+        self.driver.execute_script(f"console.log('[AutoForms] 📦 PASO 2: Buscando contenedor para questionId={question_id}...');")
+        
+        container = self._find_question_container_by_id(question_id)
+        
+        if not container:
+            self._log(0, 0, f"❌ {key}: No se encontró contenedor para questionId={question_id}", "error")
+            self.driver.execute_script(f"""
+                console.error('[AutoForms] ❌ FATAL: No se encontró contenedor para {question_id}');
+                console.error('[AutoForms] La pregunta podría no estar visible en la página actual');
+            """)
+            return None
+        
+        # Log del contenedor encontrado
+        self.driver.execute_script("""
+            console.log('[AutoForms] ✓ Contenedor encontrado:');
+            console.log('[AutoForms]   Tag:', arguments[0].tagName);
+            console.log('[AutoForms]   data-automation-id:', arguments[0].getAttribute('data-automation-id'));
+            console.log('[AutoForms]   class:', arguments[0].className);
+            console.log('[AutoForms]   Hijos directos:', arguments[0].children.length);
+        """, container)
+        
+        # ══════════════════════════════════════════════════════════════════════
+        # PASO 3: Buscar la opción en el AFPKG
+        # ══════════════════════════════════════════════════════════════════════
+        options = question.get("options", [])
         target_option = None
-        for opt in options:
-            if opt.get("value") == answer_value:
+        
+        self.driver.execute_script(f"console.log('[AutoForms] 📋 PASO 3: Buscando opción en AFPKG ({len(options)} opciones disponibles)');")
+        
+        for i, opt in enumerate(options):
+            opt_value = opt.get("value", "")
+            self.driver.execute_script(f"""
+                console.log('[AutoForms]   [{i}] "{opt_value}"' + ({'"' + opt_value + '"' === '"{answer_value}"'} ? ' ✓ MATCH' : ''));
+            """)
+            if opt_value == answer_value:
                 target_option = opt
                 break
         
         if not target_option:
-            # Intentar match parcial
-            for opt in options:
-                if answer_value in opt.get("value", "") or opt.get("value", "") in answer_value:
-                    target_option = opt
-                    break
-        
-        if not target_option:
-            print(f"[FormExecutor] Option not found for value: {answer_value}")
+            self._log(0, 0, f"❌ {key}: Opción '{answer_value}' no encontrada en AFPKG", "error")
+            self.driver.execute_script(f"""
+                console.error('[AutoForms] ❌ Opción "{answer_value}" no existe en la lista de opciones del AFPKG');
+            """)
             return None
         
+        # ══════════════════════════════════════════════════════════════════════
+        # PASO 4: Buscar elemento DENTRO del contenedor
+        # ══════════════════════════════════════════════════════════════════════
         opt_selenium = target_option.get("selenium", {})
+        is_branch = target_option.get("isBranch", False)
         
-        selectors = [
-            ("byValue", opt_selenium.get("byValue")),
-            ("byInputValue", opt_selenium.get("byInputValue")),
-            ("byPosition", opt_selenium.get("byPosition")),
-        ]
+        self.driver.execute_script(f"""
+            console.log('[AutoForms] 🎯 PASO 4: Buscando elemento DENTRO del contenedor');
+            console.log('[AutoForms]   byValue: {opt_selenium.get("byValue", "N/A")}');
+            console.log('[AutoForms]   byInputValue: {opt_selenium.get("byInputValue", "N/A")}');
+            console.log('[AutoForms]   isBranch: {is_branch}');
+        """)
         
-        return self._find_element_robust(selectors)
+        element = self._find_option_in_container(container, opt_selenium, answer_value, question_id)
+        
+        if not element:
+            self.driver.execute_script(f"""
+                console.error('[AutoForms] ❌ No se encontró el elemento dentro del contenedor');
+            """)
+            return None
+        
+        # ══════════════════════════════════════════════════════════════════════
+        # PASO 5: Verificar que el elemento pertenece a esta pregunta
+        # ══════════════════════════════════════════════════════════════════════
+        self.driver.execute_script(f"console.log('[AutoForms] ✅ PASO 5: Verificando pertenencia del elemento...');")
+        
+        if self._verify_element_belongs_to_question(element, question_id):
+            self.driver.execute_script(f"""
+                console.log('[AutoForms] ✓✓✓ ELEMENTO VERIFICADO - Pertenece a la pregunta correcta');
+                console.log('[AutoForms] ════════════════════════════════════════════════════════');
+            """)
+            return element
+        else:
+            self._log(0, 0, f"⚠️ {key}: Elemento encontrado pero NO pertenece a esta pregunta!", "error")
+            self.driver.execute_script(f"""
+                console.error('[AutoForms] ❌❌❌ ELEMENTO RECHAZADO - No pertenece a {question_id}');
+                console.error('[AutoForms] Esto previene seleccionar opciones de otras preguntas');
+            """)
+            return None
+    
+    def _find_question_container_by_id(self, question_id: str) -> Optional[WebElement]:
+        """
+        Encontrar el contenedor de la pregunta usando su questionId.
+        
+        MS Forms estructura:
+        <div data-automation-id="questionItem">           ← CONTENEDOR (lo que queremos)
+            <span id="QuestionId_r{questionId}">...</span>  ← Título
+            <div role="radiogroup">                        ← Opciones
+                <span data-automation-value="...">
+                    <input name="r{questionId}" value="...">
+                </span>
+            </div>
+        </div>
+        """
+        try:
+            # Normalizar: asegurar que tenga el prefijo "r"
+            if not question_id.startswith("r"):
+                q_id_full = f"r{question_id}"
+            else:
+                q_id_full = question_id
+            
+            container = self.driver.execute_script("""
+                const questionId = arguments[0];
+                
+                console.log('[AutoForms CONTAINER] ══════════════════════════════════════');
+                console.log('[AutoForms CONTAINER] Buscando contenedor para:', questionId);
+                
+                // ═══════════════════════════════════════════════════════════════
+                // ESTRATEGIA 1: Buscar por input con name que contenga el questionId
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms CONTAINER] Estrategia 1: Buscando input[name*="' + questionId + '"]');
+                const inputs = document.querySelectorAll(`input[name*="${questionId}"]`);
+                console.log('[AutoForms CONTAINER]   Inputs encontrados:', inputs.length);
+                
+                if (inputs.length > 0) {
+                    const input = inputs[0];
+                    console.log('[AutoForms CONTAINER]   ✓ Input encontrado:');
+                    console.log('[AutoForms CONTAINER]     tag:', input.tagName);
+                    console.log('[AutoForms CONTAINER]     name:', input.name);
+                    console.log('[AutoForms CONTAINER]     value:', input.value);
+                    console.log('[AutoForms CONTAINER]     type:', input.type);
+                    
+                    // Subir hasta encontrar div[data-automation-id="questionItem"]
+                    let parent = input.parentElement;
+                    let depth = 0;
+                    while (parent && depth < 15) {
+                        const automationId = parent.getAttribute ? parent.getAttribute('data-automation-id') : null;
+                        console.log('[AutoForms CONTAINER]     Nivel ' + depth + ': <' + parent.tagName + '> data-automation-id=' + automationId);
+                        
+                        if (automationId === 'questionItem') {
+                            console.log('[AutoForms CONTAINER]   ✓✓ CONTENEDOR ENCONTRADO via input.name');
+                            return parent;
+                        }
+                        parent = parent.parentElement;
+                        depth++;
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // ESTRATEGIA 2: Buscar por id que contenga QuestionId
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms CONTAINER] Estrategia 2: Buscando [id*="QuestionId_' + questionId + '"]');
+                const titleSpan = document.querySelector(`[id*="QuestionId_${questionId}"]`);
+                
+                if (titleSpan) {
+                    console.log('[AutoForms CONTAINER]   ✓ Span de título encontrado:');
+                    console.log('[AutoForms CONTAINER]     id:', titleSpan.id);
+                    console.log('[AutoForms CONTAINER]     text:', titleSpan.textContent?.substring(0, 50) + '...');
+                    
+                    let parent = titleSpan.parentElement;
+                    let depth = 0;
+                    while (parent && depth < 15) {
+                        const automationId = parent.getAttribute ? parent.getAttribute('data-automation-id') : null;
+                        console.log('[AutoForms CONTAINER]     Nivel ' + depth + ': <' + parent.tagName + '> data-automation-id=' + automationId);
+                        
+                        if (automationId === 'questionItem') {
+                            console.log('[AutoForms CONTAINER]   ✓✓ CONTENEDOR ENCONTRADO via QuestionId span');
+                            return parent;
+                        }
+                        parent = parent.parentElement;
+                        depth++;
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // ESTRATEGIA 3: Buscar radiogroup con input que tenga el name correcto
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms CONTAINER] Estrategia 3: Buscando radiogroup con input correcto');
+                const radiogroups = document.querySelectorAll('[role="radiogroup"]');
+                console.log('[AutoForms CONTAINER]   Radiogroups en página:', radiogroups.length);
+                
+                for (let i = 0; i < radiogroups.length; i++) {
+                    const rg = radiogroups[i];
+                    const rgInput = rg.querySelector(`input[name*="${questionId}"]`);
+                    if (rgInput) {
+                        console.log('[AutoForms CONTAINER]   ✓ Radiogroup [' + i + '] contiene input con name correcto');
+                        
+                        // Subir hasta questionItem
+                        let parent = rg.parentElement;
+                        let depth = 0;
+                        while (parent && depth < 15) {
+                            const automationId = parent.getAttribute ? parent.getAttribute('data-automation-id') : null;
+                            if (automationId === 'questionItem') {
+                                console.log('[AutoForms CONTAINER]   ✓✓ CONTENEDOR ENCONTRADO via radiogroup');
+                                return parent;
+                            }
+                            parent = parent.parentElement;
+                            depth++;
+                        }
+                    }
+                }
+                
+                console.log('[AutoForms CONTAINER] ❌ NO SE ENCONTRÓ CONTENEDOR');
+                return null;
+            """, q_id_full)
+            
+            return container
+            
+        except Exception as e:
+            self._log(0, 0, f"Error buscando contenedor: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _find_option_in_container(
+        self, 
+        container: WebElement, 
+        opt_selenium: dict, 
+        answer_value: str,
+        question_id: str
+    ) -> Optional[WebElement]:
+        """
+        Buscar opción SOLO DENTRO del contenedor de la pregunta.
+        """
+        try:
+            by_value = opt_selenium.get("byValue")  # "[data-automation-value='SI']"
+            by_input = opt_selenium.get("byInputValue")  # "input[value='SI']"
+            
+            # Escapar comillas para JavaScript
+            safe_answer = answer_value.replace("'", "\\'").replace('"', '\\"')
+            
+            element = self.driver.execute_script("""
+                const container = arguments[0];
+                const byValue = arguments[1];
+                const byInput = arguments[2];
+                const answerValue = arguments[3];
+                const questionId = arguments[4];
+                
+                console.log('[AutoForms OPTION] ══════════════════════════════════════');
+                console.log('[AutoForms OPTION] Buscando opción DENTRO del contenedor');
+                console.log('[AutoForms OPTION]   questionId:', questionId);
+                console.log('[AutoForms OPTION]   byValue:', byValue);
+                console.log('[AutoForms OPTION]   byInput:', byInput);
+                console.log('[AutoForms OPTION]   answer:', answerValue);
+                
+                // Mostrar todas las opciones disponibles en el contenedor
+                console.log('[AutoForms OPTION] Opciones disponibles en contenedor:');
+                const allOptions = container.querySelectorAll('[data-automation-value]');
+                allOptions.forEach((opt, i) => {
+                    const val = opt.getAttribute('data-automation-value');
+                    const isMatch = val === answerValue;
+                    console.log('[AutoForms OPTION]   [' + i + '] "' + val + '"' + (isMatch ? ' ← MATCH!' : ''));
+                });
+                
+                let element = null;
+                
+                // ═══════════════════════════════════════════════════════════════
+                // PRIORIDAD 1: Buscar por data-automation-value exacto
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms OPTION] Prioridad 1: Buscando data-automation-value exacto...');
+                try {
+                    const selector1 = `[data-automation-value="${answerValue}"]`;
+                    console.log('[AutoForms OPTION]   Selector:', selector1);
+                    element = container.querySelector(selector1);
+                    if (element) {
+                        console.log('[AutoForms OPTION]   ✓✓ ENCONTRADO via data-automation-value');
+                        console.log('[AutoForms OPTION]   Tag:', element.tagName);
+                        console.log('[AutoForms OPTION]   class:', element.className);
+                        console.log('[AutoForms OPTION]   HTML:', element.outerHTML.substring(0, 200));
+                        return element;
+                    }
+                } catch(e) {
+                    console.log('[AutoForms OPTION]   Error:', e.message);
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // PRIORIDAD 2: Buscar con selector byValue del AFPKG
+                // ═══════════════════════════════════════════════════════════════
+                if (byValue) {
+                    console.log('[AutoForms OPTION] Prioridad 2: Usando byValue del AFPKG...');
+                    try {
+                        element = container.querySelector(byValue);
+                        if (element) {
+                            console.log('[AutoForms OPTION]   ✓✓ ENCONTRADO via byValue AFPKG');
+                            console.log('[AutoForms OPTION]   Tag:', element.tagName);
+                            console.log('[AutoForms OPTION]   HTML:', element.outerHTML.substring(0, 200));
+                            return element;
+                        }
+                    } catch(e) {
+                        console.log('[AutoForms OPTION]   Error:', e.message);
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // PRIORIDAD 3: Buscar input por value
+                // ═══════════════════════════════════════════════════════════════
+                if (byInput) {
+                    console.log('[AutoForms OPTION] Prioridad 3: Usando byInputValue del AFPKG...');
+                    try {
+                        element = container.querySelector(byInput);
+                        if (element) {
+                            console.log('[AutoForms OPTION]   ✓✓ ENCONTRADO via byInputValue');
+                            console.log('[AutoForms OPTION]   name:', element.name);
+                            console.log('[AutoForms OPTION]   value:', element.value);
+                            return element;
+                        }
+                    } catch(e) {
+                        console.log('[AutoForms OPTION]   Error:', e.message);
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // PRIORIDAD 4: Buscar span por data-automation-id="radio"
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms OPTION] Prioridad 4: Buscando span[data-automation-id="radio"]...');
+                const radioSpans = container.querySelectorAll('span[data-automation-id="radio"]');
+                console.log('[AutoForms OPTION]   Spans radio encontrados:', radioSpans.length);
+                
+                for (let i = 0; i < radioSpans.length; i++) {
+                    const span = radioSpans[i];
+                    const val = span.getAttribute('data-automation-value');
+                    console.log('[AutoForms OPTION]   [' + i + '] value="' + val + '"');
+                    if (val === answerValue) {
+                        console.log('[AutoForms OPTION]   ✓✓ ENCONTRADO via span radio');
+                        return span;
+                    }
+                }
+                
+                console.log('[AutoForms OPTION] ❌ NO SE ENCONTRÓ LA OPCIÓN');
+                return null;
+                
+            """, container, by_value, by_input, answer_value, question_id)
+            
+            return element
+            
+        except Exception as e:
+            self._log(0, 0, f"Error buscando opción en contenedor: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def _verify_element_belongs_to_question(self, element: WebElement, question_id: str) -> bool:
+        """
+        Verificar que el elemento encontrado pertenece a la pregunta correcta.
+        
+        TRIPLE VERIFICACIÓN para garantizar que no seleccionamos elementos de otras preguntas.
+        """
+        try:
+            # Normalizar questionId
+            if not question_id.startswith("r"):
+                q_id_full = f"r{question_id}"
+            else:
+                q_id_full = question_id
+            
+            result = self.driver.execute_script("""
+                const element = arguments[0];
+                const expectedQId = arguments[1];
+                
+                console.log('[AutoForms VERIFY] ══════════════════════════════════════');
+                console.log('[AutoForms VERIFY] Verificando pertenencia del elemento');
+                console.log('[AutoForms VERIFY]   QuestionId esperado:', expectedQId);
+                console.log('[AutoForms VERIFY]   Elemento:', element.tagName);
+                console.log('[AutoForms VERIFY]   outerHTML:', element.outerHTML.substring(0, 150));
+                
+                // ═══════════════════════════════════════════════════════════════
+                // VERIFICACIÓN 1: Si es input, revisar el atributo name
+                // ═══════════════════════════════════════════════════════════════
+                if (element.tagName === 'INPUT') {
+                    const name = element.getAttribute('name') || '';
+                    console.log('[AutoForms VERIFY] Check 1: element es INPUT, name=' + name);
+                    if (name.includes(expectedQId)) {
+                        console.log('[AutoForms VERIFY] ✓✓✓ VERIFICADO via INPUT.name');
+                        return true;
+                    } else {
+                        console.log('[AutoForms VERIFY] ⚠️ INPUT.name NO contiene ' + expectedQId);
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // VERIFICACIÓN 2: Buscar input hijo y verificar su name
+                // ═══════════════════════════════════════════════════════════════
+                const childInput = element.querySelector('input[type="radio"], input[type="checkbox"]');
+                if (childInput) {
+                    const name = childInput.getAttribute('name') || '';
+                    console.log('[AutoForms VERIFY] Check 2: Input hijo encontrado, name=' + name);
+                    if (name.includes(expectedQId)) {
+                        console.log('[AutoForms VERIFY] ✓✓✓ VERIFICADO via input hijo');
+                        return true;
+                    } else {
+                        console.log('[AutoForms VERIFY] ⚠️ Input hijo name NO contiene ' + expectedQId);
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // VERIFICACIÓN 3: Buscar input hermano
+                // ═══════════════════════════════════════════════════════════════
+                const siblingInput = element.parentElement?.querySelector('input[type="radio"], input[type="checkbox"]');
+                if (siblingInput) {
+                    const name = siblingInput.getAttribute('name') || '';
+                    console.log('[AutoForms VERIFY] Check 3: Input hermano encontrado, name=' + name);
+                    if (name.includes(expectedQId)) {
+                        console.log('[AutoForms VERIFY] ✓✓✓ VERIFICADO via input hermano');
+                        return true;
+                    }
+                }
+                
+                // ═══════════════════════════════════════════════════════════════
+                // VERIFICACIÓN 4: Buscar hacia arriba un elemento con QuestionId
+                // ═══════════════════════════════════════════════════════════════
+                console.log('[AutoForms VERIFY] Check 4: Subiendo en DOM buscando QuestionId...');
+                let parent = element.parentElement;
+                for (let i = 0; i < 15 && parent; i++) {
+                    // Buscar input con name correcto
+                    const inputInParent = parent.querySelector(`input[name*="${expectedQId}"]`);
+                    if (inputInParent) {
+                        console.log('[AutoForms VERIFY] ✓✓✓ VERIFICADO via input en ancestro nivel ' + i);
+                        return true;
+                    }
+                    
+                    // Buscar span con QuestionId
+                    const qIdSpan = parent.querySelector(`[id*="QuestionId_${expectedQId}"]`);
+                    if (qIdSpan) {
+                        console.log('[AutoForms VERIFY] ✓✓✓ VERIFICADO via QuestionId span en ancestro nivel ' + i);
+                        return true;
+                    }
+                    
+                    parent = parent.parentElement;
+                }
+                
+                console.log('[AutoForms VERIFY] ❌❌❌ VERIFICACIÓN FALLIDA - Elemento NO pertenece a ' + expectedQId);
+                return false;
+                
+            """, element, q_id_full)
+            
+            return result
+            
+        except Exception as e:
+            self._log(0, 0, f"Error verificando pertenencia: {e}", "error")
+            return False
     
     def _find_navigation_button(self, nav_type: str, page: dict) -> Optional[WebElement]:
         """Encontrar botón de navegación (next/submit/back)."""
@@ -722,77 +1276,130 @@ class FormExecutor:
             )
     
     def _execute_select(self, question: dict, answer: str) -> ActionResult:
-        """Ejecutar acción de seleccionar opción con logging detallado y validación infalible."""
+        """Ejecutar acción de seleccionar opción con DEBUG COMPLETO en navegador."""
         key = question.get("key", "unknown")
         idx = self._get_question_index(key)
         total = len(self.questions_ordered)
         is_branch = question.get("isBranch", False)
         
-        print(f"\n{'='*60}")
+        # Helper para log en navegador
+        def browser_log(msg, level="info"):
+            icons = {"info": "📍", "success": "✅", "warning": "⚠️", "error": "❌", "action": "🔹"}
+            icon = icons.get(level, "•")
+            try:
+                self.driver.execute_script(f"console.log('[AutoForms] {icon} {msg}');")
+            except:
+                pass
+            self._log(0, 0, msg, level)
+        
+        print(f"\n{'='*60}", flush=True)
         branch_tag = " [BRANCH]" if is_branch else ""
-        self._log(1, 9, f"INICIANDO SELECT{branch_tag} {idx}/{total}: {key}", "action")
-        self._log(0, 0, f"   Respuesta: {answer}", "info")
+        browser_log(f"═══ INICIANDO SELECT{branch_tag} {idx}/{total}: {key} ═══", "action")
+        browser_log(f"Respuesta esperada: {answer}", "info")
         
         try:
-            # Paso 2: Buscar elemento opción
-            self._log(2, 9, f"Buscando opción: '{answer[:40]}...'", "info")
+            # ═══ PASO 1: Buscar elemento opción ═══
+            browser_log(f"PASO 1: Buscando elemento para opción: '{answer[:40]}...'", "info")
+            
             element = self._find_option_element(question, answer)
             if not element:
-                self._log(2, 9, "Opción NO encontrada", "error")
+                browser_log("PASO 1: ✗ Opción NO encontrada en DOM", "error")
                 return ActionResult(
                     success=False,
                     question_key=key,
                     action_type=ActionType.SELECT,
                     error_message=f"Option element not found for value: {answer}"
                 )
-            self._log(2, 9, "Opción encontrada", "success")
+            browser_log("PASO 1: ✓ Opción encontrada", "success")
             
-            # Paso 3: Click en contenedor padre para focus seguro
-            self._log(3, 9, "Click en contenedor padre para focus...", "info")
+            # Log del elemento encontrado en navegador
+            self.driver.execute_script("""
+                console.log('[AutoForms] PASO 1: Elemento encontrado:', arguments[0]);
+                console.log('[AutoForms] PASO 1: Tag:', arguments[0].tagName);
+                console.log('[AutoForms] PASO 1: id:', arguments[0].id);
+                console.log('[AutoForms] PASO 1: class:', arguments[0].className);
+            """, element)
+            
+            # ═══ PASO 2: Buscar contenedor padre (questionItem) ═══
+            browser_log("PASO 2: Buscando contenedor padre (questionItem)...", "info")
+            
             container = self._get_question_container(question)
             if container:
-                try:
-                    # Highlight en el contenedor (más visible que la opción)
-                    self._highlight_element(container)
-                    container.click()
-                    time.sleep(0.1)
-                    self._log(3, 9, "Focus en contenedor OK", "success")
-                except Exception as e:
-                    self._log(3, 9, f"Click en contenedor falló: {e}", "warning")
+                browser_log("PASO 2: ✓ Contenedor encontrado", "success")
+                self.driver.execute_script("""
+                    console.log('[AutoForms] PASO 2: Contenedor:', arguments[0]);
+                    console.log('[AutoForms] PASO 2: data-automation-id:', arguments[0].getAttribute('data-automation-id'));
+                """, container)
+            else:
+                browser_log("PASO 2: ⚠ No se encontró contenedor, continuando sin él", "warning")
             
-            # Paso 4: Scroll para centrar la opción
-            self._log(4, 9, "Scroll para centrar opción...", "info")
+            # ═══ PASO 3: Highlight en contenedor ═══
+            browser_log("PASO 3: Aplicando glow al contenedor...", "info")
+            if container:
+                try:
+                    self._highlight_element(container)
+                    browser_log("PASO 3: ✓ Glow aplicado al contenedor", "success")
+                except Exception as e:
+                    browser_log(f"PASO 3: ⚠ Error aplicando glow: {e}", "warning")
+            
+            # ═══ PASO 4: Click en contenedor para focus ═══
+            browser_log("PASO 4: Click en contenedor para focus...", "info")
+            if container:
+                try:
+                    container.click()
+                    time.sleep(0.15)
+                    browser_log("PASO 4: ✓ Click en contenedor OK", "success")
+                except Exception as e:
+                    browser_log(f"PASO 4: ⚠ Click en contenedor falló: {e}", "warning")
+            
+            # ═══ PASO 5: Scroll para centrar la opción ═══
+            browser_log("PASO 5: Scroll para centrar opción...", "info")
             if self.config.scroll_to_element:
                 self._scroll_to_element(element)
+                browser_log("PASO 5: ✓ Scroll completado", "success")
             
-            # Paso 5: Highlight en la opción específica
-            self._log(5, 9, "Aplicando glow a opción", "info")
+            # ═══ PASO 6: Highlight en la opción ═══
+            browser_log("PASO 6: Aplicando glow a la opción específica...", "info")
             self._highlight_element(element)
+            self.driver.execute_script("""
+                console.log('[AutoForms] PASO 6: Opción con glow:', arguments[0]);
+            """, element)
+            browser_log("PASO 6: ✓ Glow aplicado a opción", "success")
             
-            # Paso 6: Mouse move (human)
+            # ═══ PASO 7: Mouse move (si human actions) ═══
             if self.config.human_actions_enabled and self.config.move_mouse_to_element:
-                self._log(6, 9, "Moviendo mouse a opción...", "info")
+                browser_log("PASO 7: Moviendo mouse a opción...", "info")
                 self._move_mouse_to_element(element)
+                browser_log("PASO 7: ✓ Mouse movido", "success")
+            else:
+                browser_log("PASO 7: Omitido (human_actions deshabilitado)", "info")
             
-            # Paso 7: Click en opción
-            self._log(7, 9, "Haciendo click en opción...", "info")
+            # ═══ PASO 8: CLICK EN OPCIÓN ═══
+            browser_log("PASO 8: ★★★ HACIENDO CLICK EN OPCIÓN ★★★", "action")
+            self.driver.execute_script("""
+                console.log('[AutoForms] PASO 8: === CLICK EN OPCIÓN ===');
+                console.log('[AutoForms] PASO 8: Elemento a clickear:', arguments[0]);
+            """, element)
+            
             element.click()
-            time.sleep(0.4)  # Esperar DOM update (aumentado)
+            browser_log("PASO 8: Click ejecutado, esperando 500ms para DOM update...", "info")
+            time.sleep(0.5)
+            browser_log("PASO 8: ✓ Click completado", "success")
             
-            # Paso 8: Validación INFALIBLE (buscar aria-checked="true" en contenedor)
-            self._log(8, 9, "Validando selección...", "info")
-            import sys
-            sys.stdout.flush()  # Forzar salida de logs
+            # ═══ PASO 9: VALIDACIÓN ═══
+            browser_log("PASO 9: ★★★ VALIDANDO SELECCIÓN ★★★", "action")
             
             if self.config.validate_after_select:
-                if not self._validate_select_value(question, answer):
-                    # Reintento: click de nuevo
-                    self._log(8, 9, "Reintentando click...", "warning")
+                validation_result = self._validate_select_value(element, answer)
+                
+                if not validation_result:
+                    browser_log("PASO 9: ⚠ Primera validación falló, reintentando click...", "warning")
                     element.click()
-                    time.sleep(0.5)
+                    time.sleep(0.6)
                     
-                    if not self._validate_select_value(question, answer):
-                        self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
+                    validation_result = self._validate_select_value(element, answer)
+                    if not validation_result:
+                        browser_log("PASO 9: ✗ VALIDACIÓN FALLÓ después de reintento", "error")
                         self._remove_highlight(element)
                         if container:
                             self._remove_highlight(container)
@@ -802,12 +1409,17 @@ class FormExecutor:
                             action_type=ActionType.SELECT,
                             error_message="Select validation failed: option not selected"
                         )
+                
+                browser_log("PASO 9: ✓ VALIDACIÓN OK", "success")
+            else:
+                browser_log("PASO 9: Validación deshabilitada, asumiendo OK", "info")
             
-            # Paso 9: Éxito
-            self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
+            # ═══ PASO 10: Éxito - cambiar a verde ═══
+            browser_log("PASO 10: ✅ PREGUNTA RESPONDIDA OK", "success")
             self._highlight_element(element, "#10b981")  # Verde
             if container:
-                self._highlight_element(container, "#10b981")  # Verde en contenedor también
+                self._highlight_element(container, "#10b981")
+            
             time.sleep(0.3)
             self._remove_highlight(element)
             if container:
@@ -817,12 +1429,11 @@ class FormExecutor:
             delay_min, delay_max = self._get_question_delay(question)
             delay_ms = random.randint(delay_min, delay_max)
             
-            # Si es pregunta BRANCH, usar delay especial para esperar DOM
             if is_branch:
                 delay_ms = max(delay_ms, self.config.branch_delay_ms)
-                self._log(0, 0, f"Pregunta BRANCH: esperando {delay_ms}ms para carga de nuevas preguntas...", "wait")
+                browser_log(f"BRANCH: Esperando {delay_ms}ms para carga de nuevas preguntas...", "wait")
             else:
-                self._log(0, 0, f"Esperando {delay_ms}ms antes de siguiente pregunta...", "wait")
+                browser_log(f"Esperando {delay_ms}ms antes de siguiente pregunta...", "info")
             
             time.sleep(delay_ms / 1000.0)
             
@@ -834,7 +1445,10 @@ class FormExecutor:
             )
             
         except Exception as e:
-            self._log(0, 0, f"ERROR: {e}", "error")
+            browser_log(f"ERROR CRÍTICO: {e}", "error")
+            import traceback
+            traceback.print_exc()
+            self.driver.execute_script(f"console.error('[AutoForms] ERROR:', '{str(e)}');")
             self._remove_all_highlights()
             return ActionResult(
                 success=False,
