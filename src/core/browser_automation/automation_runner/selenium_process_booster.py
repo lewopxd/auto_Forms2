@@ -472,6 +472,9 @@ class SeleniumProcessBooster:
         elif cmd_type == "config_update":
             config_data = cmd.get("config", {})
             cls._update_executor_config(config_data)
+        elif cmd_type == "highlight_question":
+            question_key = cmd.get("questionKey", "")
+            cls._highlight_question_on_page(question_key)
     
     @classmethod
     def _update_executor_config(cls, config_data: dict):
@@ -493,11 +496,117 @@ class SeleniumProcessBooster:
             "moveMouseToElement": config_data.get("moveMouseToElement", True),
             "clickQuestionFirst": config_data.get("clickQuestionFirst", True),
             "validateAfterFill": config_data.get("validateAfterFill", True),
+            "branchDelayMs": config_data.get("branchDelayMs", 1500),
         })
         
         if cls._executor:
             cls._executor.update_config(cls._executor_config)
     
+    @classmethod
+    def _highlight_question_on_page(cls, question_key: str):
+        """Highlight a question on the page by scrolling and applying glow effect."""
+        if not cls._driver or not question_key:
+            return
+        
+        try:
+            # Get question info from package data
+            full_data = cls._package_data.get("data", {})
+            instructions = full_data.get("instructions", {})
+            pages = instructions.get("pages", [])
+            
+            target_question = None
+            for page in pages:
+                for q in page.get("questions", []):
+                    if q.get("key") == question_key:
+                        target_question = q
+                        break
+                if target_question:
+                    break
+            
+            if not target_question:
+                cls._emit_status("warning", f"Pregunta {question_key} no encontrada en paquete")
+                return
+            
+            # Get selector from question
+            selenium_info = target_question.get("selenium", {})
+            full_selector = selenium_info.get("fullSelector", "")
+            
+            if not full_selector:
+                cls._emit_status("warning", f"Sin selector para {question_key}")
+                return
+            
+            # Execute scroll and highlight in browser
+            cls._driver.execute_script("""
+                const selector = arguments[0];
+                const color = arguments[1];
+                
+                // Find element
+                let element = null;
+                try {
+                    element = document.querySelector(selector);
+                } catch(e) {
+                    console.log('[Highlight] Invalid selector:', selector);
+                }
+                
+                if (!element) {
+                    // Try parent question container
+                    const match = selector.match(/QuestionId_[a-zA-Z0-9]+/);
+                    if (match) {
+                        const containerId = match[0].replace('_r', '_');
+                        element = document.querySelector('[id*="' + containerId + '"]');
+                    }
+                }
+                
+                if (!element) {
+                    console.log('[Highlight] Element not found for:', selector);
+                    return;
+                }
+                
+                // Scroll to element (centered in viewport)
+                element.scrollIntoView({behavior: 'smooth', block: 'center'});
+                
+                // Wait for scroll then highlight
+                setTimeout(() => {
+                    // Remove any existing highlight
+                    document.querySelectorAll('.__autoforms_temp_highlight').forEach(el => {
+                        el.classList.remove('__autoforms_temp_highlight');
+                    });
+                    
+                    // Add highlight style if not exists
+                    if (!document.getElementById('__autoforms_temp_highlight_style')) {
+                        const style = document.createElement('style');
+                        style.id = '__autoforms_temp_highlight_style';
+                        style.textContent = `
+                            .__autoforms_temp_highlight {
+                                outline: 3px solid ${color} !important;
+                                box-shadow: 0 0 20px 8px ${color}80, 
+                                            0 0 40px 15px ${color}40 !important;
+                                animation: __autoforms_temp_pulse 1s ease-in-out 3 !important;
+                                transition: all 0.3s ease !important;
+                            }
+                            @keyframes __autoforms_temp_pulse {
+                                0%, 100% { box-shadow: 0 0 20px 8px ${color}80, 0 0 40px 15px ${color}40; }
+                                50% { box-shadow: 0 0 30px 12px ${color}99, 0 0 60px 20px ${color}60; }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                    
+                    // Apply highlight
+                    element.classList.add('__autoforms_temp_highlight');
+                    
+                    // Remove after 3 seconds
+                    setTimeout(() => {
+                        element.classList.remove('__autoforms_temp_highlight');
+                    }, 3000);
+                }, 350);
+            """, full_selector, "#667eea")
+            
+            cls._emit_status("info", f"✓ Pregunta {question_key} resaltada")
+            
+        except Exception as e:
+            cls._emit_status("warning", f"Error resaltando pregunta: {e}")
+
     @classmethod
     def _start_executor(cls):
         """Start the form executor in a separate thread."""

@@ -1378,10 +1378,15 @@
                     </div>
                 </div>
                 
-                <!-- Questions Info -->
-                <div class="section">
-                    ${ICONS.questions}
-                    <span style="color: #6b7280; font-size: 12px;"><span class="info-value" style="color: #374151;">${pkg.totalQuestions}</span> preguntas</span>
+                <!-- Questions Info (Clickable) -->
+                <div class="section" id="questionsSection">
+                    <button class="info-btn" id="btnQuestions">
+                        ${ICONS.questions}
+                        <span><span class="info-value">${pkg.totalQuestions}</span> preguntas</span>
+                    </button>
+                    
+                    <!-- Dropdown: Lista de preguntas -->
+                    <div class="dropdown" id="questionsDropdown"></div>
                 </div>
                 
                 <div class="divider"></div>
@@ -1530,12 +1535,25 @@
                         
                         <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
                         
-                        <!-- Sección: Visual Feedback -->
                         <div class="config-field">
                             <label class="config-label">✨ Visual Feedback</label>
                             <div class="config-checkbox-row" id="highlightToggle">
                                 <div class="config-checkbox checked" id="highlightCheckbox">${ICONS.check}</div>
                                 <span class="config-checkbox-label">Resaltar elemento activo (glow)</span>
+                            </div>
+                        </div>
+                        
+                        <div style="border-top: 1px solid #e5e7eb; margin: 16px 0;"></div>
+                        
+                        <!-- Sección: Branch Delay -->
+                        <div class="config-field">
+                            <label class="config-label">🔀 Delay para Preguntas Branch</label>
+                            <p style="font-size: 10px; color: #6b7280; margin-bottom: 8px;">Tiempo de espera después de hacer clic en pregunta branch para que el DOM cargue las nuevas preguntas.</p>
+                            <div class="config-row">
+                                <div class="config-input-group">
+                                    <input type="number" class="config-input" id="branchDelayInput" value="1500" min="500" step="100" style="width: 80px;">
+                                    <span class="config-unit">ms</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1598,6 +1616,8 @@
         const btnConfig = shadow.getElementById('btnConfig');
         const btnRows = shadow.getElementById('btnRows');
         const rowsDropdown = shadow.getElementById('rowsDropdown');
+        const btnQuestions = shadow.getElementById('btnQuestions');
+        const questionsDropdown = shadow.getElementById('questionsDropdown');
         const statusDot = shadow.getElementById('statusDot');
         const statusText = shadow.getElementById('statusText');
 
@@ -1904,7 +1924,123 @@
         function closeDropdown() {
             rowsDropdown.classList.remove('open');
             btnRows.classList.remove('active');
+            questionsDropdown.classList.remove('open');
+            btnQuestions.classList.remove('active');
             config.dropdownOpen = null;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // DROPDOWN: LISTA DE PREGUNTAS
+        // ═══════════════════════════════════════════════════════════════════
+
+        function renderQuestionsList() {
+            const questions = getAllQuestions();
+
+            // Agrupar por página
+            const questionsByPage = {};
+            if (pkg.instructions && pkg.instructions.pages) {
+                pkg.instructions.pages.forEach(page => {
+                    const pageKey = page.pageKey || `page_${page.pageNumber}`;
+                    questionsByPage[pageKey] = {
+                        pageNumber: page.pageNumber,
+                        questions: page.questions || []
+                    };
+                });
+            }
+
+            let html = `
+                <div class="dropdown-header">
+                    <div class="dropdown-title">Todas las preguntas (${questions.length})</div>
+                    <div class="dropdown-subtitle">Haz clic en una pregunta para resaltarla en el formulario</div>
+                </div>
+                <div class="dropdown-content" style="max-height: 400px;">
+            `;
+
+            // Renderizar por página
+            Object.keys(questionsByPage).sort((a, b) => {
+                return questionsByPage[a].pageNumber - questionsByPage[b].pageNumber;
+            }).forEach(pageKey => {
+                const pageData = questionsByPage[pageKey];
+
+                html += `<div class="page-section" style="margin-bottom: 12px;">`;
+                html += `<div class="page-header" style="font-size: 11px; color: #667eea; font-weight: 600; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e5e7eb;">Página ${pageData.pageNumber}</div>`;
+
+                pageData.questions.forEach(q => {
+                    const hasOptions = q.options && q.options.length > 0;
+                    const isBranch = q.isBranch || false;
+                    const branchBadge = isBranch ? '<span style="background:#f59e0b; color:white; padding:1px 4px; border-radius:3px; font-size:9px; margin-left:4px;">BRANCH</span>' : '';
+
+                    let optionsHtml = '';
+                    if (hasOptions) {
+                        optionsHtml = '<div style="display:flex; flex-wrap:wrap; gap:3px; margin-top:4px; padding-left:28px;">' +
+                            q.options.slice(0, 5).map(o => `<span style="background:#e5e7eb; padding:1px 5px; border-radius:3px; font-size:9px; color:#475569;">${escHtml(o.value || o.text || o)}</span>`).join('') +
+                            (q.options.length > 5 ? `<span style="font-size:9px; color:#9ca3af;">+${q.options.length - 5} más</span>` : '') +
+                            '</div>';
+                    }
+
+                    html += `<div class="question-item-small" data-question-key="${q.key}" style="padding:6px 8px; margin-bottom:4px; background:#f9fafb; border-radius:4px; cursor:pointer; transition:background 0.1s;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="width:20px; height:20px; background:#667eea; color:white; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:600; flex-shrink:0;">${q.key.replace('q', '')}</span>
+                            <span style="font-size:11px; color:#374151; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(q.text || q.key)}</span>
+                            <span style="font-size:9px; color:#9ca3af; text-transform:uppercase;">${q.type || 'text'}</span>
+                            ${branchBadge}
+                        </div>
+                        ${optionsHtml}
+                    </div>`;
+                });
+
+                html += '</div>';
+            });
+
+            html += `</div>
+                <div class="dropdown-footer">
+                    <button class="dropdown-btn dropdown-btn-primary" id="btnCloseQuestions">Cerrar</button>
+                </div>
+            `;
+
+            questionsDropdown.className = 'dropdown rows-dropdown open';
+            questionsDropdown.innerHTML = html;
+
+            // Bind question click events
+            questionsDropdown.querySelectorAll('.question-item-small[data-question-key]').forEach(item => {
+                item.addEventListener('mouseover', () => {
+                    item.style.background = '#e0e7ff';
+                });
+                item.addEventListener('mouseout', () => {
+                    item.style.background = '#f9fafb';
+                });
+                item.addEventListener('click', () => {
+                    const key = item.dataset.questionKey;
+                    // Enviar comando para resaltar la pregunta en el formulario
+                    window.__autoforms_commands.push({
+                        type: 'highlight_question',
+                        questionKey: key,
+                        time: Date.now()
+                    });
+                    console.log('[AutoForms] Highlight question:', key);
+                    closeDropdown();
+                });
+            });
+
+            // Close button
+            questionsDropdown.querySelector('#btnCloseQuestions').addEventListener('click', closeDropdown);
+        }
+
+        function toggleQuestionsDropdown() {
+            const isOpen = questionsDropdown.classList.contains('open');
+
+            if (isOpen) {
+                closeDropdown();
+            } else {
+                // Cerrar otros dropdowns primero
+                rowsDropdown.classList.remove('open');
+                btnRows.classList.remove('active');
+
+                renderQuestionsList();
+                questionsDropdown.classList.add('open');
+                btnQuestions.classList.add('active');
+                config.dropdownOpen = 'questions';
+            }
         }
 
         // Close dropdown on outside click
@@ -1934,6 +2070,11 @@
         btnRows.onclick = (e) => {
             e.stopPropagation();
             toggleRowsDropdown();
+        };
+
+        btnQuestions.onclick = (e) => {
+            e.stopPropagation();
+            toggleQuestionsDropdown();
         };
 
         // Play/Pause toggle button
@@ -2028,6 +2169,9 @@
         const highlightToggle = shadow.getElementById('highlightToggle');
         const highlightCheckbox = shadow.getElementById('highlightCheckbox');
 
+        // Branch delay input
+        const branchDelayInput = shadow.getElementById('branchDelayInput');
+
         // Estado de configuración completo
         let configState = {
             // Retardo entre filas
@@ -2039,8 +2183,8 @@
             overrideDelays: false,
             delayMinMs: 500,
             delayMaxMs: 1500,
-            // Human actions
-            humanActionsEnabled: false,
+            // Human actions (ahora true por defecto)
+            humanActionsEnabled: true,
             scrollToElement: true,
             moveMouseToElement: true,
             clickQuestionFirst: true,
@@ -2048,7 +2192,9 @@
             typingDelayMinMs: 30,
             typingDelayMaxMs: 120,
             // Visual feedback
-            highlightElements: true
+            highlightElements: true,
+            // Branch delay (nuevo)
+            branchDelayMs: 1500
         };
 
         function openConfigModal() {
@@ -2099,6 +2245,9 @@
             // Visual feedback
             highlightCheckbox.classList.toggle('checked', configState.highlightElements);
 
+            // Branch delay
+            branchDelayInput.value = configState.branchDelayMs;
+
             configModalOverlay.classList.add('open');
         }
 
@@ -2146,7 +2295,9 @@
                 typingDelayMinMs: parseInt(typingMinInput.value) || 30,
                 typingDelayMaxMs: parseInt(typingMaxInput.value) || 120,
                 // Visual feedback
-                highlightElements: highlightCheckbox.classList.contains('checked')
+                highlightElements: highlightCheckbox.classList.contains('checked'),
+                // Branch delay
+                branchDelayMs: parseInt(branchDelayInput.value) || 1500
             };
 
             // Enviar configuración al backend

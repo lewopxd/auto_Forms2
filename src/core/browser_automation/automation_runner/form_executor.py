@@ -57,7 +57,7 @@ class ExecutorConfig:
     delay_between_rows_max_ms: int = 3000
     
     # Human actions
-    human_actions_enabled: bool = False
+    human_actions_enabled: bool = True
     scroll_to_element: bool = True
     move_mouse_to_element: bool = True
     click_question_first: bool = True
@@ -78,6 +78,9 @@ class ExecutorConfig:
     # Ejecución
     one_by_one_mode: bool = False
     
+    # Branch delay (tiempo de espera después de click en pregunta branch)
+    branch_delay_ms: int = 1500
+    
     @classmethod
     def from_dict(cls, data: dict) -> 'ExecutorConfig':
         """Crear config desde diccionario."""
@@ -89,7 +92,7 @@ class ExecutorConfig:
             delay_between_rows_random=data.get("delayBetweenRowsRandom", True),
             delay_between_rows_min_ms=data.get("delayBetweenRowsMinMs", 1000),
             delay_between_rows_max_ms=data.get("delayBetweenRowsMaxMs", 3000),
-            human_actions_enabled=data.get("humanActionsEnabled", False),
+            human_actions_enabled=data.get("humanActionsEnabled", True),
             scroll_to_element=data.get("scrollToElement", True),
             move_mouse_to_element=data.get("moveMouseToElement", True),
             click_question_first=data.get("clickQuestionFirst", True),
@@ -100,6 +103,7 @@ class ExecutorConfig:
             stop_on_error=data.get("stopOnError", True),
             element_wait_timeout=data.get("elementWaitTimeout", 10),
             one_by_one_mode=data.get("oneByOne", False),
+            branch_delay_ms=data.get("branchDelayMs", 1500),
         )
 
 
@@ -483,14 +487,15 @@ class FormExecutor:
                     error_message="Input element not found"
                 )
             
-            # 2. Highlight del elemento
+            # 2. PRIMERO scroll para que el elemento sea visible antes de resaltarlo
+            if self.config.scroll_to_element:
+                self._scroll_to_element(element)
+            
+            # 3. Highlight del elemento (ahora visible en viewport)
             self._highlight_element(element)
             
-            # 3. Human actions (si están habilitadas)
+            # 4. Human actions adicionales (si están habilitadas)
             if self.config.human_actions_enabled:
-                if self.config.scroll_to_element:
-                    self._scroll_to_element(element)
-                
                 if self.config.move_mouse_to_element:
                     self._move_mouse_to_element(element)
                 
@@ -572,14 +577,15 @@ class FormExecutor:
                     error_message=f"Option element not found for value: {answer}"
                 )
             
-            # 2. Highlight del elemento
+            # 2. PRIMERO scroll para que el elemento sea visible antes de resaltarlo
+            if self.config.scroll_to_element:
+                self._scroll_to_element(element)
+            
+            # 3. Highlight del elemento (ahora visible en viewport)
             self._highlight_element(element)
             
-            # 3. Human actions
+            # 4. Human actions adicionales
             if self.config.human_actions_enabled:
-                if self.config.scroll_to_element:
-                    self._scroll_to_element(element)
-                
                 if self.config.move_mouse_to_element:
                     self._move_mouse_to_element(element)
             
