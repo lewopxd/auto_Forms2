@@ -39,7 +39,13 @@ from .modules import (
     ViewportController,
     ElementFinder,
     Interaction,
-    Validator
+    Validator,
+    # PostSubmit modules
+    PostSubmitExecutor,
+    PostSubmitConfig,
+    AutomationResultStorage,
+    LoginDetector,
+    LoginConfig
 )
 
 
@@ -226,6 +232,35 @@ class FormExecutor:
         self.finder = ElementFinder(driver, timeout=self.config.element_wait_timeout)
         self.interaction = Interaction(driver, self.widget)
         self.validator = Validator(driver)
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # POSTSUBMIT MODULES
+        # ═══════════════════════════════════════════════════════════════════
+        # Extraer config de PostSubmit del paquete
+        automation_config = full_data.get("automationConfig", {})
+        postsubmit_config = automation_config.get("postSubmit", {})
+        
+        # Inicializar PostSubmit si está habilitado
+        self.postsubmit_enabled = postsubmit_config.get("enabled", False)
+        self.postsubmit_executor = None
+        self.result_storage = None
+        
+        if self.postsubmit_enabled:
+            # Configurar PostSubmit
+            ps_config = PostSubmitConfig(
+                enabled=True,
+                url_capture_timeout_ms=postsubmit_config.get("timeoutMs", 60000),
+                relogin_timeout_ms=postsubmit_config.get("reloginTimeoutMs", 600000)
+            )
+            self.postsubmit_executor = PostSubmitExecutor(driver, ps_config)
+            
+            # Inicializar almacenamiento de resultados
+            package_name = package_data.get("filename", "unknown.afpkg")
+            package_path = package_data.get("path", "")
+            self.result_storage = AutomationResultStorage(
+                package_name=package_name,
+                package_path=package_path
+            )
         
         # Índice de preguntas para acceso rápido
         self._build_question_index()
@@ -1920,12 +1955,63 @@ class FormExecutor:
             
             if navigation.get("submit"):
                 # Última página - enviar
-                if not self._submit_form(page):
+                submit_success = self._submit_form(page)
+                
+                if not submit_success:
                     self._emit_status("warning", "Submit button not found")
+                else:
+                    # ═══════════════════════════════════════════════════════
+                    # POSTSUBMIT: Capturar URL después del envío exitoso
+                    # ═══════════════════════════════════════════════════════
+                    if self.postsubmit_enabled and self.postsubmit_executor:
+                        self._emit_status("running", f"Fila {row_index + 1}: Capturando URL...")
+                        
+                        try:
+                            # Ejecutar PostSubmit
+                            ps_result = self.postsubmit_executor.execute_after_submit(
+                                form_url=self.form_url
+                            )
+                            
+                            if ps_result.success and self.result_storage:
+                                # Guardar resultado exitoso
+                                self.result_storage.record_post_submit_success(
+                                    row_index=row_index,
+                                    url=ps_result.url,
+                                    strategy=ps_result.strategy,
+                                    confidence=ps_result.confidence,
+                                    capture_time_ms=int(ps_result.capture_time_ms)
+                                )
+                                self._emit_status("success", 
+                                    f"Fila {row_index + 1}: URL capturada ({ps_result.strategy})"
+                                )
+                                print(f"[FormExecutor] PostSubmit URL: {ps_result.url}")
+                            else:
+                                # Guardar fallo
+                                if self.result_storage:
+                                    self.result_storage.record_post_submit_failure(
+                                        row_index=row_index,
+                                        error=ps_result.error or "capture_failed",
+                                        capture_time_ms=int(ps_result.capture_time_ms)
+                                    )
+                                self._emit_status("warning", 
+                                    f"Fila {row_index + 1}: No se pudo capturar URL"
+                                )
+                        except Exception as e:
+                            print(f"[FormExecutor] PostSubmit error: {e}")
+                            if self.result_storage:
+                                self.result_storage.record_post_submit_failure(
+                                    row_index=row_index,
+                                    error=str(e)
+                                )
+                            
             elif navigation.get("next"):
                 # Página intermedia - siguiente
                 if not self._navigate_to_next_page(page):
                     self._emit_status("warning", "Next button not found")
+        
+        # Marcar fila como completada en storage
+        if self.result_storage:
+            self.result_storage.complete_row(row_index, success=True)
         
         self._emit_status("success", f"Fila {row_index + 1} completada")
         
@@ -1944,6 +2030,13 @@ class FormExecutor:
         self.is_paused = False
         self.should_stop = False
         self.current_row_index = start_row
+        
+        # Inicializar sesión en result_storage si PostSubmit está habilitado
+        if self.result_storage:
+            self.result_storage.initialize_session(
+                total_rows=len(self.resolved_rows),
+                form_url=self.form_url
+            )
         
         self._emit_status("running", "Iniciando automatización...")
         

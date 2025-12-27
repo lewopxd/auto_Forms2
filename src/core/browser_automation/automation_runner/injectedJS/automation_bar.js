@@ -2664,7 +2664,8 @@
         const STATE_ICONS = {
             check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`,
             alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-            robot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>`
+            robot: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></svg>`,
+            click: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>`
         };
 
         // Estado de automatización (para bloquear drag/resize durante play)
@@ -2975,7 +2976,12 @@
             currentAction = action;
 
             // Actualizar indicador
-            activeNumText.textContent = num;
+            // Para tipo "click" (navegación), usar icono en lugar de número
+            if (type === 'click') {
+                activeNumText.innerHTML = STATE_ICONS.click;
+            } else {
+                activeNumText.textContent = num;
+            }
             activeIndicator.className = `action-indicator ${type} loading`;
 
             // Actualizar tarjeta
