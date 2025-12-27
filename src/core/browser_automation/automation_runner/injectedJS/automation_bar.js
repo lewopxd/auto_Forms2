@@ -1571,29 +1571,27 @@
                         
                         <div class="config-divider"></div>
                         
-                        <!-- ═══ SECCIÓN 3: Validación ═══ -->
-                        <div class="config-section">
-                            <div class="config-section-title">✅ Validación</div>
-                            <div class="config-field" style="margin-bottom: 6px;">
-                                <div class="config-checkbox-row" id="validateFillToggle">
-                                    <div class="config-checkbox checked" id="validateFillCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Validar después de FILL (texto)</span>
-                                </div>
-                            </div>
-                            <div class="config-field">
-                                <div class="config-checkbox-row" id="validateSelectToggle">
-                                    <div class="config-checkbox checked" id="validateSelectCheckbox">${ICONS.check}</div>
-                                    <span class="config-checkbox-label">Validar después de SELECT (opción)</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="config-divider"></div>
-                        
-                        <!-- ═══ SECCIÓN 4: Sobreescribir Config de Tarjetas ═══ -->
+                        <!-- ═══ SECCIÓN 3: Sobreescribir Config de Tarjetas ═══ -->
                         <div class="config-section">
                             <div class="config-section-title">🔧 Sobreescribir Config de Tarjetas</div>
                             <p style="font-size: 10px; color: #9ca3af; margin-bottom: 10px;">Estos valores sobreescriben la configuración individual de cada tarjeta del paquete.</p>
+                            
+                            <!-- === VALIDACIÓN === -->
+                            <div class="config-subsection" style="border-left: 2px solid #a855f7; padding-left: 10px; margin-bottom: 12px;">
+                                <div class="config-subsection-title">✅ Validación</div>
+                                <div class="config-field" style="margin-bottom: 6px;">
+                                    <div class="config-checkbox-row" id="validateFillToggle">
+                                        <div class="config-checkbox checked" id="validateFillCheckbox">${ICONS.check}</div>
+                                        <span class="config-checkbox-label">Validar después de FILL (texto)</span>
+                                    </div>
+                                </div>
+                                <div class="config-field">
+                                    <div class="config-checkbox-row" id="validateSelectToggle">
+                                        <div class="config-checkbox checked" id="validateSelectCheckbox">${ICONS.check}</div>
+                                        <span class="config-checkbox-label">Validar después de SELECT (opción)</span>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- === MÉTODOS DE LLENADO === -->
                             <div class="config-subsection" style="border-left: 2px solid #3b82f6; padding-left: 10px;">

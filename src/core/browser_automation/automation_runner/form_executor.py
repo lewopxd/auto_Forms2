@@ -588,12 +588,15 @@ class FormExecutor:
     
     def _browser_log(self, msg: str, level: str = "info"):
         """Enviar log quirúrgico a consola del navegador."""
+        import json
         icons = {"info": "📍", "success": "✅", "warning": "⚠️", "error": "❌", "action": "🔹", "wait": "⏳"}
         icon = icons.get(level, "•")
         try:
-            # Escapar comillas en el mensaje
-            safe_msg = msg.replace("'", "\\'").replace('"', '\\"')
-            self.driver.execute_script(f"console.log('[AutoForms] {icon} {safe_msg}');")
+            # Usar json.dumps para escape correcto de caracteres especiales
+            log_msg = f"[AutoForms] {icon} {msg}"
+            # json.dumps escapa correctamente \n, \r, \t, comillas, etc.
+            safe_js_string = json.dumps(log_msg)
+            self.driver.execute_script(f"console.log({safe_js_string});")
         except Exception:
             pass
         # También imprimir en consola Python
