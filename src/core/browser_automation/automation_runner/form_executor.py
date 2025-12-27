@@ -251,7 +251,7 @@ class FormExecutor:
         }
         icon = icons.get(level, "•")
         step_str = f"[{step}/{total}]" if total > 0 else ""
-        print(f"[FormExecutor] {icon} {step_str} {message}")
+        print(f"[FormExecutor] {icon} {step_str} {message}", flush=True)
     
     def _get_question_index(self, key: str) -> int:
         """Obtener índice de pregunta en la lista ordenada."""
@@ -310,22 +310,55 @@ class FormExecutor:
             self._log(0, 0, f"Error en validación FILL: {e}", "error")
             return False
     
-    def _validate_select_value(self, element: WebElement) -> bool:
-        """Validación INFALIBLE para SELECT usando aria-checked del MISMO elemento.
+    def _validate_select_value(self, question: dict, expected_answer: str) -> bool:
+        """Validación INFALIBLE para SELECT.
         
-        Después de hacer click en un radio/checkbox, verificamos que 
-        aria-checked cambió a 'true' en ESE MISMO elemento.
+        Busca DENTRO del contenedor de la pregunta cualquier input con
+        aria-checked='true' y verifica que su value coincida con la respuesta esperada.
+        
+        Esta estrategia funciona porque:
+        1. Hacemos click en label/span pero el input es quien tiene aria-checked
+        2. Después del click, buscamos el input seleccionado
+        3. Comparamos su value con la respuesta esperada
         """
         try:
-            aria_checked = element.get_attribute("aria-checked")
-            is_valid = aria_checked == "true"
-            if is_valid:
-                self._log(0, 0, f"Validación OK: aria-checked='true'", "success")
-            else:
-                self._log(0, 0, f"Validación FALLÓ: aria-checked='{aria_checked}'", "error")
-            return is_valid
+            # Obtener el contenedor de la pregunta
+            container = self._get_question_container(question)
+            if not container:
+                self._log(0, 0, "No se pudo encontrar contenedor para validación", "warning")
+                # Fallback: buscar en todo el documento
+                container = self.driver.find_element(By.TAG_NAME, "body")
+            
+            # Buscar el input con aria-checked="true" dentro del contenedor
+            try:
+                selected_input = container.find_element(
+                    By.CSS_SELECTOR, 
+                    "input[aria-checked='true']"
+                )
+                selected_value = selected_input.get_attribute("value") or ""
+                
+                # Comparar valores (normalizar espacios y HTML entities)
+                expected_clean = expected_answer.strip().replace("&nbsp;", " ")
+                selected_clean = selected_value.strip().replace("&nbsp;", " ")
+                
+                is_valid = expected_clean == selected_clean
+                
+                if is_valid:
+                    self._log(0, 0, f"✓ Validación SELECT OK: '{selected_clean[:30]}...'", "success")
+                else:
+                    self._log(0, 0, f"✗ Validación SELECT: seleccionado='{selected_clean}', esperaba='{expected_clean}'", "error")
+                
+                return is_valid
+                
+            except NoSuchElementException:
+                # No hay ningún input seleccionado - el click no funcionó
+                self._log(0, 0, "✗ No se encontró ningún input con aria-checked='true'", "error")
+                return False
+                
         except Exception as e:
             self._log(0, 0, f"Error en validación SELECT: {e}", "error")
+            import traceback
+            traceback.print_exc()
             return False
     
     # ═══════════════════════════════════════════════════════════════════════
@@ -719,18 +752,20 @@ class FormExecutor:
             container = self._get_question_container(question)
             if container:
                 try:
+                    # Highlight en el contenedor (más visible que la opción)
+                    self._highlight_element(container)
                     container.click()
                     time.sleep(0.1)
                     self._log(3, 9, "Focus en contenedor OK", "success")
-                except Exception:
-                    self._log(3, 9, "Click en contenedor falló (ignorado)", "warning")
+                except Exception as e:
+                    self._log(3, 9, f"Click en contenedor falló: {e}", "warning")
             
-            # Paso 4: Scroll para centrar
+            # Paso 4: Scroll para centrar la opción
             self._log(4, 9, "Scroll para centrar opción...", "info")
             if self.config.scroll_to_element:
                 self._scroll_to_element(element)
             
-            # Paso 5: Highlight
+            # Paso 5: Highlight en la opción específica
             self._log(5, 9, "Aplicando glow a opción", "info")
             self._highlight_element(element)
             
@@ -742,20 +777,25 @@ class FormExecutor:
             # Paso 7: Click en opción
             self._log(7, 9, "Haciendo click en opción...", "info")
             element.click()
-            time.sleep(0.3)  # Esperar DOM update
+            time.sleep(0.4)  # Esperar DOM update (aumentado)
             
-            # Paso 8: Validación INFALIBLE (aria-checked del mismo elemento)
-            self._log(8, 9, "Validando selección (aria-checked)...", "info")
+            # Paso 8: Validación INFALIBLE (buscar aria-checked="true" en contenedor)
+            self._log(8, 9, "Validando selección...", "info")
+            import sys
+            sys.stdout.flush()  # Forzar salida de logs
+            
             if self.config.validate_after_select:
-                if not self._validate_select_value(element):
-                    # Reintento
+                if not self._validate_select_value(question, answer):
+                    # Reintento: click de nuevo
                     self._log(8, 9, "Reintentando click...", "warning")
                     element.click()
-                    time.sleep(0.4)
+                    time.sleep(0.5)
                     
-                    if not self._validate_select_value(element):
+                    if not self._validate_select_value(question, answer):
                         self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
                         self._remove_highlight(element)
+                        if container:
+                            self._remove_highlight(container)
                         return ActionResult(
                             success=False,
                             question_key=key,
@@ -766,8 +806,12 @@ class FormExecutor:
             # Paso 9: Éxito
             self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
             self._highlight_element(element, "#10b981")  # Verde
+            if container:
+                self._highlight_element(container, "#10b981")  # Verde en contenedor también
             time.sleep(0.3)
             self._remove_highlight(element)
+            if container:
+                self._remove_highlight(container)
             
             # Delay antes de siguiente pregunta
             delay_min, delay_max = self._get_question_delay(question)
