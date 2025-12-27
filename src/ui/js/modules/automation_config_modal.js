@@ -202,58 +202,6 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- SECTION 4: POST SUBMIT ACTIONS -->
-            <div class="af-config-section af-config-section-collapsible" id="auto-cfg-postsubmit-section">
-                <div class="af-config-sec-title af-collapsible-header" onclick="AutomationConfigModal.toggleSection('postsubmit')">
-                    <span class="af-collapse-icon" id="auto-cfg-postsubmit-icon">
-                        <i data-lucide="chevron-right" style="width:16px;height:16px;"></i>
-                    </span>
-                    Post Submit Actions
-                    <span class="af-config-sec-badge" style="margin-left:8px; font-size:10px; padding:2px 6px; background:#f97316; color:white; border-radius:4px;">NUEVO</span>
-                </div>
-                <div class="af-config-collapsible-content" id="auto-cfg-postsubmit-content" style="display:none;">
-                    <div class="af-config-row" style="flex-direction:column; gap:12px; padding-top:12px;">
-                        <!-- Enable Toggle -->
-                        <div class="flex items-center gap-3">
-                            <label class="af-switch">
-                                <input type="checkbox" id="auto-cfg-postsubmit-enable" 
-                                       ${config.postSubmit?.enabled ? 'checked' : ''}
-                                       ${config.postSubmit?.available === false ? 'disabled' : ''}>
-                                <span class="af-switch-track"><span class="af-switch-thumb"></span></span>
-                            </label>
-                            <div class="af-config-label" style="min-width:auto;">Guardar respuesta si disponible</div>
-                        </div>
-                        
-                        <!-- Info box -->
-                        <div style="display:flex; gap:8px; padding:10px 12px; background:rgba(249,115,22,0.08); border-radius:6px; border-left:3px solid #f97316;">
-                            <i data-lucide="info" style="width:16px;height:16px;color:#f97316;flex-shrink:0;margin-top:1px;"></i>
-                            <div style="font-size:11px; color:#6b7280; line-height:1.5;">
-                                Si está habilitado, después de cada envío se capturará automáticamente el link de edición 
-                                del formulario. Esto permite mantener un registro de todas las respuestas enviadas.
-                            </div>
-                        </div>
-                        
-                        <!-- Status indicator -->
-                        <div class="flex items-center gap-2" style="padding-left:4px;">
-                            <span style="font-size:11px; color:#6b7280;">Estado:</span>
-                            ${config.postSubmit?.available !== false
-                ? '<span style="color:#10b981; font-size:11px;"><i data-lucide="check-circle" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>Disponible en paquete</span>'
-                : '<span style="color:#9ca3af; font-size:11px;"><i data-lucide="x-circle" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:4px;"></i>No disponible</span>'
-            }
-                        </div>
-                        
-                        <!-- Timeout config -->
-                        <div class="flex items-center gap-2" style="padding-left:4px;">
-                            <span style="font-size:11px; color:#6b7280;">Timeout:</span>
-                            <input type="number" id="auto-cfg-postsubmit-timeout" class="af-config-input" 
-                                   style="width:80px; font-size:11px; padding:4px 8px;" 
-                                   value="${config.postSubmit?.timeoutMs || 60000}" min="10000" max="300000" step="5000">
-                            <span style="font-size:11px; color:#6b7280;">ms</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         `;
 
         body.innerHTML = html;
@@ -538,7 +486,6 @@
     function handleSave() {
         const getVal = (id, def) => { const el = document.getElementById(id); return el ? (el.value || def) : def; };
         const getCheck = (id, def) => { const el = document.getElementById(id); return el ? el.checked : def; };
-        const getNum = (id, def) => { const el = document.getElementById(id); return el ? (parseInt(el.value, 10) || def) : def; };
 
         const conditions = collectConditions();
 
@@ -548,12 +495,7 @@
                 conditions: conditions
             },
             range: getVal('auto-cfg-range', ''),
-            controlColumn: getVal('auto-cfg-control-col', ''),
-            postSubmit: {
-                enabled: getCheck('auto-cfg-postsubmit-enable', false),
-                timeoutMs: getNum('auto-cfg-postsubmit-timeout', 60000),
-                available: currentConfig.postSubmit?.available !== false
-            }
+            controlColumn: getVal('auto-cfg-control-col', '')
         };
 
         // Save to AutoFormViewModule
@@ -564,33 +506,9 @@
         close();
     }
 
-    /**
-     * Toggle collapsible section visibility
-     */
-    function toggleSection(sectionName) {
-        const content = document.getElementById(`auto-cfg-${sectionName}-content`);
-        const icon = document.getElementById(`auto-cfg-${sectionName}-icon`);
-
-        if (!content || !icon) return;
-
-        const isExpanded = content.style.display !== 'none';
-
-        if (isExpanded) {
-            content.style.display = 'none';
-            icon.innerHTML = '<i data-lucide="chevron-right" style="width:16px;height:16px;"></i>';
-        } else {
-            content.style.display = 'block';
-            icon.innerHTML = '<i data-lucide="chevron-down" style="width:16px;height:16px;"></i>';
-        }
-
-        if (window.lucide) lucide.createIcons();
-    }
-
     // Expose to global
     window.AutomationConfigModal = {
         open,
-        close,
-        toggleSection
+        close
     };
 })();
-

@@ -1083,46 +1083,6 @@
     margin-bottom: 2px;
 }
 
-/* Collapsible Section Header */
-.af-collapsible-header {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    user-select: none;
-    transition: opacity 0.2s;
-}
-
-.af-collapsible-header:hover {
-    opacity: 0.8;
-}
-
-.af-collapse-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s;
-}
-
-.af-collapse-icon svg {
-    color: #9ca3af;
-}
-
-.af-config-collapsible-content {
-    animation: collapseSlideDown 0.2s ease-out;
-}
-
-@keyframes collapseSlideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-5px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 /* Form Controls */
 .af-config-row {
     display: flex;
