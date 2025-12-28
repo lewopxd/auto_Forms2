@@ -723,6 +723,13 @@ class SeleniumProcessBooster:
             on_status_change=on_status_change
         )
         
+        # Set up UI re-injection callback (called after PostSubmit returns to form)
+        def reinject_ui():
+            if cls._driver:
+                cls._inject_automation_bar(cls._driver)
+        
+        cls._executor.on_ui_reinject = reinject_ui
+        
         # Start in thread
         def run_executor():
             try:

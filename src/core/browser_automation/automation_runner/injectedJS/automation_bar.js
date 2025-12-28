@@ -2498,7 +2498,7 @@
 
             // ═══ Sección 4: Override Config (Llenado + Tiempos) ═══
             // Métodos de llenado
-            shortTextMethod: 'keyByKey',
+            shortTextMethod: 'sendKeys',  // Changed from 'keyByKey'
             typingDelayMinMs: 30,
             typingDelayMaxMs: 120,
             longTextThreshold: 30,
@@ -2506,19 +2506,19 @@
             veryLongTextThreshold: 100,
             veryLongTextMethod: 'jsValue',
             // Override tiempos
-            overrideDelays: false,
-            delayMinMs: 500,
-            delayMaxMs: 1500,
+            overrideDelays: true,  // Changed from false
+            delayMinMs: 100,  // Changed from 500
+            delayMaxMs: 400,  // Changed from 1500
 
             // ═══ Sección 5: Visual Feedback ═══
             highlightElements: true,
 
             // ═══ Sección 6: Delays Especiales ═══
-            branchDelayMs: 1500,
-            pageChangeDelayMs: 2000,
+            branchDelayMs: 990,  // Changed from 1500
+            pageChangeDelayMs: 400,  // Changed from 2000
 
             // ═══ Sección 7: Post Submit Actions ═══
-            postSubmitEnabled: false,
+            postSubmitEnabled: true,  // Changed from false
             postSubmitTimeoutMs: 60000
         };
 

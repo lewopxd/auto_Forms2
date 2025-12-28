@@ -219,6 +219,7 @@ class FormExecutor:
         self.on_action_error = on_action_error
         self.on_row_complete = on_row_complete
         self.on_status_change = on_status_change
+        self.on_ui_reinject: Callable[[], None] = None  # Called when UI needs re-injection
         
         # Estado
         self.is_running = False
@@ -2029,6 +2030,17 @@ class FormExecutor:
                                     row_index=row_index,
                                     error=str(e)
                                 )
+                        
+                        # ═══════════════════════════════════════════════════════
+                        # Re-inyectar UI después del PostSubmit (página recargada)
+                        # ═══════════════════════════════════════════════════════
+                        if self.on_ui_reinject:
+                            print("[FormExecutor] Re-inyectando UI después del PostSubmit...")
+                            try:
+                                self.on_ui_reinject()
+                                print("[FormExecutor] ✓ UI re-inyectada")
+                            except Exception as e:
+                                print(f"[FormExecutor] ⚠️ Error re-inyectando UI: {e}")
                             
             elif navigation.get("next"):
                 # Página intermedia - siguiente

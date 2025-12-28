@@ -247,12 +247,13 @@ class URLCapturer:
         self._log("✗ No response cards found", 'error')
         return None
     
-    def _click_card_and_capture_url(self, card) -> CaptureResult:
+    def _click_card_and_capture_url(self, card, form_url: str = None) -> CaptureResult:
         """
         Click on a response card and capture the URL from the new tab.
         
         Args:
             card: WebElement of the card to click
+            form_url: Original form URL for validation/redirection
         
         Returns:
             CaptureResult with captured URL
@@ -262,9 +263,11 @@ class URLCapturer:
         start_time = time.time() * 1000
         
         try:
-            # Store current handles
+            # Store current handles BEFORE any action
             original_handles = set(self.driver.window_handles)
             current_handle = self.driver.current_window_handle
+            
+            self._log(f"Current tabs: {len(original_handles)}, current handle: {current_handle[:20]}...")
             
             # Apply visual feedback (optional)
             try:
@@ -293,13 +296,16 @@ class URLCapturer:
             wait_start = time.time() * 1000
             
             while time.time() * 1000 - wait_start < self.config.new_tab_timeout_ms:
-                current_handles = set(self.driver.window_handles)
-                new_handles = current_handles - original_handles
-                
-                if new_handles:
-                    new_tab = list(new_handles)[0]
-                    self._log(f"✓ New tab detected!")
-                    break
+                try:
+                    current_handles = set(self.driver.window_handles)
+                    new_handles = current_handles - original_handles
+                    
+                    if new_handles:
+                        new_tab = list(new_handles)[0]
+                        self._log(f"✓ New tab detected!")
+                        break
+                except Exception as e:
+                    self._log(f"Error checking handles: {e}", 'debug')
                 
                 time.sleep(0.3)
             
@@ -332,21 +338,70 @@ class URLCapturer:
                 elif 'forms' in edit_url.lower():
                     confidence = 0.85
             
-            # Close this tab
-            self._log("Closing edit tab...")
-            try:
-                self.driver.close()
-            except:
-                pass
+            # ═══════════════════════════════════════════════════════════════
+            # ROBUST TAB CLOSING - Never close last tab, validate destination
+            # ═══════════════════════════════════════════════════════════════
             
-            # Switch back to forms list
+            # Get current handle count BEFORE closing
             try:
-                self.driver.switch_to.window(current_handle)
-            except:
-                # If original handle is gone, switch to any available
-                remaining = self.driver.window_handles
-                if remaining:
-                    self.driver.switch_to.window(remaining[0])
+                handles_before_close = self.driver.window_handles
+                handle_count = len(handles_before_close)
+                self._log(f"Tabs before close: {handle_count}")
+            except Exception as e:
+                self._log(f"⚠️ Error getting handles: {e}", 'warning')
+                handle_count = 1  # Assume 1 to prevent close
+            
+            # Only close if we have more than 1 tab
+            if handle_count > 1:
+                self._log("Closing edit tab (safe - not last)...")
+                try:
+                    self.driver.close()
+                    self._log("✓ Edit tab closed")
+                except Exception as e:
+                    self._log(f"⚠️ Error closing tab: {e}", 'warning')
+            else:
+                self._log("⚠️ NOT closing tab - it's the only one!", 'warning')
+            
+            # ═══════════════════════════════════════════════════════════════
+            # SWITCH BACK - Validate destination handle exists
+            # ═══════════════════════════════════════════════════════════════
+            
+            try:
+                remaining_handles = self.driver.window_handles
+                self._log(f"Remaining tabs: {len(remaining_handles)}")
+                
+                if not remaining_handles:
+                    self._log("✗ CRITICAL: No tabs remaining!", 'error')
+                    return CaptureResult(
+                        success=True,  # URL was captured successfully
+                        url=edit_url,
+                        strategy_name='forms_card_click',
+                        confidence=confidence,
+                        capture_time_ms=time.time() * 1000 - start_time,
+                        error='no_tabs_remaining_after_close',
+                        metadata={'method': 'first_card_click', 'warning': 'browser_may_be_closed'}
+                    )
+                
+                # Check if original handle still exists
+                if current_handle in remaining_handles:
+                    self._log(f"Switching to original handle...")
+                    self.driver.switch_to.window(current_handle)
+                else:
+                    # Original handle is gone, switch to first available
+                    self._log(f"⚠️ Original handle gone, switching to first available...")
+                    self.driver.switch_to.window(remaining_handles[0])
+                
+                self._log("✓ Switched back to list tab")
+                
+            except Exception as e:
+                self._log(f"⚠️ Error switching back: {e}", 'warning')
+                # Try to recover
+                try:
+                    remaining = self.driver.window_handles
+                    if remaining:
+                        self.driver.switch_to.window(remaining[0])
+                except:
+                    pass
             
             return CaptureResult(
                 success=True,

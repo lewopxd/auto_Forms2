@@ -413,32 +413,80 @@ class PostSubmitExecutor:
                 self._log(f"✗ URL capture failed: {result.error}", 'error')
             
             # Step 6: Close extra tabs and return to original
-            self._log("Step 6: Cleaning up tabs...")
+            self._log("Step 6: Cleaning up tabs (safely)...")
             
-            # Close all tabs except original
+            # ═══════════════════════════════════════════════════════════════
+            # ROBUST TAB CLEANUP - Never close if only 1 tab, validate handles
+            # ═══════════════════════════════════════════════════════════════
             try:
                 current_handles = self.driver.window_handles
-                for handle in current_handles:
-                    if handle != original_handle:
-                        try:
-                            self.driver.switch_to.window(handle)
-                            self.driver.close()
-                        except:
-                            pass
+                self._log(f"Current tabs: {len(current_handles)}")
                 
-                # Switch back to original
-                self.driver.switch_to.window(original_handle)
-                self._log("✓ Returned to original tab")
+                # Identify tabs to close (all except original)
+                tabs_to_close = [h for h in current_handles if h != original_handle]
+                
+                # Only close if we have more than 1 tab total
+                if len(current_handles) > 1 and tabs_to_close:
+                    for handle in tabs_to_close:
+                        try:
+                            # Verify we still have more than 1 tab before closing
+                            live_handles = self.driver.window_handles
+                            if len(live_handles) > 1:
+                                self.driver.switch_to.window(handle)
+                                self.driver.close()
+                                self._log(f"✓ Closed tab {handle[:15]}...")
+                            else:
+                                self._log("⚠️ Stopping cleanup - only 1 tab remaining")
+                                break
+                        except Exception as e:
+                            self._log(f"⚠️ Error closing tab: {e}", 'debug')
+                else:
+                    self._log("No extra tabs to close")
+                
+                # ═══════════════════════════════════════════════════════════
+                # SWITCH BACK - Validate original handle exists
+                # ═══════════════════════════════════════════════════════════
+                remaining_handles = self.driver.window_handles
+                
+                if not remaining_handles:
+                    self._log("✗ CRITICAL: No tabs remaining!", 'error')
+                    # Can't continue without a browser
+                elif original_handle in remaining_handles:
+                    self.driver.switch_to.window(original_handle)
+                    self._log("✓ Returned to original tab")
+                else:
+                    # Original tab gone, use first available
+                    self._log("⚠️ Original tab gone, using first available")
+                    self.driver.switch_to.window(remaining_handles[0])
+                
             except Exception as e:
                 self._log(f"⚠️ Error during cleanup: {e}", 'warning')
+                # Try to recover - switch to any available tab
+                try:
+                    remaining = self.driver.window_handles
+                    if remaining:
+                        self.driver.switch_to.window(remaining[0])
+                except:
+                    pass
             
-            # Step 7: Navigate back to form URL
+            # Step 7: Navigate back to form URL and verify
             if return_to_url:
                 self._log(f"Step 7: Navigating back to form: {return_to_url[:50]}...")
                 try:
-                    self.driver.get(return_to_url)
-                    time.sleep(2)
-                    self._log("✓ Returned to form URL")
+                    # Check if current URL is already the form
+                    current_url = self.driver.current_url
+                    if return_to_url in current_url or current_url in return_to_url:
+                        self._log("✓ Already on form URL")
+                    else:
+                        self.driver.get(return_to_url)
+                        time.sleep(2)
+                        
+                        # Verify we're on the form
+                        final_url = self.driver.current_url
+                        if return_to_url in final_url or 'forms.office.com/r/' in final_url:
+                            self._log("✓ Successfully returned to form URL")
+                        else:
+                            self._log(f"⚠️ May not be on form. Current: {final_url[:50]}...", 'warning')
                 except Exception as e:
                     self._log(f"⚠️ Error returning to form URL: {e}", 'warning')
             
