@@ -298,56 +298,149 @@ class PostSubmitExecutor:
             else:
                 self._log("Step 1: Login check skipped (trusted after successful submit)")
             
-            # Step 2: Click save button (if not skipping)
-            if not skip_save_click:
-                self._log("Step 2: Clicking Save Response...")
-                if not self._click_save_response():
-                    self._log("Skipping save click - button not found or already clicked")
+            # Step 2: Click save button - this should open a new tab
+            self._log("Step 2: Clicking Save Response button...")
             
-            # Step 3: Navigate to Forms list
-            self._log("Step 3: Navigating to Forms list...")
-            if not self._navigate_to_forms_list():
+            # Store current handles BEFORE clicking
+            handles_before = set(self.driver.window_handles)
+            
+            if not skip_save_click:
+                if not self._click_save_response():
+                    self._log("✗ Save button not found", 'warning')
+                    return PostSubmitResult(
+                        success=False,
+                        state='failed',
+                        error='save_button_not_found',
+                        capture_time_ms=time.time() * 1000 - start_time
+                    )
+            
+            # Step 3: Wait for and switch to new tab (forms list)
+            self._log("Step 3: Waiting for new tab (forms list)...")
+            
+            new_tab_handle = None
+            wait_start = time.time() * 1000
+            
+            while time.time() * 1000 - wait_start < self.config.navigation_timeout_ms:
+                current_handles = set(self.driver.window_handles)
+                new_handles = current_handles - handles_before
+                
+                if new_handles:
+                    new_tab_handle = list(new_handles)[0]
+                    self._log(f"✓ New tab opened!")
+                    break
+                
+                time.sleep(0.3)
+            
+            if not new_tab_handle:
+                self._log("✗ No new tab detected after clicking save", 'error')
                 return PostSubmitResult(
                     success=False,
                     state='failed',
-                    error='navigation_failed',
+                    error='no_new_tab_after_save',
                     capture_time_ms=time.time() * 1000 - start_time
                 )
             
-            # Step 4: Capture URL using TabManager and URLCapturer
-            self._log("Step 4: Capturing edit URL...")
+            # Switch to new tab
+            self.driver.switch_to.window(new_tab_handle)
+            time.sleep(2)  # Wait for page to load
             
-            with TabManager(self.driver, self._tab_config) as tab_mgr:
-                capturer = URLCapturer(self.driver, tab_mgr, self._url_config)
-                capture_result = capturer.capture()
+            self._log(f"Switched to new tab. URL: {self.driver.current_url[:60]}...")
+            
+            # Step 4: Handle login if redirected to login page
+            current_url = self.driver.current_url
+            if any(x in current_url for x in ['login.microsoftonline', 'login.live', 'login.microsoft']):
+                self._log("Step 4: Detected login page, handling login...")
                 
-                if capture_result.success:
-                    result.success = True
-                    result.url = capture_result.url
-                    result.strategy = capture_result.strategy_name
-                    result.confidence = capture_result.confidence
-                    result.state = 'success'
-                    result.metadata = capture_result.metadata
+                # Try auto-login
+                login_result = self._login_detector.try_auto_login(timeout_ms=15000)
+                
+                if not login_result.logged_in:
+                    self._log("Auto-login failed, waiting for manual login...")
+                    login_result = self._login_detector.wait_for_manual_login(
+                        timeout_ms=self.config.relogin_timeout_ms
+                    )
+                
+                if not login_result.logged_in:
+                    self._log("✗ Login failed or timed out", 'error')
+                    # Close this tab and return
+                    try:
+                        self.driver.close()
+                        self.driver.switch_to.window(original_handle)
+                    except:
+                        pass
                     
-                    self._log(f"✓ URL captured successfully")
-                    self._log(f"  URL: {result.url}")
-                    self._log(f"  Strategy: {result.strategy}")
-                    self._log(f"  Confidence: {result.confidence:.0%}")
-                else:
-                    result.success = False
-                    result.state = 'failed'
-                    result.error = capture_result.error or 'capture_failed'
-                    
-                    self._log(f"✗ URL capture failed: {result.error}", 'error')
+                    return PostSubmitResult(
+                        success=False,
+                        state='failed',
+                        error='login_failed',
+                        login_required=True,
+                        capture_time_ms=time.time() * 1000 - start_time
+                    )
+                
+                self._log("✓ Login successful")
+                time.sleep(2)  # Wait for redirect after login
+            else:
+                self._log("Step 4: Already on forms list (no login needed)")
             
-            # Step 5: Return to original page (if specified)
+            # Step 5: Capture URL using URLCapturer
+            self._log("Step 5: Capturing edit URL from forms list...")
+            
+            # Create URLCapturer with login detector
+            capturer = URLCapturer(
+                self.driver, 
+                TabManager(self.driver, self._tab_config),
+                self._url_config,
+                self._login_detector
+            )
+            capture_result = capturer.capture()
+            
+            if capture_result.success:
+                result.success = True
+                result.url = capture_result.url
+                result.strategy = capture_result.strategy_name
+                result.confidence = capture_result.confidence
+                result.state = 'success'
+                result.metadata = capture_result.metadata
+                
+                self._log(f"✓ URL captured successfully")
+                self._log(f"  URL: {result.url}")
+                self._log(f"  Confidence: {result.confidence:.0%}")
+            else:
+                result.success = False
+                result.state = 'failed'
+                result.error = capture_result.error or 'capture_failed'
+                
+                self._log(f"✗ URL capture failed: {result.error}", 'error')
+            
+            # Step 6: Close extra tabs and return to original
+            self._log("Step 6: Cleaning up tabs...")
+            
+            # Close all tabs except original
+            try:
+                current_handles = self.driver.window_handles
+                for handle in current_handles:
+                    if handle != original_handle:
+                        try:
+                            self.driver.switch_to.window(handle)
+                            self.driver.close()
+                        except:
+                            pass
+                
+                # Switch back to original
+                self.driver.switch_to.window(original_handle)
+                self._log("✓ Returned to original tab")
+            except Exception as e:
+                self._log(f"⚠️ Error during cleanup: {e}", 'warning')
+            
+            # Step 7: Navigate back to form URL
             if return_to_url:
-                self._log(f"Step 5: Returning to {return_to_url}")
+                self._log(f"Step 7: Navigating back to form: {return_to_url[:50]}...")
                 try:
                     self.driver.get(return_to_url)
-                    time.sleep(1)
+                    time.sleep(2)
+                    self._log("✓ Returned to form URL")
                 except Exception as e:
-                    self._log(f"⚠️ Error returning to original URL: {e}", 'warning')
+                    self._log(f"⚠️ Error returning to form URL: {e}", 'warning')
             
             result.capture_time_ms = time.time() * 1000 - start_time
             
@@ -359,6 +452,8 @@ class PostSubmitExecutor:
         
         except Exception as e:
             self._log(f"✗ Unexpected error: {e}", 'error')
+            import traceback
+            traceback.print_exc()
             
             # Try to recover by returning to original handle
             try:

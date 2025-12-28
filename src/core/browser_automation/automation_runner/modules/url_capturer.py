@@ -2,42 +2,36 @@
 # -*- coding: utf-8 -*-
 """
 ============================================
-URL Capturer - Edit Link Extractor
+URL Capturer v2 - MS Forms Specific
 ============================================
-Captures the edit link for submitted MS Forms responses using
-multiple fallback strategies with configurable selectors.
+Captures edit URLs from MS Forms by navigating the
+forms list and clicking on the most recently submitted form.
 
-Strategy Pattern with 5 levels of fallback:
-1. TabIndex (fastest, 95% confidence)
-2. Timestamp (90% confidence)
-3. ARIA Label (85% confidence)
-4. Position-based (70% confidence)
-5. Bruteforce (60% confidence)
+Flow:
+1. Wait for forms list page to load
+2. Find the first (most recent) response card
+3. Click to open edit page in new tab
+4. Capture the URL
+5. Return result
 """
 
 import time
-import json
 import logging
-import os
-import re
-from pathlib import Path
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
-from urllib.parse import urlparse, parse_qs
-
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import (
-    NoSuchElementException,
     TimeoutException,
-    ElementClickInterceptedException,
-    StaleElementReferenceException
+    NoSuchElementException,
+    StaleElementReferenceException,
+    ElementClickInterceptedException
 )
 
-from .tab_manager import TabManager, TabResult
+from .tab_manager import TabManager, TabConfig
+from .login_detector import LoginDetector, LoginConfig, LoginResult
 
 
 logger = logging.getLogger(__name__)
@@ -45,50 +39,19 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class URLCaptureConfig:
-    """Configuration for URL capture strategies."""
-    # Strategy selectors (can be updated without code changes)
-    tabindex_selectors: List[str] = field(default_factory=lambda: [
-        ".ms-FocusZone.item__container[data-focuszone-id][tabindex='0']",
-        "[data-focuszone-id][tabindex='0']",
-        ".item__container[tabindex='0']"
-    ])
-    
-    aria_label_patterns: List[str] = field(default_factory=lambda: [
-        "filled form",
-        "your filled form",
-        "submitted.*ago",
-        "last submitted",
-        "recent response"
-    ])
-    
-    list_container_selectors: List[str] = field(default_factory=lambda: [
-        ".items-list",
-        "[data-automation-id='itemsList']",
-        "[data-automation-id='recentResponses']"
-    ])
-    
-    item_selectors: List[str] = field(default_factory=lambda: [
-        "[role='button']",
-        ".item-element",
-        "[data-automation-id*='item']"
-    ])
-    
-    # Valid URL domains
-    valid_domains: List[str] = field(default_factory=lambda: [
-        "forms.office.com",
-        "forms.office365.com",
-        "forms.microsoft.com"
-    ])
-    
-    # Required URL paths
-    required_paths: List[str] = field(default_factory=lambda: [
-        "responsepage",
-        "/Pages/"
-    ])
-    
+    """Configuration for URL capture."""
     # Timeouts
-    click_wait_ms: int = 10000
-    page_load_wait_ms: int = 5000
+    page_load_timeout_ms: int = 15000
+    card_wait_timeout_ms: int = 10000
+    new_tab_timeout_ms: int = 15000
+    
+    # Selectors for response cards
+    card_selectors: List[str] = field(default_factory=lambda: [
+        "[data-automation-id='itemContainer']",        # Primary selector
+        ".item__container",                             # Class-based
+        ".item-element[role='button']",                # Role-based
+        "[data-is-focusable='true'][role='button']",   # Focusable buttons
+    ])
     
     # Logging
     verbose_logging: bool = True
@@ -96,31 +59,31 @@ class URLCaptureConfig:
 
 @dataclass
 class CaptureResult:
-    """Result of a URL capture attempt."""
+    """Result of URL capture operation."""
     success: bool
     url: Optional[str] = None
-    strategy: int = 0
     strategy_name: str = ''
     confidence: float = 0.0
     capture_time_ms: float = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
     error: Optional[str] = None
-    element_index: Optional[int] = None
-    attempted_strategies: int = 0
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class URLCapturer:
     """
-    Captures edit URLs from MS Forms using multiple fallback strategies.
+    Captures edit URLs from MS Forms response list.
     
-    Designed to be easily updatable when MS Forms changes its DOM structure
-    by modifying the config without touching the core logic.
+    This capturer is specifically designed for MS Forms workflow:
+    1. After submitting a form and clicking "Save my response"
+    2. User is taken to forms list (DesignPagev2.aspx or similar)
+    3. The most recent response is the first card
+    4. Clicking on it opens the edit URL in a new tab
     
     Usage:
-        capturer = URLCapturer(driver, tab_mgr)
+        capturer = URLCapturer(driver, tab_manager, config)
         result = capturer.capture()
         if result.success:
-            print(f"Captured URL: {result.url}")
+            print(f"Edit URL: {result.url}")
     """
     
     def __init__(
@@ -128,37 +91,12 @@ class URLCapturer:
         driver: WebDriver,
         tab_manager: TabManager,
         config: URLCaptureConfig = None,
-        config_file: str = None
+        login_detector: LoginDetector = None
     ):
         self.driver = driver
         self.tab_manager = tab_manager
         self.config = config or URLCaptureConfig()
-        
-        # Load config from file if provided
-        if config_file and os.path.exists(config_file):
-            self._load_config_from_file(config_file)
-    
-    def _load_config_from_file(self, path: str):
-        """Load configuration from JSON file."""
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            strategies = data.get('strategies', {})
-            if 'tabindex' in strategies:
-                self.config.tabindex_selectors = strategies['tabindex'].get('selectors', self.config.tabindex_selectors)
-            if 'aria_label' in strategies:
-                self.config.aria_label_patterns = strategies['aria_label'].get('patterns', self.config.aria_label_patterns)
-            
-            validation = data.get('validation', {})
-            if 'domains' in validation:
-                self.config.valid_domains = validation['domains']
-            if 'requiredPaths' in validation:
-                self.config.required_paths = validation['requiredPaths']
-            
-            self._log("Config loaded from file")
-        except Exception as e:
-            self._log(f"Error loading config file: {e}", 'warning')
+        self.login_detector = login_detector
     
     def _log(self, message: str, level: str = 'info'):
         """Log with prefix."""
@@ -179,480 +117,328 @@ class URLCapturer:
         
         print(full_message)
     
-    def validate_url(self, url: str) -> bool:
+    def _detect_page_type(self) -> str:
         """
-        Validate that a URL is a valid MS Forms edit link.
+        Detect what type of page we're on.
         
-        Checks:
-        - HTTPS protocol
-        - Valid MS Forms domain
-        - Contains response page path
-        - Has ID parameter
+        Returns:
+            'login' | 'forms_list' | 'form' | 'unknown'
         """
-        if not url:
-            return False
-        
-        # Must be HTTPS
-        if not url.startswith('https://'):
-            self._log(f"Invalid URL (not HTTPS): {url}", 'debug')
-            return False
-        
-        # Check domain
-        domain_valid = any(domain in url for domain in self.config.valid_domains)
-        if not domain_valid:
-            self._log(f"Invalid URL (wrong domain): {url}", 'debug')
-            return False
-        
-        # Check for required paths (warn if missing but don't fail)
-        path_found = any(path in url for path in self.config.required_paths)
-        if not path_found:
-            self._log(f"⚠️ URL missing expected path: {url}", 'warning')
-        
-        # Check for ID parameter
-        if '?id=' not in url.lower() and '&id=' not in url.lower():
-            self._log(f"⚠️ URL missing id parameter: {url}", 'warning')
-            # Still accept the URL - some forms use different parameters
-        
-        return True
-    
-    def _extract_metadata(self, url: str) -> Dict[str, Any]:
-        """Extract metadata from captured URL."""
-        metadata = {}
-        
         try:
-            parsed = urlparse(url)
-            params = parse_qs(parsed.query)
+            current_url = self.driver.current_url.lower()
             
-            # Extract form ID
-            if 'id' in params:
-                metadata['formId'] = params['id'][0]
+            # Login page
+            if any(x in current_url for x in ['login.microsoftonline', 'login.live', 'login.microsoft']):
+                return 'login'
             
-            # Store all parameters
-            metadata['queryParams'] = {k: v[0] if len(v) == 1 else v for k, v in params.items()}
+            # Forms list (responses page)
+            if any(x in current_url for x in ['designpagev2', 'forms.office.com/pages', 'forms.microsoft.com']):
+                # Check if it's the list or a specific form
+                if 'designpagev2' in current_url or '/pages/' in current_url:
+                    return 'forms_list'
             
-            # Get page title
+            # Forms main page (might be list)
+            if 'forms.office.com' in current_url and 'r/' not in current_url:
+                return 'forms_list'
+            
+            # Specific form
+            if 'r/' in current_url or 'formid=' in current_url:
+                return 'form'
+            
+            return 'unknown'
+        except:
+            return 'unknown'
+    
+    def _handle_login_if_needed(self) -> bool:
+        """
+        Handle login if we're on a login page.
+        
+        Returns:
+            True if logged in (or was already), False if login failed
+        """
+        if not self.login_detector:
+            # Create a temporary one
+            self.login_detector = LoginDetector(
+                self.driver, 
+                LoginConfig(verbose_logging=self.config.verbose_logging)
+            )
+        
+        page_type = self._detect_page_type()
+        
+        if page_type != 'login':
+            return True  # Not on login page, assume OK
+        
+        self._log("Detected login page, attempting auto-login...")
+        
+        # Try auto-login first
+        result = self.login_detector.try_auto_login(timeout_ms=15000)
+        
+        if result.success and result.logged_in:
+            self._log("✓ Auto-login successful")
+            return True
+        
+        # Auto-login failed, wait for manual login
+        self._log("Auto-login failed, waiting for manual login...")
+        result = self.login_detector.wait_for_manual_login(timeout_ms=self.config.page_load_timeout_ms * 4)
+        
+        return result.success and result.logged_in
+    
+    def _wait_for_cards(self) -> bool:
+        """
+        Wait for response cards to appear on the page.
+        
+        Returns:
+            True if cards found, False otherwise
+        """
+        self._log("Waiting for response cards to load...")
+        
+        timeout = self.config.card_wait_timeout_ms / 1000
+        
+        for selector in self.config.card_selectors:
             try:
-                metadata['pageTitle'] = self.driver.title
-            except:
-                pass
-            
-            # Capture timestamp
-            from datetime import datetime
-            metadata['capturedAt'] = datetime.now().isoformat()
-            
-        except Exception as e:
-            self._log(f"Error extracting metadata: {e}", 'warning')
+                wait = WebDriverWait(self.driver, timeout)
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+                self._log(f"✓ Cards found with selector: {selector}")
+                return True
+            except TimeoutException:
+                continue
+            except Exception as e:
+                self._log(f"Error waiting for {selector}: {e}", 'debug')
+                continue
         
-        return metadata
+        return False
     
-    def _click_and_capture(
-        self,
-        element: WebElement,
-        timeout_ms: int = None
-    ) -> CaptureResult:
+    def _find_first_response_card(self):
         """
-        Click an element and capture the URL from the new tab.
+        Find the first (most recent) response card.
         
         Returns:
-            CaptureResult with the captured URL or error
+            WebElement or None
         """
-        timeout = timeout_ms or self.config.click_wait_ms
+        self._log("Looking for first response card (most recent)...")
         
-        try:
-            # Record handles before click
-            original_handles = self.tab_manager.get_current_handles()
-            
-            # Click the element
-            element.click()
-            
-            # Wait for new tab
-            tab_result = self.tab_manager.wait_for_new_tab(
-                original_handles,
-                timeout_ms=timeout
-            )
-            
-            if not tab_result.success:
-                return CaptureResult(
-                    success=False,
-                    error='click_no_new_tab'
-                )
-            
-            # Switch to new tab
-            switch_result = self.tab_manager.switch_to_tab(tab_result.handle)
-            
-            if not switch_result.success:
-                return CaptureResult(
-                    success=False,
-                    error='switch_failed'
-                )
-            
-            # Wait for page load
-            time.sleep(self.config.page_load_wait_ms / 1000)
-            
-            # Get URL
-            url = self.tab_manager.get_page_url()
-            
-            # Validate URL
-            if self.validate_url(url):
-                metadata = self._extract_metadata(url)
-                return CaptureResult(
-                    success=True,
-                    url=url,
-                    metadata=metadata
-                )
-            else:
-                return CaptureResult(
-                    success=False,
-                    url=url,
-                    error='invalid_url'
-                )
-        
-        except ElementClickInterceptedException:
-            return CaptureResult(
-                success=False,
-                error='click_intercepted'
-            )
-        except StaleElementReferenceException:
-            return CaptureResult(
-                success=False,
-                error='element_stale'
-            )
-        except Exception as e:
-            return CaptureResult(
-                success=False,
-                error=str(e)
-            )
-    
-    def _strategy_tabindex(self) -> CaptureResult:
-        """
-        Strategy 1: Find element with tabindex=0 (most recent item).
-        Fastest and most reliable when available.
-        """
-        self._log("Strategy 1: TabIndex=0")
-        
-        try:
-            for selector in self.config.tabindex_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    
-                    if not elements:
-                        continue
-                    
-                    if len(elements) > 1:
-                        self._log(f"  Multiple elements with {selector}, using first")
-                    
-                    element = elements[0]
-                    
-                    # Verify aria-label if available
-                    aria_label = element.get_attribute('aria-label') or ''
-                    if aria_label:
-                        self._log(f"  aria-label: {aria_label}", 'debug')
-                    
-                    # Click and capture
-                    result = self._click_and_capture(element)
-                    
-                    if result.success:
-                        self._log(f"✓ Strategy 1: URL captured")
-                        result.strategy = 1
-                        result.strategy_name = 'tabindex'
-                        result.confidence = 0.95
-                        return result
-                    
-                except Exception as e:
-                    self._log(f"  Selector {selector} failed: {e}", 'debug')
-                    continue
-            
-            self._log("✗ Strategy 1: No element found")
-            return CaptureResult(success=False, strategy=1, strategy_name='tabindex')
-        
-        except Exception as e:
-            self._log(f"✗ Strategy 1 error: {e}", 'error')
-            return CaptureResult(success=False, strategy=1, error=str(e))
-    
-    def _strategy_aria_label(self) -> CaptureResult:
-        """
-        Strategy 2: Find element by ARIA label patterns.
-        Fallback that looks for labeled form responses.
-        """
-        self._log("Strategy 2: ARIA Label patterns")
-        
-        try:
-            for pattern in self.config.aria_label_patterns:
-                try:
-                    # Build XPath for pattern
-                    xpath = f"//div[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{pattern.lower()}')]"
-                    elements = self.driver.find_elements(By.XPATH, xpath)
-                    
-                    if not elements:
-                        continue
-                    
-                    self._log(f"  Found {len(elements)} elements matching '{pattern}'", 'debug')
-                    
-                    # Try clicking the first visible one
-                    for elem in elements:
+        for selector in self.config.card_selectors:
+            try:
+                # Find first matching element
+                elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                for elem in elements:
+                    try:
                         if elem.is_displayed():
-                            result = self._click_and_capture(elem)
+                            # Get some metadata
+                            title = ""
+                            try:
+                                title_elem = elem.find_element(By.CSS_SELECTOR, "[data-automation-id='detailTitle']")
+                                title = title_elem.text
+                            except:
+                                try:
+                                    title = elem.get_attribute("aria-label") or ""
+                                except:
+                                    pass
                             
-                            if result.success:
-                                self._log(f"✓ Strategy 2: URL captured (pattern: {pattern})")
-                                result.strategy = 2
-                                result.strategy_name = 'aria_label'
-                                result.confidence = 0.85
-                                return result
-                            break
-                
-                except Exception as e:
-                    self._log(f"  Pattern {pattern} failed: {e}", 'debug')
-                    continue
-            
-            self._log("✗ Strategy 2: No matching element")
-            return CaptureResult(success=False, strategy=2, strategy_name='aria_label')
-        
-        except Exception as e:
-            self._log(f"✗ Strategy 2 error: {e}", 'error')
-            return CaptureResult(success=False, strategy=2, error=str(e))
-    
-    def _strategy_position(self) -> CaptureResult:
-        """
-        Strategy 3: Get first item from the list container.
-        Assumes most recent item is first in the list.
-        """
-        self._log("Strategy 3: Position-based (first item)")
-        
-        try:
-            # Find list container
-            container = None
-            for selector in self.config.list_container_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    if elements:
-                        container = elements[0]
-                        self._log(f"  Found list container: {selector}", 'debug')
-                        break
-                except:
-                    continue
-            
-            if not container:
-                self._log("✗ Strategy 3: List container not found")
-                return CaptureResult(success=False, strategy=3, strategy_name='position')
-            
-            # Find items in container
-            items = []
-            for selector in self.config.item_selectors:
-                try:
-                    found = container.find_elements(By.CSS_SELECTOR, selector)
-                    items.extend(found)
-                except:
-                    continue
-            
-            if not items:
-                self._log("✗ Strategy 3: No items in container")
-                return CaptureResult(success=False, strategy=3, strategy_name='position')
-            
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_items = []
-            for item in items:
-                item_id = item.id
-                if item_id not in seen:
-                    seen.add(item_id)
-                    unique_items.append(item)
-            
-            # Try first item
-            if unique_items:
-                result = self._click_and_capture(unique_items[0])
-                
-                if result.success:
-                    self._log("✓ Strategy 3: URL captured (first item)")
-                    result.strategy = 3
-                    result.strategy_name = 'position'
-                    result.confidence = 0.70
-                    return result
-            
-            self._log("✗ Strategy 3: First item click failed")
-            return CaptureResult(success=False, strategy=3, strategy_name='position')
-        
-        except Exception as e:
-            self._log(f"✗ Strategy 3 error: {e}", 'error')
-            return CaptureResult(success=False, strategy=3, error=str(e))
-    
-    def _strategy_timestamp(self) -> CaptureResult:
-        """
-        Strategy 4: Find element with most recent timestamp.
-        Parses visible timestamps to find newest entry.
-        """
-        self._log("Strategy 4: Timestamp analysis")
-        
-        try:
-            # Look for timestamp elements
-            timestamp_selectors = [
-                "[class*='timestamp']",
-                "[data-automation-id*='time']",
-                ".item-time",
-                ".response-time"
-            ]
-            
-            items_with_time = []
-            
-            for selector in timestamp_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    
-                    for elem in elements:
-                        text = elem.text.strip()
-                        if text:
-                            # Try to find parent clickable element
-                            parent = elem
-                            for _ in range(5):  # Max 5 levels up
-                                parent = parent.find_element(By.XPATH, '..')
-                                if parent.get_attribute('role') == 'button' or \
-                                   parent.get_attribute('tabindex'):
-                                    items_with_time.append({
-                                        'element': parent,
-                                        'time_text': text
-                                    })
-                                    break
-                except:
-                    continue
-            
-            if not items_with_time:
-                self._log("✗ Strategy 4: No timestamped items found")
-                return CaptureResult(success=False, strategy=4, strategy_name='timestamp')
-            
-            # Sort by "freshness" heuristic (items with "just now", "seconds ago", etc. first)
-            freshness_keywords = ['just now', 'second', 'minute ago', 'minutes ago', 'hace']
-            
-            def freshness_score(item):
-                text = item['time_text'].lower()
-                for i, keyword in enumerate(freshness_keywords):
-                    if keyword in text:
-                        return i
-                return 999
-            
-            items_with_time.sort(key=freshness_score)
-            
-            # Try the freshest item
-            if items_with_time:
-                result = self._click_and_capture(items_with_time[0]['element'])
-                
-                if result.success:
-                    self._log("✓ Strategy 4: URL captured (by timestamp)")
-                    result.strategy = 4
-                    result.strategy_name = 'timestamp'
-                    result.confidence = 0.90
-                    return result
-            
-            self._log("✗ Strategy 4: Timestamp item click failed")
-            return CaptureResult(success=False, strategy=4, strategy_name='timestamp')
-        
-        except Exception as e:
-            self._log(f"✗ Strategy 4 error: {e}", 'error')
-            return CaptureResult(success=False, strategy=4, error=str(e))
-    
-    def _strategy_bruteforce(self) -> CaptureResult:
-        """
-        Strategy 5: Try all clickable elements until one works.
-        Last resort strategy with lower confidence.
-        """
-        self._log("Strategy 5: Bruteforce (all clickable elements)")
-        
-        try:
-            all_selectors = [
-                "[role='button']",
-                "[tabindex]",
-                "a[href]",
-                ".item-element",
-                "[data-automation-id*='item']"
-            ]
-            
-            all_elements = []
-            seen_ids = set()
-            
-            for selector in all_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for elem in elements:
-                        elem_id = elem.id
-                        if elem_id not in seen_ids:
-                            seen_ids.add(elem_id)
-                            all_elements.append(elem)
-                except:
-                    continue
-            
-            self._log(f"  Found {len(all_elements)} clickable elements", 'debug')
-            
-            # Limit to first 20 to avoid excessive attempts
-            max_attempts = min(20, len(all_elements))
-            
-            for i, elem in enumerate(all_elements[:max_attempts]):
-                self._log(f"  Trying element {i+1}/{max_attempts}...", 'debug')
-                
-                try:
-                    if not elem.is_displayed():
+                            self._log(f"✓ Found response card: '{title[:50]}...' (selector: {selector})")
+                            return elem
+                    except StaleElementReferenceException:
                         continue
-                    
-                    result = self._click_and_capture(elem, timeout_ms=5000)
-                    
-                    if result.success:
-                        self._log(f"✓ Strategy 5: URL found at element {i+1}")
-                        result.strategy = 5
-                        result.strategy_name = 'bruteforce'
-                        result.confidence = 0.60
-                        result.element_index = i
-                        return result
-                except:
-                    continue
-            
-            self._log("✗ Strategy 5: No element produced valid URL")
-            return CaptureResult(success=False, strategy=5, strategy_name='bruteforce')
+            except Exception as e:
+                self._log(f"Error with selector {selector}: {e}", 'debug')
+                continue
         
-        except Exception as e:
-            self._log(f"✗ Strategy 5 error: {e}", 'error')
-            return CaptureResult(success=False, strategy=5, error=str(e))
+        self._log("✗ No response cards found", 'error')
+        return None
     
-    def capture(self) -> CaptureResult:
+    def _click_card_and_capture_url(self, card) -> CaptureResult:
         """
-        Execute all strategies in order until one succeeds.
+        Click on a response card and capture the URL from the new tab.
+        
+        Args:
+            card: WebElement of the card to click
         
         Returns:
-            CaptureResult with captured URL or error details
+            CaptureResult with captured URL
         """
-        self._log("========== STARTING URL CAPTURE ==========")
+        self._log("Clicking on response card to open edit page...")
         
         start_time = time.time() * 1000
         
-        strategies: List[Callable[[], CaptureResult]] = [
-            self._strategy_tabindex,     # 95% confidence
-            self._strategy_timestamp,    # 90% confidence
-            self._strategy_aria_label,   # 85% confidence
-            self._strategy_position,     # 70% confidence
-            self._strategy_bruteforce    # 60% confidence
-        ]
+        try:
+            # Store current handles
+            original_handles = set(self.driver.window_handles)
+            current_handle = self.driver.current_window_handle
+            
+            # Apply visual feedback (optional)
+            try:
+                self.driver.execute_script("""
+                    arguments[0].style.boxShadow = '0 0 20px 5px orange';
+                    arguments[0].style.transition = 'box-shadow 0.3s';
+                """, card)
+            except:
+                pass
+            
+            # Click on the card
+            try:
+                card.click()
+                self._log("✓ Clicked on card (native)")
+            except ElementClickInterceptedException:
+                self.driver.execute_script("arguments[0].click();", card)
+                self._log("✓ Clicked on card (JS)")
+            except Exception as e:
+                self.driver.execute_script("arguments[0].click();", card)
+                self._log(f"✓ Clicked on card (JS fallback after: {e})")
+            
+            # Wait for new tab
+            self._log(f"Waiting for new tab (timeout: {self.config.new_tab_timeout_ms}ms)...")
+            
+            new_tab = None
+            wait_start = time.time() * 1000
+            
+            while time.time() * 1000 - wait_start < self.config.new_tab_timeout_ms:
+                current_handles = set(self.driver.window_handles)
+                new_handles = current_handles - original_handles
+                
+                if new_handles:
+                    new_tab = list(new_handles)[0]
+                    self._log(f"✓ New tab detected!")
+                    break
+                
+                time.sleep(0.3)
+            
+            if not new_tab:
+                self._log("✗ No new tab opened after clicking card", 'error')
+                return CaptureResult(
+                    success=False,
+                    error='no_new_tab_after_card_click',
+                    capture_time_ms=time.time() * 1000 - start_time
+                )
+            
+            # Switch to new tab
+            self.driver.switch_to.window(new_tab)
+            
+            # Wait a moment for URL to stabilize
+            time.sleep(1.5)
+            
+            # Capture URL
+            edit_url = self.driver.current_url
+            self._log(f"✓ Captured URL: {edit_url[:80]}...")
+            
+            # Validate URL
+            confidence = 0.0
+            if edit_url and len(edit_url) > 20:
+                confidence = 0.95
+                
+                # Additional validation
+                if 'id=' in edit_url or 'response' in edit_url.lower() or 'edit' in edit_url.lower():
+                    confidence = 1.0
+                elif 'forms' in edit_url.lower():
+                    confidence = 0.85
+            
+            # Close this tab
+            self._log("Closing edit tab...")
+            try:
+                self.driver.close()
+            except:
+                pass
+            
+            # Switch back to forms list
+            try:
+                self.driver.switch_to.window(current_handle)
+            except:
+                # If original handle is gone, switch to any available
+                remaining = self.driver.window_handles
+                if remaining:
+                    self.driver.switch_to.window(remaining[0])
+            
+            return CaptureResult(
+                success=True,
+                url=edit_url,
+                strategy_name='forms_card_click',
+                confidence=confidence,
+                capture_time_ms=time.time() * 1000 - start_time,
+                metadata={
+                    'method': 'first_card_click',
+                    'card_selector': self.config.card_selectors[0]
+                }
+            )
         
-        for i, strategy in enumerate(strategies, 1):
-            result = strategy()
+        except Exception as e:
+            self._log(f"✗ Error during card click and capture: {e}", 'error')
+            return CaptureResult(
+                success=False,
+                error=str(e),
+                capture_time_ms=time.time() * 1000 - start_time
+            )
+    
+    def capture(self) -> CaptureResult:
+        """
+        Main entry point: capture the edit URL from forms list.
+        
+        This method:
+        1. Detects page type and handles login if needed
+        2. Waits for response cards to load
+        3. Clicks the first card (most recent response)
+        4. Captures the URL from the new tab
+        
+        Returns:
+            CaptureResult with captured URL or error
+        """
+        self._log("========== STARTING URL CAPTURE ==========")
+        start_time = time.time() * 1000
+        
+        try:
+            # Step 1: Detect page type
+            page_type = self._detect_page_type()
+            self._log(f"Page type detected: {page_type}")
+            
+            # Step 2: Handle login if needed
+            if page_type == 'login':
+                self._log("On login page, handling login...")
+                if not self._handle_login_if_needed():
+                    return CaptureResult(
+                        success=False,
+                        error='login_required',
+                        capture_time_ms=time.time() * 1000 - start_time
+                    )
+                # Re-detect page type after login
+                page_type = self._detect_page_type()
+                self._log(f"Page type after login: {page_type}")
+            
+            # Step 3: Wait for cards
+            if not self._wait_for_cards():
+                self._log("✗ No response cards found on page", 'error')
+                return CaptureResult(
+                    success=False,
+                    error='no_cards_found',
+                    capture_time_ms=time.time() * 1000 - start_time
+                )
+            
+            # Step 4: Find first (most recent) card
+            card = self._find_first_response_card()
+            if not card:
+                return CaptureResult(
+                    success=False,
+                    error='first_card_not_found',
+                    capture_time_ms=time.time() * 1000 - start_time
+                )
+            
+            # Step 5: Click card and capture URL
+            result = self._click_card_and_capture_url(card)
             
             if result.success:
-                result.capture_time_ms = time.time() * 1000 - start_time
-                result.attempted_strategies = i
-                
-                self._log(f"========== CAPTURE SUCCESS ==========")
-                self._log(f"Strategy: {result.strategy_name} (#{result.strategy})")
+                self._log("========== URL CAPTURE SUCCESSFUL ==========")
+                self._log(f"URL: {result.url}")
                 self._log(f"Confidence: {result.confidence:.0%}")
-                self._log(f"Time: {result.capture_time_ms:.0f}ms")
-                
-                return result
+            else:
+                self._log(f"========== URL CAPTURE FAILED: {result.error} ==========")
             
-            self._log(f"Strategy '{result.strategy_name}' failed, trying next...")
+            return result
         
-        # All strategies failed
-        elapsed = time.time() * 1000 - start_time
-        
-        self._log("========== ALL STRATEGIES FAILED ==========", 'error')
-        
-        return CaptureResult(
-            success=False,
-            capture_time_ms=elapsed,
-            error='all_strategies_failed',
-            attempted_strategies=len(strategies)
-        )
+        except Exception as e:
+            self._log(f"✗ Unexpected error during capture: {e}", 'error')
+            import traceback
+            traceback.print_exc()
+            
+            return CaptureResult(
+                success=False,
+                error=str(e),
+                capture_time_ms=time.time() * 1000 - start_time
+            )

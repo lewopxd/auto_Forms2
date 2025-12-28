@@ -316,10 +316,33 @@ class SeleniumProcessBooster:
     
     @classmethod
     def _handle_login_flow(cls, driver) -> bool:
-        """Handle login flow: inject UI, wait for user confirmation, auto-reinject on navigation."""
+        """Handle login flow: try auto-login first, then inject UI and wait for user confirmation."""
         cls._should_poll = True
         last_url = driver.current_url
         
+        # ================================================================
+        # STEP 1: Try auto-login first (click on saved account card)
+        # ================================================================
+        try:
+            from .modules.login_detector import LoginDetector, LoginConfig
+            
+            login_detector = LoginDetector(driver, LoginConfig(verbose_logging=True))
+            
+            if login_detector.is_login_page():
+                cls._emit_status("info", "Intentando auto-login...")
+                auto_result = login_detector.try_auto_login(timeout_ms=15000)
+                
+                if auto_result.logged_in:
+                    cls._emit_status("success", "✓ Auto-login exitoso")
+                    return True
+                else:
+                    cls._emit_status("info", "Auto-login no disponible, mostrando UI de login...")
+        except Exception as e:
+            cls._emit_status("warning", f"Error en auto-login: {e}")
+        
+        # ================================================================
+        # STEP 2: Fall back to manual login with UI injection
+        # ================================================================
         # Inject login UI
         cls._inject_login_ui(driver)
         
@@ -331,6 +354,13 @@ class SeleniumProcessBooster:
                 if current_url != last_url:
                     cls._emit_status("info", "Página navegada, reinyectando login UI...")
                     time.sleep(0.5)
+                    
+                    # Check if we're now on a non-login page (login succeeded)
+                    login_indicators = ['login.microsoftonline', 'login.live', 'login.microsoft']
+                    if not any(ind in current_url for ind in login_indicators):
+                        cls._emit_status("success", "✓ Login detectado (redirección)")
+                        return True
+                    
                     cls._wait_for_page_ready(driver)
                     cls._inject_login_ui(driver)
                     last_url = current_url

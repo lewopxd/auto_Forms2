@@ -2038,6 +2038,25 @@ class FormExecutor:
         # Marcar fila como completada en storage
         if self.result_storage:
             self.result_storage.complete_row(row_index, success=True)
+            
+            # =================================================================
+            # LOG: Imprimir resumen del storage después de cada fila (CRÍTICO)
+            # =================================================================
+            summary = self.result_storage.get_summary()
+            print(f"\n{'='*60}")
+            print(f"[FormExecutor] ═══ RESULT STORAGE SUMMARY ═══")
+            print(f"[FormExecutor] Session ID: {summary.get('sessionId', 'N/A')}")
+            print(f"[FormExecutor] Rows: {summary.get('successCount', 0)}/{summary.get('totalRows', 0)} completed")
+            print(f"[FormExecutor] URLs Captured: {summary.get('urlsCaptured', 0)}")
+            print(f"[FormExecutor] File Path: {summary.get('filePath', 'N/A')}")
+            
+            # Log the row-specific data
+            if row_index < len(self.result_storage.rows):
+                row_data = self.result_storage.rows[row_index]
+                ps_data = row_data.post_submit.to_dict()
+                print(f"[FormExecutor] Row {row_index + 1} PostSubmit: {ps_data}")
+            
+            print(f"{'='*60}\n")
         
         self._emit_status("success", f"Fila {row_index + 1} completada")
         

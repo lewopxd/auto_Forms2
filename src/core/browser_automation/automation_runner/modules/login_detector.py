@@ -459,3 +459,159 @@ class LoginDetector:
         """
         result = self.check_login_by_cookies()
         return result.logged_in is True
+    
+    def is_login_page(self) -> bool:
+        """
+        Check if current page is a Microsoft login page.
+        
+        Returns:
+            True if on login page
+        """
+        try:
+            current_url = self.driver.current_url
+            login_indicators = [
+                'login.microsoftonline.com',
+                'login.live.com',
+                'login.microsoft.com'
+            ]
+            return any(ind in current_url for ind in login_indicators)
+        except:
+            return False
+    
+    def try_auto_login(self, timeout_ms: int = 10000) -> LoginResult:
+        """
+        Attempt automatic login by clicking on saved account card.
+        
+        MS Login pages show saved account cards that allow one-click login.
+        This method looks for such cards and clicks on them.
+        
+        Args:
+            timeout_ms: Maximum time to wait for login flow
+        
+        Returns:
+            LoginResult with success=True if auto-login succeeded
+        """
+        self._log("========== TRYING AUTO-LOGIN ==========")
+        
+        try:
+            # Check if we're on a login page
+            if not self.is_login_page():
+                self._log("Not on login page, skipping auto-login")
+                return LoginResult(
+                    success=True,
+                    logged_in=True,  # Assume logged in if not on login page
+                    method='auto_login',
+                    confidence=0.50
+                )
+            
+            # Selectors for auto-login account cards (in order of priority)
+            account_selectors = [
+                "#newSessionLink",                          # Primary: New session with saved account
+                "[data-bind*='newSession_onClick']",        # Alternative binding
+                ".tile[data-bind*='click']",                # Account tile
+                "[data-automation-id='tile']",              # Tile by automation ID
+                ".table.list-item[tabindex='0']",           # Table-based tile
+            ]
+            
+            self._log("Looking for saved account card...")
+            
+            for selector in account_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for elem in elements:
+                        if elem.is_displayed():
+                            # Found a clickable account card
+                            self._log(f"✓ Found account card: {selector}")
+                            
+                            # Click on it
+                            try:
+                                elem.click()
+                                self._log("✓ Clicked on account card")
+                            except:
+                                # Try JS click
+                                self.driver.execute_script("arguments[0].click();", elem)
+                                self._log("✓ Clicked on account card (JS)")
+                            
+                            # Wait for login flow
+                            start = time.time() * 1000
+                            while time.time() * 1000 - start < timeout_ms:
+                                time.sleep(0.5)
+                                
+                                # Check if still on login page
+                                if not self.is_login_page():
+                                    self._log("✓ Auto-login successful - redirected from login page")
+                                    return LoginResult(
+                                        success=True,
+                                        logged_in=True,
+                                        method='auto_login',
+                                        confidence=0.95
+                                    )
+                            
+                            # Timeout - might need password or 2FA
+                            self._log("⚠️ Auto-login timed out - may need manual intervention", 'warning')
+                            return LoginResult(
+                                success=False,
+                                logged_in=False,
+                                method='auto_login',
+                                confidence=0.0,
+                                error='auto_login_timeout'
+                            )
+                except Exception as e:
+                    self._log(f"Error with selector {selector}: {e}", 'debug')
+                    continue
+            
+            # No account card found
+            self._log("✗ No saved account card found - manual login required")
+            return LoginResult(
+                success=False,
+                logged_in=False,
+                method='auto_login',
+                confidence=0.0,
+                error='no_account_card_found'
+            )
+        
+        except Exception as e:
+            self._log(f"✗ Auto-login error: {e}", 'error')
+            return LoginResult(
+                success=False,
+                method='auto_login',
+                error=str(e)
+            )
+    
+    def wait_for_manual_login(self, timeout_ms: int = 600000) -> LoginResult:
+        """
+        Wait for user to complete manual login.
+        
+        Args:
+            timeout_ms: Maximum time to wait (default 10 minutes)
+        
+        Returns:
+            LoginResult when login is detected or timeout
+        """
+        self._log(f"Waiting for manual login (timeout: {timeout_ms/1000}s)...")
+        
+        start = time.time() * 1000
+        check_interval = 2000  # Check every 2 seconds
+        
+        while time.time() * 1000 - start < timeout_ms:
+            # Check if still on login page
+            if not self.is_login_page():
+                self._log("✓ Login detected - redirected from login page")
+                return LoginResult(
+                    success=True,
+                    logged_in=True,
+                    method='manual_login',
+                    confidence=0.95
+                )
+            
+            time.sleep(check_interval / 1000)
+        
+        self._log("✗ Manual login timeout", 'error')
+        return LoginResult(
+            success=False,
+            logged_in=False,
+            method='manual_login',
+            confidence=0.0,
+            error='manual_login_timeout'
+        )
+
