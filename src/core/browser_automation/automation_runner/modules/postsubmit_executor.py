@@ -47,13 +47,14 @@ class PostSubmitConfig:
     # Re-login timeout (configurable as requested)
     relogin_timeout_ms: int = 600000  # 10 minutes
     
-    # Selectors for Save Response button
+    # Selectors for Save Response button (after form submit)
     save_button_selectors: list = field(default_factory=lambda: [
-        "[data-automation-id='submitButton']",
-        "button[type='submit']",
-        ".save-response-button",
-        "[aria-label*='Save']",
-        "[aria-label*='Guardar']"
+        "[data-automation-id='saveAndEditButton']",  # MS Forms 'Guardar mi respuesta'
+        "[data-automation-id='saveEditButton']",
+        "button[aria-label*='Guardar mi respuesta']",
+        "button[aria-label*='Save my response']",
+        "[aria-label*='editar']",
+        "[aria-label*='edit']"
     ])
     
     # Forms list navigation
@@ -250,6 +251,7 @@ class PostSubmitExecutor:
     def execute(
         self,
         skip_save_click: bool = False,
+        skip_login_check: bool = False,
         return_to_url: str = None
     ) -> PostSubmitResult:
         """
@@ -257,6 +259,7 @@ class PostSubmitExecutor:
         
         Args:
             skip_save_click: Skip clicking save button (if already on thank you page)
+            skip_login_check: Skip login verification (if coming from successful submit)
             return_to_url: URL to return to after capturing
         
         Returns:
@@ -276,21 +279,24 @@ class PostSubmitExecutor:
         original_handles = set(self.driver.window_handles)
         original_handle = self.driver.current_window_handle
         
-        result = PostSubmitResult(state='running')
+        result = PostSubmitResult(success=False, state='running')
         
         try:
-            # Step 1: Check login status
-            self._log("Step 1: Checking login status...")
-            if not self._check_login_status():
-                self._log("✗ User not logged in", 'error')
-                return PostSubmitResult(
-                    success=False,
-                    state='failed',
-                    error='not_logged_in',
-                    login_required=True,
-                    capture_time_ms=time.time() * 1000 - start_time
-                )
-            self._log("✓ Login verified")
+            # Step 1: Check login status (skip if we just did a successful submit)
+            if not skip_login_check:
+                self._log("Step 1: Checking login status...")
+                if not self._check_login_status():
+                    self._log("✗ User not logged in", 'error')
+                    return PostSubmitResult(
+                        success=False,
+                        state='failed',
+                        error='not_logged_in',
+                        login_required=True,
+                        capture_time_ms=time.time() * 1000 - start_time
+                    )
+                self._log("✓ Login verified")
+            else:
+                self._log("Step 1: Login check skipped (trusted after successful submit)")
             
             # Step 2: Click save button (if not skipping)
             if not skip_save_click:
@@ -385,6 +391,7 @@ class PostSubmitExecutor:
             PostSubmitResult with captured URL
         """
         return self.execute(
-            skip_save_click=True,  # Already submitted
+            skip_save_click=False,  # MUST click "Guardar mi respuesta" button
+            skip_login_check=True,  # We just submitted successfully, user IS logged in
             return_to_url=form_url
         )

@@ -249,11 +249,25 @@ class FormExecutor:
         self.result_storage = None
         
         if self.postsubmit_enabled:
+            # Leer selectores de postSubmit desde el paquete
+            postsubmit_info = self.instructions.get("postSubmit", {})
+            save_and_edit_info = postsubmit_info.get("saveAndEdit", {})
+            save_selector = save_and_edit_info.get("selector", "[data-automation-id='saveAndEditButton']")
+            
+            # Construir lista de selectores (primero el del paquete, luego fallbacks)
+            save_selectors = [save_selector] if save_selector else []
+            save_selectors.extend([
+                "[data-automation-id='saveAndEditButton']",
+                "[data-automation-id='saveEditButton']",
+                "button[aria-label*='Guardar mi respuesta']"
+            ])
+            
             # Configurar PostSubmit
             ps_config = PostSubmitConfig(
                 enabled=True,
                 url_capture_timeout_ms=self.config.post_submit_timeout_ms,
-                relogin_timeout_ms=600000  # 10 minutos por defecto
+                relogin_timeout_ms=600000,  # 10 minutos por defecto
+                save_button_selectors=save_selectors
             )
             self.postsubmit_executor = PostSubmitExecutor(driver, ps_config)
             
@@ -265,6 +279,7 @@ class FormExecutor:
                 package_path=package_path
             )
             print(f"[FormExecutor] PostSubmit habilitado con timeout {self.config.post_submit_timeout_ms}ms")
+            print(f"[FormExecutor] PostSubmit selector: {save_selector}")
         
         # Índice de preguntas para acceso rápido
         self._build_question_index()
@@ -1957,9 +1972,13 @@ class FormExecutor:
             # Navegación al final de la página
             navigation = page.get("navigation", {})
             
+            print(f"[FormExecutor] DEBUG: Página {page.get('pageNumber', '?')}, navigation: submit={bool(navigation.get('submit'))}, next={bool(navigation.get('next'))}")
+            
             if navigation.get("submit"):
                 # Última página - enviar
+                print(f"[FormExecutor] DEBUG: Ejecutando SUBMIT...")
                 submit_success = self._submit_form(page)
+                print(f"[FormExecutor] DEBUG: Submit result = {submit_success}")
                 
                 if not submit_success:
                     self._emit_status("warning", "Submit button not found")
@@ -1967,7 +1986,10 @@ class FormExecutor:
                     # ═══════════════════════════════════════════════════════
                     # POSTSUBMIT: Capturar URL después del envío exitoso
                     # ═══════════════════════════════════════════════════════
+                    print(f"[FormExecutor] DEBUG: Submit exitoso. PostSubmit enabled={self.postsubmit_enabled}, executor={self.postsubmit_executor is not None}")
+                    
                     if self.postsubmit_enabled and self.postsubmit_executor:
+                        print(f"[FormExecutor] DEBUG: Iniciando PostSubmit...")
                         self._emit_status("running", f"Fila {row_index + 1}: Capturando URL...")
                         
                         try:
@@ -2037,9 +2059,15 @@ class FormExecutor:
         
         # Inicializar sesión en result_storage si PostSubmit está habilitado
         if self.result_storage:
+            # Extraer info del navegador de los datos del paquete o usar defaults
+            total_questions = len(self.questions_ordered) if hasattr(self, 'questions_ordered') else 0
             self.result_storage.initialize_session(
+                form_url=self.form_url,
+                browser="chromium",  # Default, podría venir de config
+                profile_name="Default",  # Default, podría venir de config
                 total_rows=len(self.resolved_rows),
-                form_url=self.form_url
+                total_questions=total_questions,
+                login_enabled=True
             )
         
         self._emit_status("running", "Iniciando automatización...")
