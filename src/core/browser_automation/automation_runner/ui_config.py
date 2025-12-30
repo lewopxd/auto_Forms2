@@ -61,6 +61,7 @@ class AutomationRunnerUI:
                 "package_path": self.loaded_package_path,
                 "use_alt_url": dpg.get_value("use_alt_url_checkbox") if dpg.does_item_exist("use_alt_url_checkbox") else False,
                 "alt_url": dpg.get_value("alt_url_input") if dpg.does_item_exist("alt_url_input") else "",
+                "post_submit_enabled": dpg.get_value("post_submit_checkbox") if dpg.does_item_exist("post_submit_checkbox") else False,
             }
             with open(STATE_FILE, 'w', encoding='utf-8') as f:
                 json.dump(state, f, indent=2, ensure_ascii=False)
@@ -197,6 +198,7 @@ class AutomationRunnerUI:
             "package_path": self.loaded_package_path,
             "use_alt_url": use_alt_url,
             "alt_url": alt_url,
+            "postSubmitEnabled": dpg.get_value("post_submit_checkbox") if dpg.does_item_exist("post_submit_checkbox") else False,
         }
         
         if self.selected_browser:
@@ -408,6 +410,9 @@ class AutomationRunnerUI:
         
         if dpg.does_item_exist("login_url_input"):
             dpg.set_value("login_url_input", self.saved_state.get("login_url", "https://login.microsoftonline.com/"))
+            
+        if dpg.does_item_exist("post_submit_checkbox"):
+            dpg.set_value("post_submit_checkbox", self.saved_state.get("post_submit_enabled", False))
         
         if dpg.does_item_exist("use_alt_url_checkbox"):
             use_alt = self.saved_state.get("use_alt_url", False)
@@ -545,6 +550,15 @@ class AutomationRunnerUI:
                     hint="URL alternativa del formulario",
                     indent=20
                 )
+            
+            dpg.add_spacer(height=8)
+            
+            # === POST SUBMIT CHECKBOX ===
+            dpg.add_checkbox(
+                tag="post_submit_checkbox",
+                label="Capturar Link de Edición (Post-Submit)",
+                default_value=True
+            )
             
             dpg.add_spacer(height=10)
             dpg.add_separator()

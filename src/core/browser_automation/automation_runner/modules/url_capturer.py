@@ -41,9 +41,9 @@ logger = logging.getLogger(__name__)
 class URLCaptureConfig:
     """Configuration for URL capture."""
     # Timeouts
-    page_load_timeout_ms: int = 15000
-    card_wait_timeout_ms: int = 10000
-    new_tab_timeout_ms: int = 15000
+    page_load_timeout_ms: int = 60000
+    card_wait_timeout_ms: int = 60000
+    new_tab_timeout_ms: int = 60000
     
     # Selectors for response cards
     card_selectors: List[str] = field(default_factory=lambda: [

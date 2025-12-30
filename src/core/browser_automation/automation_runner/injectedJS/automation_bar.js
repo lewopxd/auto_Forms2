@@ -3861,7 +3861,7 @@
             }
 
             // ═══ 6. Re-renderizar UI si es necesario ═══
-            if (config.dropdownOpen === 'rows' && config.controlColumns.length > 0) {
+            if (config.dropdownOpen === 'rows') {
                 renderRowsList();
             }
 
@@ -3887,7 +3887,7 @@
             console.log('[AutoForms] Row', rowIndex + 1, 'result:', success ? '✓' : '✗', url ? 'URL: ' + url.substring(0, 30) + '...' : '');
 
             // Re-renderizar si el dropdown está abierto
-            if (config.dropdownOpen === 'rows' && config.controlColumns.length > 0) {
+            if (config.dropdownOpen === 'rows') {
                 renderRowsList();
             }
         };

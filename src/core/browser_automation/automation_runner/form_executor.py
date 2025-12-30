@@ -88,7 +88,7 @@ class ExecutorConfig:
     
     # ═══ Sección 4: Configuración de Llenado (FILL) ═══
     # Método para textos cortos (< long_text_threshold): 'keyByKey', 'sendKeys', 'ctrlV', 'jsValue'
-    short_text_method: str = 'keyByKey'
+    short_text_method: str = 'sendKeys'
     typing_delay_min_ms: int = 30
     typing_delay_max_ms: int = 120
     
@@ -109,7 +109,7 @@ class ExecutorConfig:
     branch_delay_ms: int = 1500
     
     # ═══ Sección 7: Post Submit Actions ═══
-    post_submit_enabled: bool = False
+    post_submit_enabled: bool = True
     post_submit_timeout_ms: int = 60000
     
     # ═══ Sección 8: Manejo de Errores ═══
@@ -145,7 +145,7 @@ class ExecutorConfig:
             validate_after_fill=data.get("validateAfterFill", True),
             validate_after_select=data.get("validateAfterSelect", True),
             # Fill config
-            short_text_method=data.get("shortTextMethod", "keyByKey"),
+            short_text_method=data.get("shortTextMethod", "sendKeys"),
             typing_delay_min_ms=data.get("typingDelayMinMs", 30),
             typing_delay_max_ms=data.get("typingDelayMaxMs", 120),
             auto_detect_long_text=data.get("autoDetectLongText", True),
@@ -215,6 +215,7 @@ class FormExecutor:
         self.resolved_rows = full_data.get("resolvedRows", [])
         self.pages = self.instructions.get("pages", [])
         self.form_url = self.instructions.get("url", "")
+        self.package_data = package_data
         
         # Callbacks
         self.on_action_start = on_action_start
@@ -339,22 +340,40 @@ class FormExecutor:
         - Cambio de fila
         - Completar fila
         - Después de reinyección de UI
+        
+        Fix 4: Timeout de seguridad para evitar bloqueo si el navegador está en estado intermedio.
         """
         try:
+            # Guardar timeout original y establecer uno corto (Fix 4)
+            original_timeout = None
+            try:
+                original_timeout = self.driver.timeouts.script
+            except Exception:
+                pass
+            
+            try:
+                self.driver.set_script_timeout(5)  # 5 segundos máximo
+            except Exception:
+                pass
+            
             # Construir resultados de filas desde storage
             row_results = {}
             if self.result_storage:
                 for i, row in enumerate(self.result_storage.rows):
                     url = None
+                    link_captured = False
+                    
                     if row.post_submit.enabled:
                         save_edit = row.post_submit.save_and_edit
-                        if save_edit.get('captured'):
-                            url = save_edit.get('url')
+                        if save_edit.get('state') == 'success':
+                            link_captured = True
+                            url = save_edit.get('capturedUrl')
                     
                     row_results[i] = {
-                        'status': row.status,
-                        'success': row.status == 'success',
-                        'url': url
+                        'submitSuccess': row.result == 'success',
+                        'linkCaptured': link_captured,
+                        'url': url,
+                        'error': row.error_message
                     }
             
             # Estado completo
@@ -375,10 +394,18 @@ class FormExecutor:
                 }
             ''', state)
             
-            print(f"[FormExecutor] ✓ UI synced: row {self.current_row_index + 1}, running={self.is_running}, paused={self.is_paused}")
-            
         except Exception as e:
-            print(f"[FormExecutor] ⚠️ Error syncing UI: {e}")
+            # NO propagar error - solo loguear (Fix 4: crítico para evitar crash)
+            print(f"[FormExecutor] ⚠️ Error syncing UI (no crítico): {e}")
+        finally:
+            # Restaurar timeout original (Fix 4)
+            try:
+                if original_timeout is not None:
+                    self.driver.set_script_timeout(original_timeout)
+                else:
+                    self.driver.set_script_timeout(30)  # Default razonable
+            except Exception:
+                pass
     
     def _notify_ui_row_complete(self, row_index: int, success: bool, url: str = None):
         """Notificar a la UI que una fila se completó."""
@@ -1439,7 +1466,15 @@ class FormExecutor:
         idx = self._get_question_index(key)
         total = len(self.questions_ordered)
         
-        print(f"\n{'='*60}")
+        # ═══ FIX 3: LOGS CRÍTICOS PARA DEBUG ═══
+        print(f"\n{'='*60}", flush=True)
+        print(f"[EXECUTE_FILL] ▶ Iniciando para {key}", flush=True)
+        print(f"[EXECUTE_FILL]   Respuesta: {answer[:50] if len(answer) > 50 else answer}", flush=True)
+        print(f"[EXECUTE_FILL]   Timestamp: {time.time()}", flush=True)
+        print(f"[EXECUTE_FILL]   is_paused={self.is_paused}, should_stop={self.should_stop}", flush=True)
+        print(f"{'='*60}", flush=True)
+        # ═══════════════════════════════════════════════════════════
+        
         self._log(1, 9, f"INICIANDO FILL {idx}/{total}: {key}", "action")
         
         try:
@@ -1584,7 +1619,16 @@ class FormExecutor:
         total = len(self.questions_ordered)
         is_branch = question.get("isBranch", False)
         
+        # ═══ FIX 3: LOGS CRÍTICOS PARA DEBUG ═══
         print(f"\n{'='*60}", flush=True)
+        print(f"[EXECUTE_SELECT] ▶ Iniciando para {key}", flush=True)
+        print(f"[EXECUTE_SELECT]   Respuesta: {answer[:50] if len(answer) > 50 else answer}", flush=True)
+        print(f"[EXECUTE_SELECT]   Timestamp: {time.time()}", flush=True)
+        print(f"[EXECUTE_SELECT]   is_paused={self.is_paused}, should_stop={self.should_stop}", flush=True)
+        print(f"[EXECUTE_SELECT]   is_branch={is_branch}", flush=True)
+        print(f"{'='*60}", flush=True)
+        # ═══════════════════════════════════════════════════════════
+        
         branch_tag = " [BRANCH]" if is_branch else ""
         self._browser_log(f"═══ INICIANDO SELECT{branch_tag} {idx}/{total}: {key} ═══", "action")
         self._browser_log(f"Respuesta esperada: {answer}", "info")
@@ -1983,6 +2027,19 @@ class FormExecutor:
         Returns:
             True si se completó exitosamente
         """
+        # ═══ FIX 2 & 3: LOGS Y TIMESTAMP PARA DIAGNÓSTICO ═══
+        row_start_time = time.time()
+        ROW_TIMEOUT_WARNING_SECONDS = 90  # 90 segundos = warning
+        ROW_TIMEOUT_CRITICAL_SECONDS = 180  # 3 minutos = posible freeze
+        
+        print(f"\n{'#'*70}", flush=True)
+        print(f"# [EXECUTE_ROW] ▶▶▶ INICIANDO FILA {row_index + 1}", flush=True)
+        print(f"# [EXECUTE_ROW]   Timestamp: {row_start_time}", flush=True)
+        print(f"# [EXECUTE_ROW]   is_running={self.is_running}, is_paused={self.is_paused}", flush=True)
+        print(f"# [EXECUTE_ROW]   should_stop={self.should_stop}", flush=True)
+        print(f"{'#'*70}", flush=True)
+        # ═══════════════════════════════════════════════════════════════
+        
         if row_index >= len(self.resolved_rows):
             self._emit_status("error", f"Row index {row_index} out of range")
             return False
@@ -2009,8 +2066,23 @@ class FormExecutor:
                 if self.should_stop:
                     return False
                 
+                # ═══ FIX 2: VERIFICACIÓN DE TIMEOUT ═══
+                elapsed_time = time.time() - row_start_time
+                if elapsed_time > ROW_TIMEOUT_CRITICAL_SECONDS:
+                    error_msg = f"TIMEOUT CRÍTICO: Fila {row_index + 1} tomó {elapsed_time:.1f}s (>{ROW_TIMEOUT_CRITICAL_SECONDS}s)"
+                    print(f"\n{'!'*60}", flush=True)
+                    print(f"[EXECUTE_ROW] ⚠️ {error_msg}", flush=True)
+                    print(f"[EXECUTE_ROW] Última pregunta: {question.get('key', 'unknown')}", flush=True)
+                    print(f"{'!'*60}", flush=True)
+                    self._emit_status("error", error_msg)
+                    # No abortar, pero sí alertar
+                elif elapsed_time > ROW_TIMEOUT_WARNING_SECONDS:
+                    print(f"[EXECUTE_ROW] ⚠️ Warning: Fila {row_index + 1} lleva {elapsed_time:.1f}s", flush=True)
+                # ═══════════════════════════════════════════════════════════
+                
                 while self.is_paused:
                     time.sleep(0.5)
+                    self._emit_status("paused", f"Pausado en P{page_idx+1}:Q{question_num}...")
                     if self.should_stop:
                         return False
                 
@@ -2039,6 +2111,9 @@ class FormExecutor:
                 # Delay antes de siguiente pregunta
                 delay_min, delay_max = self._get_question_delay(question)
                 self._random_delay(delay_min, delay_max)
+                
+                # Sincronizar UI frecuentemente para evitar desfaces
+                self._sync_ui_state()
             
             # Navegación al final de la página
             navigation = page.get("navigation", {})
@@ -2148,6 +2223,7 @@ class FormExecutor:
             summary = self.result_storage.get_summary()
             print(f"\n{'='*60}")
             print(f"[FormExecutor] ═══ FILA {row_index + 1} COMPLETADA ═══")
+            print(f"[FormExecutor] Tiempo total: {time.time() - row_start_time:.2f}s")
             print(f"[FormExecutor] Progreso: {summary.get('successCount', 0)}/{summary.get('totalRows', 0)}")
             if captured_url:
                 print(f"[FormExecutor] URL: {captured_url}")
@@ -2222,17 +2298,37 @@ class FormExecutor:
         
         # Inicializar sesión en result_storage si PostSubmit está habilitado
         # (solo si no cargamos una sesión anterior)
-        if self.result_storage and not hasattr(self.result_storage, '_file_path') or self.result_storage._file_path is None:
-            # Extraer info del navegador de los datos del paquete o usar defaults
-            total_questions = len(self.questions_ordered) if hasattr(self, 'questions_ordered') else 0
-            self.result_storage.initialize_session(
-                form_url=self.form_url,
-                browser="chromium",  # Default, podría venir de config
-                profile_name="Default",  # Default, podría venir de config
-                total_rows=len(self.resolved_rows),
-                total_questions=total_questions,
-                login_enabled=True
-            )
+        if self.result_storage:
+            try:
+                # Check safely if storage has file path initialized
+                has_path = hasattr(self.result_storage, '_file_path') and self.result_storage._file_path is not None
+                
+                if not has_path:
+                    # Extraer info del navegador de los datos del paquete o usar defaults
+                    total_questions = len(self.questions_ordered) if hasattr(self, 'questions_ordered') else 0
+                    self.result_storage.initialize_session(
+                        form_url=self.form_url,
+                        browser="chromium",  # Default, podría venir de config
+                        profile_name="Default",  # Default, podría venir de config
+                        total_rows=len(self.resolved_rows),
+                        total_questions=total_questions,
+                        login_enabled=True
+                    )
+            except Exception as e:
+                print(f"[FormExecutor] Error handling result storage: {e}")
+                # Try to initialize anyway if safe
+                if self.result_storage:
+                    try:
+                         self.result_storage.initialize_session(
+                            form_url=self.form_url,
+                            browser="chromium",
+                            profile_name="Default",
+                            total_rows=len(self.resolved_rows),
+                            total_questions=len(self.questions_ordered) if hasattr(self, 'questions_ordered') else 0,
+                            login_enabled=True
+                        )
+                    except Exception:
+                        pass
         
         self._emit_status("running", "Iniciando automatización...")
         

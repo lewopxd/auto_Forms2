@@ -45,6 +45,7 @@ class SeleniumProcessBooster:
     _executor_config: Dict[str, Any] = {}
     _previous_session: Optional[AutomationResultStorage] = None
     _start_from_row: int = 0  # Row index to start from (for resume)
+    _result_storage_ref: Optional[AutomationResultStorage] = None  # Referencia independiente para export
     
     @classmethod
     def set_status_callback(cls, callback: Callable[[str, str], None]):
@@ -69,6 +70,13 @@ class SeleniumProcessBooster:
         if cls._is_active:
             cls._emit_status("warning", "Automatización ya está activa")
             return
+            
+        # Initialize executor config with values from UI/Browser config
+        cls._executor_config = {
+            "postSubmitEnabled": browser_config.get("postSubmitEnabled", False),
+            "postSubmitTimeoutMs": 60000,
+            "oneByOne": False  # Default
+        }
         
         def start_thread():
             try:
@@ -847,16 +855,18 @@ class SeleniumProcessBooster:
             from openpyxl import Workbook
             from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
             from openpyxl.utils import get_column_letter
-            import tkinter as tk
-            from tkinter import filedialog
             from datetime import datetime
+            import subprocess
             
             cls._emit_status("info", "Preparando exportación Excel...")
             
             # Get data from result storage if available
             full_data = cls._package_data.get("data", {})
             resolved_rows = full_data.get("resolvedRows", [])
-            instructions = full_data.get("instructions", {})
+            
+            # Use cls._executor.result_storage if available, otherwise might be empty
+            # If executor finished, it might still have the object
+            
             package_name = cls._package_data.get("filename", "unknown.afpkg").replace(".afpkg", "")
             
             if not resolved_rows:
@@ -881,11 +891,11 @@ class SeleniumProcessBooster:
                 bottom=Side(style='thin')
             )
             
-            # Build headers: # | Control Columns | Estado | Resultado
+            # Build headers: # | Control Columns | Estado | Mensaje | Link Capturado | URL Edición
             headers = ["#"]
             for col in control_columns:
                 headers.append(col.get("text", col.get("key", "?")))
-            headers.extend(["Estado", "Mensaje"])
+            headers.extend(["Estado", "Mensaje", "Link Capturado", "URL Edición"])
             
             # Write headers
             for col_idx, header in enumerate(headers, 1):
@@ -898,12 +908,26 @@ class SeleniumProcessBooster:
             # Freeze header row
             ws.freeze_panes = "A2"
             
+            # Get results from executor if available
+            row_results = []
+            # Fix 5: Usar referencia independiente que sobrevive si el executor murió
+            if cls._result_storage_ref and hasattr(cls._result_storage_ref, 'rows'):
+                row_results = cls._result_storage_ref.rows
+            elif cls._executor and hasattr(cls._executor, 'result_storage') and cls._executor.result_storage:
+                row_results = cls._executor.result_storage.rows
+            
             # Write data rows
             for row_idx, row_data in enumerate(resolved_rows, 2):
                 answers = row_data.get("answers", {})
+                current_row_index = row_idx - 2  # 0-based index
+                
+                # Try to get result for this row
+                result_obj = None
+                if current_row_index < len(row_results):
+                    result_obj = row_results[current_row_index]
                 
                 # Row number
-                cell = ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                cell = ws.cell(row=row_idx, column=1, value=current_row_index + 1)
                 cell.alignment = Alignment(horizontal="center")
                 cell.border = thin_border
                 
@@ -918,10 +942,32 @@ class SeleniumProcessBooster:
                     cell.border = thin_border
                     col_offset += 1
                 
-                # Get result status from result_storage if available
+                # Get result status
                 status = "pending"
                 message = ""
+                link_captured = "No"
+                captured_url = ""
                 
+                if result_obj:
+                    status = result_obj.result # Use .result instead of .status which was incorrect
+                    message = result_obj.error_message or ""
+                    if status == "success":
+                        message = "Completada exitosamente"
+                    
+                    # Post submit info
+                    if hasattr(result_obj, 'post_submit') and result_obj.post_submit.enabled:
+                        save_edit = result_obj.post_submit.save_and_edit
+                        if save_edit.get('state') == 'success':
+                            link_captured = "Sí"
+                            captured_url = save_edit.get('capturedUrl', '')
+                        elif save_edit.get('error'):
+                            link_captured = "Error"
+                            # Append post-submit error to main message if present
+                            if message:
+                                message += f" | Post-submit: {save_edit.get('error')}"
+                            else:
+                                message = f"Post-submit: {save_edit.get('error')}"
+
                 # Estado column
                 status_cell = ws.cell(row=row_idx, column=col_offset, value=status.upper())
                 status_cell.alignment = Alignment(horizontal="center")
@@ -937,34 +983,50 @@ class SeleniumProcessBooster:
                 # Mensaje column
                 msg_cell = ws.cell(row=row_idx, column=col_offset + 1, value=message)
                 msg_cell.border = thin_border
+                
+                # Link Capturado column
+                link_cap_cell = ws.cell(row=row_idx, column=col_offset + 2, value=link_captured)
+                link_cap_cell.alignment = Alignment(horizontal="center")
+                link_cap_cell.border = thin_border
+                if link_captured == "Sí":
+                     link_cap_cell.fill = success_fill
+                elif link_captured == "Error":
+                     link_cap_cell.fill = error_fill
+
+                # URL Edición column
+                url_cell = ws.cell(row=row_idx, column=col_offset + 3, value=captured_url)
+                url_cell.border = thin_border
+                if captured_url:
+                    url_cell.hyperlink = captured_url
+                    url_cell.font = Font(color="0563C1", underline="single")
             
             # Auto-adjust column widths
             for col_idx in range(1, len(headers) + 1):
                 ws.column_dimensions[get_column_letter(col_idx)].width = 18
             
-            # Open save dialog
-            root = tk.Tk()
-            root.withdraw()  # Hide main window
-            root.wm_attributes('-topmost', True)  # Bring to front
+            # Determine export path
+            if os.name == 'nt':
+                export_dir = os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'AutoForms', 'exports')
+            else:
+                export_dir = os.path.join(os.path.expanduser('~'), '.autoforms', 'exports')
+                
+            os.makedirs(export_dir, exist_ok=True)
             
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            default_name = f"{package_name}_export_{timestamp}.xlsx"
+            filename = f"{package_name}_export_{timestamp}.xlsx"
+            file_path = os.path.join(export_dir, filename)
             
-            file_path = filedialog.asksaveasfilename(
-                parent=root,
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-                initialfile=default_name,
-                title="Guardar exportación Excel"
-            )
+            wb.save(file_path)
+            cls._emit_status("success", f"✓ Excel exportado: {filename}")
             
-            root.destroy()
-            
-            if file_path:
-                wb.save(file_path)
-                cls._emit_status("success", f"✓ Excel exportado: {os.path.basename(file_path)}")
-            else:
-                cls._emit_status("info", "Exportación cancelada")
+            # Try to open the folder
+            try:
+                if os.name == 'nt':
+                     os.startfile(export_dir)
+                else:
+                     subprocess.Popen(['xdg-open', export_dir])
+            except Exception:
+                pass
             
         except ImportError:
             cls._emit_status("error", "openpyxl no instalado. Añade 'openpyxl' a requirements.txt")
@@ -1025,6 +1087,7 @@ class SeleniumProcessBooster:
                 pass
         
         # Create executor
+        print(f"[SeleniumBooster] DEBUG: Creating ExecutorConfig with: {cls._executor_config}")
         config = ExecutorConfig.from_dict(cls._executor_config)
         cls._executor = FormExecutor(
             driver=cls._driver,
@@ -1048,12 +1111,52 @@ class SeleniumProcessBooster:
         
         cls._executor.on_ui_reinject = reinject_ui
         
-        # Start in thread
+        # Guardar referencia al storage para que Export funcione incluso si executor murió (Fix 5)
+        if cls._executor and cls._executor.result_storage:
+            cls._result_storage_ref = cls._executor.result_storage
+        
+        # Start in thread con manejo robusto de errores (Fix 1)
         def run_executor():
             try:
                 cls._executor.start()
             except Exception as e:
-                cls._emit_status("error", f"Error en executor: {e}")
+                import traceback
+                error_msg = f"Error CRÍTICO en executor: {e}"
+                
+                # Log completo en consola
+                print(f"\n{'='*60}")
+                print(f"[SeleniumBooster] {error_msg}")
+                traceback.print_exc()
+                print('='*60 + '\n')
+                
+                cls._emit_status("error", error_msg)
+                
+                # Sincronizar UI para mostrar error y detener play
+                try:
+                    cls._driver.execute_script('''
+                        if (window.__autoforms_updateStatus) {
+                            window.__autoforms_updateStatus('error', arguments[0]);
+                        }
+                        if (window.__autoforms_setPlayPauseState) {
+                            window.__autoforms_setPlayPauseState(false);
+                        }
+                    ''', error_msg)
+                except Exception as ui_err:
+                    print(f"[SeleniumBooster] No se pudo actualizar UI: {ui_err}")
+            finally:
+                # SIEMPRE notificar que terminó (con o sin error)
+                print(f"[SeleniumBooster] Executor thread finalizó")
+                try:
+                    cls._driver.execute_script('''
+                        if (window.__autoforms_setPlayPauseState) {
+                            window.__autoforms_setPlayPauseState(false);
+                        }
+                        if (window.__autoforms_updateStatus) {
+                            window.__autoforms_updateStatus('idle', 'Automatización finalizada');
+                        }
+                    ''')
+                except Exception:
+                    pass
         
         cls._executor_thread = threading.Thread(target=run_executor, daemon=True)
         cls._executor_thread.start()

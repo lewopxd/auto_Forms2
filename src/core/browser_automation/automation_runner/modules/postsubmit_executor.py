@@ -39,9 +39,9 @@ class PostSubmitConfig:
     enabled: bool = False
     
     # Timeouts (in milliseconds)
-    save_button_timeout_ms: int = 10000
-    navigation_timeout_ms: int = 15000
-    forms_list_load_timeout_ms: int = 10000
+    save_button_timeout_ms: int = 60000
+    navigation_timeout_ms: int = 60000
+    forms_list_load_timeout_ms: int = 60000
     url_capture_timeout_ms: int = 60000
     
     # Re-login timeout (configurable as requested)
@@ -119,6 +119,9 @@ class PostSubmitExecutor:
         )
         
         self._url_config = URLCaptureConfig(
+            page_load_timeout_ms=self.config.forms_list_load_timeout_ms,
+            card_wait_timeout_ms=self.config.url_capture_timeout_ms,
+            new_tab_timeout_ms=self.config.navigation_timeout_ms,
             verbose_logging=self.config.verbose_logging
         )
         
@@ -425,6 +428,9 @@ class PostSubmitExecutor:
                 # ══════════════════════════════════════════════════════════
                 # CRITICAL: Verify original tab still exists BEFORE any close
                 # ══════════════════════════════════════════════════════════
+                # ══════════════════════════════════════════════════════════
+                # CRITICAL: Verify original tab still exists BEFORE any close
+                # ══════════════════════════════════════════════════════════
                 if original_handle not in current_handles:
                     self._log("⚠️ CRITICAL: Original tab NOT in current handles!", 'warning')
                     self._log(f"  Original handle: {original_handle[:20]}...")
@@ -460,33 +466,42 @@ class PostSubmitExecutor:
                                 # Safety check 3: Handle to close must exist
                                 if handle not in live_handles:
                                     continue  # Already closed
-                                
+                                    
+                                # Safety check 4: NEVER close original handle
+                                if handle == original_handle:
+                                    continue
+
                                 # Safe to close
                                 self.driver.switch_to.window(handle)
-                                time.sleep(0.3)  # Increased delay for stability
+                                time.sleep(0.5)  # Increased delay for stability
                                 self.driver.close()
                                 self._log(f"✓ Closed tab {handle[:15]}...")
-                                time.sleep(0.5)  # Increased delay after close for stability
+                                
+                                # IMMEDIATE switch back to original for safety
+                                if original_handle in self.driver.window_handles:
+                                    self.driver.switch_to.window(original_handle)
+                                    time.sleep(0.5)
                                 
                             except Exception as e:
                                 self._log(f"⚠️ Error closing tab: {e}", 'debug')
-                                # Don't break, try next
+                                # Ensure we are back on a valid tab
+                                try:
+                                    if original_handle in self.driver.window_handles:
+                                        self.driver.switch_to.window(original_handle)
+                                except:
+                                    pass
                     else:
                         self._log("No extra tabs to close")
                     
                     # ═══════════════════════════════════════════════════════
-                    # SWITCH BACK to original (must exist at this point)
+                    # FINAL VERIFICATION
                     # ═══════════════════════════════════════════════════════
-                    remaining_handles = self.driver.window_handles
-                    
-                    if original_handle in remaining_handles:
-                        self.driver.switch_to.window(original_handle)
-                        self._log("✓ Returned to original tab")
-                    elif remaining_handles:
-                        self._log("⚠️ Original tab gone, using first available")
-                        self.driver.switch_to.window(remaining_handles[0])
-                    else:
-                        self._log("✗ CRITICAL: No tabs remaining!", 'error')
+                    try:
+                        if original_handle in self.driver.window_handles:
+                            self.driver.switch_to.window(original_handle)
+                            self._log("✓ Verified on original tab")
+                    except:
+                        pass
                 
             except Exception as e:
                 self._log(f"⚠️ Error during cleanup: {e}", 'warning')
