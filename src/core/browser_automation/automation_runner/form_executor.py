@@ -112,8 +112,11 @@ class ExecutorConfig:
     post_submit_enabled: bool = False
     post_submit_timeout_ms: int = 60000
     
-    # ═══ Error Handling & Timeouts ═══
-    stop_on_error: bool = True
+    # ═══ Sección 8: Manejo de Errores ═══
+    # 'continue': Continuar con siguiente fila
+    # 'pause': Pausar automatización
+    # 'stop': Detener automatización
+    error_handling: str = 'continue'
     max_retries: int = 1
     element_wait_timeout: int = 10
     page_load_timeout: int = 30
@@ -158,8 +161,8 @@ class ExecutorConfig:
             # Post Submit
             post_submit_enabled=data.get("postSubmitEnabled", False),
             post_submit_timeout_ms=data.get("postSubmitTimeoutMs", 60000),
-            # Error handling
-            stop_on_error=data.get("stopOnError", True),
+            # Error handling - Sección 8
+            error_handling=data.get("errorHandling", "continue"),
             max_retries=data.get("maxRetries", 1),
             element_wait_timeout=data.get("elementWaitTimeout", 10),
             one_by_one_mode=data.get("oneByOne", False),

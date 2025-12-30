@@ -1829,6 +1829,28 @@
                             </div>
                         </div>
                         
+                        <div class="config-divider"></div>
+                        
+                        <!-- ═══ SECCIÓN 8: Manejo de Errores ═══ -->
+                        <div class="config-section">
+                            <div class="config-section-title">⚠️ Manejo de Errores</div>
+                            <p style="font-size: 10px; color: #6b7280; margin-bottom: 10px;">¿Qué hacer cuando ocurre un error durante la automatización?</p>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label class="config-checkbox-row" style="cursor: pointer;">
+                                    <input type="radio" name="errorHandling" value="continue" id="errorContinue" checked style="width: 14px; height: 14px;">
+                                    <span class="config-checkbox-label">Continuar con siguiente fila</span>
+                                </label>
+                                <label class="config-checkbox-row" style="cursor: pointer;">
+                                    <input type="radio" name="errorHandling" value="pause" id="errorPause" style="width: 14px; height: 14px;">
+                                    <span class="config-checkbox-label">Pausar automatización</span>
+                                </label>
+                                <label class="config-checkbox-row" style="cursor: pointer;">
+                                    <input type="radio" name="errorHandling" value="stop" id="errorStop" style="width: 14px; height: 14px;">
+                                    <span class="config-checkbox-label">Detener automatización</span>
+                                </label>
+                            </div>
+                        </div>
+                        
                     </div>
                     <div class="config-modal-footer">
                         <button class="config-btn config-btn-cancel" id="configCancel">Cancelar</button>
@@ -2041,6 +2063,12 @@
                     </div>
                 </div>
                 <div class="dropdown-footer">
+                    <button class="dropdown-btn dropdown-btn-export" id="btnExportExcel" style="
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                    ">
+                        📊 Exportar Excel
+                    </button>
                     <button class="dropdown-btn dropdown-btn-secondary" id="btnReconfigure">
                         ⚙️ Cambiar columnas
                     </button>
@@ -2077,6 +2105,28 @@
                 });
             });
 
+            // Export Excel button
+            rowsDropdown.querySelector('#btnExportExcel').addEventListener('click', () => {
+                window.__autoforms_commands.push({
+                    type: 'excel_export_request',
+                    controlColumns: config.controlColumns,
+                    time: Date.now()
+                });
+                console.log('[AutoForms] Excel export requested');
+
+                // Show feedback
+                const btn = rowsDropdown.querySelector('#btnExportExcel');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '⏳ Exportando...';
+                btn.disabled = true;
+
+                // Reset after 3 seconds (Python will handle the actual export)
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            });
+
             // Reconfigure button
             rowsDropdown.querySelector('#btnReconfigure').addEventListener('click', () => {
                 config.controlColumns = [];
@@ -2100,14 +2150,14 @@
             const answers = row.answers || {};
 
             // Update modal header
-            modalTitle.textContent = `Formulario Fila #${rowIndex + 1}`;
+            modalTitle.textContent = `Formulario Fila #${rowIndex + 1} `;
             modalSubtitle.textContent = `${questions.length} preguntas`;
 
             // Group questions by page
             const questionsByPage = {};
             if (pkg.instructions && pkg.instructions.pages) {
                 pkg.instructions.pages.forEach(page => {
-                    const pageKey = page.pageKey || `page_${page.pageNumber}`;
+                    const pageKey = page.pageKey || `page_${page.pageNumber} `;
                     questionsByPage[pageKey] = {
                         pageNumber: page.pageNumber,
                         questions: page.questions || []
@@ -2169,7 +2219,7 @@
             modalContent.querySelectorAll('.expand-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const targetId = btn.dataset.target;
-                    const target = modalContent.querySelector(`#${targetId}`);
+                    const target = modalContent.querySelector(`#${targetId} `);
                     if (target) {
                         const isCollapsed = target.classList.contains('collapsed');
                         target.classList.toggle('collapsed');
@@ -2227,7 +2277,7 @@
             const questionsByPage = {};
             if (pkg.instructions && pkg.instructions.pages) {
                 pkg.instructions.pages.forEach(page => {
-                    const pageKey = page.pageKey || `page_${page.pageNumber}`;
+                    const pageKey = page.pageKey || `page_${page.pageNumber} `;
                     questionsByPage[pageKey] = {
                         pageNumber: page.pageNumber,
                         questions: page.questions || []
@@ -2364,6 +2414,59 @@
             toggleQuestionsDropdown();
         };
 
+        // ════════════════════════════════════════════════════════════════
+        // VALIDACIÓN: Columnas de control requeridas antes de iniciar
+        // ════════════════════════════════════════════════════════════════
+        function validateControlColumns() {
+            if (config.controlColumns.length === 0) {
+                showErrorModal(
+                    '⚠️ Columnas de Control Requeridas',
+                    'Debe seleccionar al menos una columna de control antes de iniciar la automatización.',
+                    'Haz clic en el botón "Filas" para configurar las columnas de control.'
+                );
+                return false;
+            }
+            return true;
+        }
+
+        function showErrorModal(title, message, hint) {
+            // Crear modal de error si no existe
+            let errorModal = shadow.getElementById('errorModalOverlay');
+            if (!errorModal) {
+                errorModal = document.createElement('div');
+                errorModal.id = 'errorModalOverlay';
+                errorModal.className = 'modal-overlay visible';
+                errorModal.innerHTML = `
+                <div class="modal" style="width: 380px;">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                            <div>
+                                <div class="modal-title" id="errorModalTitle">Error</div>
+                            </div>
+                            <button class="modal-close" id="errorModalClose">${ICONS.close}</button>
+                        </div>
+                        <div class="modal-content" style="padding: 20px;">
+                            <p id="errorModalMessage" style="font-size: 13px; color: #1f2937; margin-bottom: 12px;"></p>
+                            <p id="errorModalHint" style="font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 10px; border-radius: 6px;"></p>
+                        </div>
+                        <div style="padding: 12px 20px; border-top: 1px solid #e5e7eb; text-align: right;">
+                            <button class="dropdown-btn dropdown-btn-primary" id="errorModalOk">Entendido</button>
+                        </div>
+                    </div>
+                `;
+                shadow.appendChild(errorModal);
+
+                const closeError = () => errorModal.classList.remove('visible');
+                errorModal.querySelector('#errorModalClose').onclick = closeError;
+                errorModal.querySelector('#errorModalOk').onclick = closeError;
+                errorModal.onclick = (e) => { if (e.target === errorModal) closeError(); };
+            }
+
+            shadow.getElementById('errorModalTitle').textContent = title;
+            shadow.getElementById('errorModalMessage').textContent = message;
+            shadow.getElementById('errorModalHint').textContent = hint;
+            errorModal.classList.add('visible');
+        }
+
         // Play/Pause toggle button
         btnPlayPause.onclick = () => {
             if (isPlaying) {
@@ -2374,6 +2477,11 @@
                 btnPlayPause.classList.remove('paused');
                 btnPlayPause.title = 'Reanudar';
             } else {
+                // ═══ FASE 6: Validar columnas de control antes de iniciar ═══
+                if (!validateControlColumns()) {
+                    return; // No iniciar si no hay columnas configuradas
+                }
+
                 // Está pausado → play
                 window.__autoforms_commands.push({ type: 'start', time: Date.now() });
                 isPlaying = true;
@@ -2519,7 +2627,10 @@
 
             // ═══ Sección 7: Post Submit Actions ═══
             postSubmitEnabled: true,  // Changed from false
-            postSubmitTimeoutMs: 60000
+            postSubmitTimeoutMs: 60000,
+
+            // ═══ Sección 8: Manejo de Errores ═══
+            errorHandling: 'continue'  // 'continue' | 'pause' | 'stop'
         };
 
         function updateShortTextMethodUI() {
@@ -2576,6 +2687,12 @@
             postSubmitCheckbox.classList.toggle('checked', configState.postSubmitEnabled);
             postSubmitTimeoutInput.value = configState.postSubmitTimeoutMs;
             postSubmitFields.style.display = configState.postSubmitEnabled ? 'block' : 'none';
+
+            // ═══ Sección 8: Manejo de Errores ═══
+            const errorRadios = shadow.querySelectorAll('input[name="errorHandling"]');
+            errorRadios.forEach(radio => {
+                radio.checked = radio.value === configState.errorHandling;
+            });
 
             configModalOverlay.classList.add('open');
         }
@@ -2645,7 +2762,10 @@
 
                 // ═══ Sección 7: Post Submit Actions ═══
                 postSubmitEnabled: postSubmitCheckbox.classList.contains('checked'),
-                postSubmitTimeoutMs: parseInt(postSubmitTimeoutInput.value) || 60000
+                postSubmitTimeoutMs: parseInt(postSubmitTimeoutInput.value) || 60000,
+
+                // ═══ Sección 8: Manejo de Errores ═══
+                errorHandling: shadow.querySelector('input[name="errorHandling"]:checked')?.value || 'continue'
             };
 
             // Enviar configuración al backend
@@ -3081,7 +3201,7 @@
                 activeIndicator.className = 'action-indicator error';
                 activeNumText.innerHTML = STATE_ICONS.alert;
             } else {
-                activeIndicator.className = `action-indicator ${type} loading`;
+                activeIndicator.className = `action - indicator ${type} loading`;
                 activeNumText.textContent = currentAction ? currentAction.num : '';
             }
         }
@@ -3160,7 +3280,7 @@
                     <div class="test-action-num ${a.type}">${a.num}</div>
                     <div class="test-action-text">${escHtml(a.question)}</div>
                 </div>
-            `).join('');
+                `).join('');
 
             testPanelList.innerHTML = html;
 
@@ -3270,9 +3390,9 @@
             numTextA.innerHTML = STATE_ICONS.robot;
             bodyA.innerHTML = `
                 <div class="action-question">¡Preparado!</div>
-                <div class="action-answer" style="background: #fff7ed; border-color: #fdba74; color: #c2410c;">
-                    Arrastra el círculo para mover • Click para colapsar
-                </div>
+                    <div class="action-answer" style="background: #fff7ed; border-color: #fdba74; color: #c2410c;">
+                        Arrastra el círculo para mover • Click para colapsar
+                    </div>
             `;
 
             wrapperA.classList.add('visible');

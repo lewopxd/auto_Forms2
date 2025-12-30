@@ -26,6 +26,7 @@ from core.process_manager import ProcessManager, HIGH_PRIORITY_CLASS
 from core.browser_automation.browser_settings import BrowserConfig, build_chrome_options
 from core.browser_automation.profile_utils import get_browser_profiles_path
 from core.browser_automation.automation_runner.form_executor import FormExecutor, ExecutorConfig
+from core.browser_automation.automation_runner.modules.automation_result_storage import AutomationResultStorage
 
 
 class SeleniumProcessBooster:
@@ -42,6 +43,8 @@ class SeleniumProcessBooster:
     _executor: Optional[FormExecutor] = None
     _executor_thread: Optional[threading.Thread] = None
     _executor_config: Dict[str, Any] = {}
+    _previous_session: Optional[AutomationResultStorage] = None
+    _start_from_row: int = 0  # Row index to start from (for resume)
     
     @classmethod
     def set_status_callback(cls, callback: Callable[[str, str], None]):
@@ -156,7 +159,29 @@ class SeleniumProcessBooster:
                         driver.get(form_url)
                         cls._wait_for_page_ready(driver)
                 
-                # === STEP 9: Inject Automation Bar ===
+                # === STEP 9: Check for Previous Session ===
+                try:
+                    package_path = browser_config.get("package_path", "")
+                    if cls._check_previous_session(package_path):
+                        # Show resume dialog and wait for response
+                        resume_info = cls._previous_session.get_resume_info()
+                        response = cls._inject_resume_dialog(driver, resume_info)
+                        
+                        if response == "resume":
+                            cls._start_from_row = resume_info["nextRow"] - 1  # Convert to 0-indexed
+                            cls._emit_status("info", f"✓ Continuando desde fila {resume_info['nextRow']}")
+                        else:
+                            cls._start_from_row = 0
+                            cls._previous_session = None
+                            cls._emit_status("info", "Iniciando desde el principio")
+                    else:
+                        cls._start_from_row = 0
+                except Exception as e:
+                    cls._emit_status("warning", f"Error verificando sesión previa: {e}")
+                    cls._start_from_row = 0
+                    cls._previous_session = None
+                
+                # === STEP 10: Inject Automation Bar ===
                 cls._emit_status("injecting", "Inyectando barra de automatización...")
                 cls._inject_automation_bar(driver)
                 cls._emit_status("ready", "✓ Automatización activa")
@@ -401,6 +426,126 @@ class SeleniumProcessBooster:
             cls._emit_status("warning", f"Error inyectando login UI: {e}")
     
     @classmethod
+    def _check_previous_session(cls, package_path: str) -> bool:
+        """
+        Check for a previous session that can be resumed.
+        
+        Returns:
+            True if user wants to resume, False to start fresh or no session found
+        """
+        if not package_path:
+            return False
+        
+        cls._emit_status("info", "Buscando sesión previa...")
+        previous = AutomationResultStorage.find_previous_session(package_path)
+        
+        if not previous:
+            cls._emit_status("info", "No se encontró sesión previa")
+            return False
+        
+        resume_info = previous.get_resume_info()
+        cls._emit_status("info", f"Sesión previa encontrada: {resume_info['lastRowProcessed']}/{resume_info['totalRows']} filas")
+        
+        # Store for later use
+        cls._previous_session = previous
+        
+        return True
+    
+    @classmethod
+    def _inject_resume_dialog(cls, driver, resume_info: dict) -> Optional[str]:
+        """
+        Inject resume dialog and wait for user response.
+        
+        Returns:
+            'resume' to continue from last row, 'start' to start fresh, None if cancelled
+        """
+        # Create and inject the resume dialog using execute_script arguments
+        dialog_js = '''
+        (function(info) {
+            const ROOT_ID = '__autoforms_resume_dialog__';
+            if (document.getElementById(ROOT_ID)) return;
+            
+            window.__autoforms_resume_response = null;
+            
+            const overlay = document.createElement('div');
+            overlay.id = ROOT_ID;
+            overlay.style.cssText = "position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;background:rgba(0,0,0,0.5)!important;backdrop-filter:blur(4px)!important;z-index:2147483647!important;display:flex!important;align-items:center!important;justify-content:center!important;";
+            
+            overlay.innerHTML = '<div style="background:white;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,0.25);width:420px;max-width:90vw;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;overflow:hidden;">' +
+                '<div style="padding:16px 20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;">' +
+                    '<div style="font-size:16px;font-weight:600;">📋 Sesión Anterior Detectada</div>' +
+                    '<div style="font-size:12px;opacity:0.9;margin-top:4px;">' + (info.packageName || 'Paquete') + '</div>' +
+                '</div>' +
+                '<div style="padding:20px;">' +
+                    '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:16px;">' +
+                        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+                            '<span style="color:#64748b;font-size:12px;">Última fila procesada:</span>' +
+                            '<span style="font-weight:600;color:#1e293b;">' + info.lastRowProcessed + ' de ' + info.totalRows + '</span>' +
+                        '</div>' +
+                        '<div style="display:flex;justify-content:space-between;margin-bottom:8px;">' +
+                            '<span style="color:#64748b;font-size:12px;">Éxitos / Errores:</span>' +
+                            '<span style="font-weight:600;"><span style="color:#22c55e;">' + info.successCount + ' ✓</span> / <span style="color:#ef4444;">' + info.errorCount + ' ✗</span></span>' +
+                        '</div>' +
+                        '<div style="display:flex;justify-content:space-between;">' +
+                            '<span style="color:#64748b;font-size:12px;">Pendientes:</span>' +
+                            '<span style="font-weight:600;color:#f59e0b;">' + info.pendingCount + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="display:flex;flex-direction:column;gap:10px;">' +
+                        '<button id="__resume_btn" style="padding:12px 16px;background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%);color:white;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">▶ Continuar desde fila ' + info.nextRow + '</button>' +
+                        '<button id="__start_btn" style="padding:12px 16px;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;">🔄 Empezar desde el inicio</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+            
+            document.body.appendChild(overlay);
+            
+            document.getElementById('__resume_btn').onclick = function() {
+                window.__autoforms_resume_response = 'resume';
+                overlay.remove();
+            };
+            
+            document.getElementById('__start_btn').onclick = function() {
+                window.__autoforms_resume_response = 'start';
+                overlay.remove();
+            };
+        })(arguments[0]);
+        '''
+        
+        try:
+            driver.execute_script(dialog_js, resume_info)
+            cls._emit_status("info", "Esperando respuesta del usuario...")
+            
+            # Poll for response
+            start_time = time.time()
+            timeout = 300  # 5 minutos máximo
+            
+            while time.time() - start_time < timeout:
+                try:
+                    response = driver.execute_script("return window.__autoforms_resume_response;")
+                    if response:
+                        return response
+                except Exception:
+                    pass
+                time.sleep(0.3)
+            
+            # Timeout - remove dialog and return None
+            try:
+                driver.execute_script("""
+                    var el = document.getElementById('__autoforms_resume_dialog__');
+                    if (el) el.remove();
+                """)
+            except Exception:
+                pass
+            
+            return None
+            
+        except Exception as e:
+            cls._emit_status("warning", f"Error en diálogo de reanudación: {e}")
+            return None
+
+    
+    @classmethod
     def _inject_automation_bar(cls, driver):
         """Inject automation bar with package info and full data."""
         script_path = os.path.join(SCRIPT_DIR, "injectedJS", "automation_bar.js")
@@ -505,6 +650,9 @@ class SeleniumProcessBooster:
         elif cmd_type == "highlight_question":
             question_key = cmd.get("questionKey", "")
             cls._highlight_question_on_page(question_key)
+        elif cmd_type == "excel_export_request":
+            control_columns = cmd.get("controlColumns", [])
+            cls._export_to_excel(control_columns)
     
     @classmethod
     def _update_executor_config(cls, config_data: dict):
@@ -550,6 +698,9 @@ class SeleniumProcessBooster:
             # ═══ Sección 7: Post Submit Actions ═══
             "postSubmitEnabled": config_data.get("postSubmitEnabled", False),
             "postSubmitTimeoutMs": config_data.get("postSubmitTimeoutMs", 60000),
+            
+            # ═══ Sección 8: Manejo de Errores ═══
+            "errorHandling": config_data.get("errorHandling", "continue"),
         })
         
         if cls._executor:
@@ -659,6 +810,139 @@ class SeleniumProcessBooster:
             
         except Exception as e:
             cls._emit_status("warning", f"Error resaltando pregunta: {e}")
+    
+    @classmethod
+    def _export_to_excel(cls, control_columns: list):
+        """Export automation results to Excel with openpyxl."""
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            from openpyxl.utils import get_column_letter
+            import tkinter as tk
+            from tkinter import filedialog
+            from datetime import datetime
+            
+            cls._emit_status("info", "Preparando exportación Excel...")
+            
+            # Get data from result storage if available
+            full_data = cls._package_data.get("data", {})
+            resolved_rows = full_data.get("resolvedRows", [])
+            instructions = full_data.get("instructions", {})
+            package_name = cls._package_data.get("filename", "unknown.afpkg").replace(".afpkg", "")
+            
+            if not resolved_rows:
+                cls._emit_status("warning", "No hay datos de filas para exportar")
+                return
+            
+            # Create workbook
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Resultados"
+            
+            # Define styles
+            header_fill = PatternFill(start_color="667eea", end_color="667eea", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            success_fill = PatternFill(start_color="dcfce7", end_color="dcfce7", fill_type="solid")
+            error_fill = PatternFill(start_color="fee2e2", end_color="fee2e2", fill_type="solid")
+            pending_fill = PatternFill(start_color="fef3c7", end_color="fef3c7", fill_type="solid")
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # Build headers: # | Control Columns | Estado | Resultado
+            headers = ["#"]
+            for col in control_columns:
+                headers.append(col.get("text", col.get("key", "?")))
+            headers.extend(["Estado", "Mensaje"])
+            
+            # Write headers
+            for col_idx, header in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col_idx, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = thin_border
+            
+            # Freeze header row
+            ws.freeze_panes = "A2"
+            
+            # Write data rows
+            for row_idx, row_data in enumerate(resolved_rows, 2):
+                answers = row_data.get("answers", {})
+                
+                # Row number
+                cell = ws.cell(row=row_idx, column=1, value=row_idx - 1)
+                cell.alignment = Alignment(horizontal="center")
+                cell.border = thin_border
+                
+                # Control columns values
+                col_offset = 2
+                for col in control_columns:
+                    key = col.get("key", "")
+                    value = answers.get(key, "")
+                    if isinstance(value, dict):
+                        value = value.get("text", str(value))
+                    cell = ws.cell(row=row_idx, column=col_offset, value=str(value) if value else "")
+                    cell.border = thin_border
+                    col_offset += 1
+                
+                # Get result status from result_storage if available
+                status = "pending"
+                message = ""
+                
+                # Estado column
+                status_cell = ws.cell(row=row_idx, column=col_offset, value=status.upper())
+                status_cell.alignment = Alignment(horizontal="center")
+                status_cell.border = thin_border
+                
+                if status == "success":
+                    status_cell.fill = success_fill
+                elif status == "error":
+                    status_cell.fill = error_fill
+                else:
+                    status_cell.fill = pending_fill
+                
+                # Mensaje column
+                msg_cell = ws.cell(row=row_idx, column=col_offset + 1, value=message)
+                msg_cell.border = thin_border
+            
+            # Auto-adjust column widths
+            for col_idx in range(1, len(headers) + 1):
+                ws.column_dimensions[get_column_letter(col_idx)].width = 18
+            
+            # Open save dialog
+            root = tk.Tk()
+            root.withdraw()  # Hide main window
+            root.wm_attributes('-topmost', True)  # Bring to front
+            
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_name = f"{package_name}_export_{timestamp}.xlsx"
+            
+            file_path = filedialog.asksaveasfilename(
+                parent=root,
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
+                initialfile=default_name,
+                title="Guardar exportación Excel"
+            )
+            
+            root.destroy()
+            
+            if file_path:
+                wb.save(file_path)
+                cls._emit_status("success", f"✓ Excel exportado: {os.path.basename(file_path)}")
+            else:
+                cls._emit_status("info", "Exportación cancelada")
+            
+        except ImportError:
+            cls._emit_status("error", "openpyxl no instalado. Añade 'openpyxl' a requirements.txt")
+        except Exception as e:
+            cls._emit_status("error", f"Error exportando Excel: {e}")
+            import traceback
+            traceback.print_exc()
 
     @classmethod
     def _start_executor(cls):
@@ -722,6 +1006,11 @@ class SeleniumProcessBooster:
             on_row_complete=on_row_complete,
             on_status_change=on_status_change
         )
+        
+        # If resuming from previous session, set starting row
+        if cls._start_from_row > 0:
+            cls._executor.jump_to_row(cls._start_from_row)
+            cls._emit_status("info", f"Executor configurado para iniciar en fila {cls._start_from_row + 1}")
         
         # Set up UI re-injection callback (called after PostSubmit returns to form)
         def reinject_ui():
@@ -794,3 +1083,5 @@ class SeleniumProcessBooster:
         cls._executor = None
         cls._executor_thread = None
         cls._executor_config = {}
+        cls._previous_session = None
+        cls._start_from_row = 0

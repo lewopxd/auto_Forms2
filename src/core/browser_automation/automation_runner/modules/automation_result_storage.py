@@ -405,3 +405,90 @@ class AutomationResultStorage:
         
         storage._file_path = Path(file_path)
         return storage
+    
+    @classmethod
+    def find_previous_session(cls, package_path: str) -> Optional['AutomationResultStorage']:
+        """
+        Find the most recent session for a given package path.
+        
+        Args:
+            package_path: Path to the .afpkg file
+            
+        Returns:
+            AutomationResultStorage if found with pending rows, None otherwise
+        """
+        results_dir = _get_results_dir()
+        
+        if not results_dir.exists():
+            return None
+        
+        # Get all JSON files sorted by modification time (newest first)
+        json_files = sorted(
+            results_dir.glob('*.json'),
+            key=lambda f: f.stat().st_mtime,
+            reverse=True
+        )
+        
+        # Normalize package path for comparison
+        normalized_path = os.path.normpath(package_path).lower()
+        
+        for json_file in json_files:
+            try:
+                with open(json_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                meta = data.get('meta', {})
+                stored_path = meta.get('packagePath', '')
+                
+                # Check if package path matches
+                if os.path.normpath(stored_path).lower() == normalized_path:
+                    # Check if there are pending rows
+                    rows = data.get('rows', [])
+                    has_pending = any(r.get('result') in ('pending', 'running') for r in rows)
+                    
+                    if has_pending:
+                        return cls.load_from_file(str(json_file))
+                        
+            except (json.JSONDecodeError, IOError, KeyError):
+                # Skip invalid files
+                continue
+        
+        return None
+    
+    def get_last_processed_row(self) -> int:
+        """
+        Get the index of the last successfully processed row.
+        
+        Returns:
+            Index of last success/error row, or -1 if none processed
+        """
+        last_processed = -1
+        
+        for row in self.rows:
+            if row.result in ('success', 'error'):
+                last_processed = max(last_processed, row.index if hasattr(row, 'index') else row.row_index)
+        
+        return last_processed
+    
+    def get_resume_info(self) -> dict:
+        """
+        Get information for session resume dialog.
+        
+        Returns:
+            Dict with package name, last row processed, total rows, etc.
+        """
+        summary = self.get_summary()
+        last_row = self.get_last_processed_row()
+        
+        return {
+            'packageName': self.meta.package_name,
+            'packagePath': self.meta.package_path,
+            'lastRowProcessed': last_row + 1,  # 1-indexed for UI
+            'nextRow': last_row + 2,  # Next row to process (1-indexed)
+            'totalRows': self.meta.total_rows,
+            'successCount': summary['successCount'],
+            'errorCount': summary['errorCount'],
+            'pendingCount': summary['pendingCount'],
+            'sessionId': self.session_id,
+            'startedAt': self.meta.time.get('startedAt')
+        }

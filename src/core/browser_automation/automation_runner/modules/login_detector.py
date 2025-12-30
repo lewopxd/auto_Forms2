@@ -505,12 +505,14 @@ class LoginDetector:
                 )
             
             # Selectors for auto-login account cards (in order of priority)
+            # #newSessionLink is the primary selector based on actual DOM inspection
             account_selectors = [
-                "#newSessionLink",                          # Primary: New session with saved account
-                "[data-bind*='newSession_onClick']",        # Alternative binding
-                ".tile[data-bind*='click']",                # Account tile
-                "[data-automation-id='tile']",              # Tile by automation ID
-                ".table.list-item[tabindex='0']",           # Table-based tile
+                "#newSessionLink",                             # PRIMARY: ID of the account tile
+                ".table#newSessionLink",                       # Table with ID
+                "#tilesHolder .table[tabindex='0']",          # Table in tiles holder
+                ".row.tile .table",                            # Table within row tile
+                "[data-bind*='newSession_onClick']",           # Click binding
+                ".tile[data-bind*='click']",                   # Generic tile with click
             ]
             
             self._log("Looking for saved account card...")
