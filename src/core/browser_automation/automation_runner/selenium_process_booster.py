@@ -623,15 +623,44 @@ class SeleniumProcessBooster:
         cls._emit_status("command", f"Comando recibido: {cmd_type}")
         
         if cmd_type == "start":
+            # ═══ SYNC INMEDIATO: Cambiar UI a "playing" antes de iniciar executor ═══
+            try:
+                cls._driver.execute_script('''
+                    if (window.__autoforms_setPlayPauseState) {
+                        window.__autoforms_setPlayPauseState(true);
+                    }
+                ''')
+            except Exception as e:
+                print(f"[SeleniumBooster] Error syncing UI on start: {e}")
+            
             cls._start_executor()
+            
         elif cmd_type == "pause":
             if cls._executor:
                 cls._executor.pause()
+            # ═══ SYNC INMEDIATO: Cambiar UI a "paused" ═══
+            try:
+                cls._driver.execute_script('''
+                    if (window.__autoforms_setPlayPauseState) {
+                        window.__autoforms_setPlayPauseState(false);
+                    }
+                ''')
+            except Exception as e:
+                print(f"[SeleniumBooster] Error syncing UI on pause: {e}")
+                
         elif cmd_type == "stop":
             if cls._executor:
                 cls._executor.stop()
+            # ═══ SYNC INMEDIATO: Cambiar UI a "stopped" ═══
+            try:
+                cls._driver.execute_script('''
+                    if (window.__autoforms_setPlayPauseState) {
+                        window.__autoforms_setPlayPauseState(false);
+                    }
+                ''')
+            except Exception as e:
+                print(f"[SeleniumBooster] Error syncing UI on stop: {e}")
             # NO cerrar navegador, solo detener executor
-            # cls.stop() se omite - el usuario puede cerrar manualmente o usar otro comando
         elif cmd_type == "next":
             if cls._executor:
                 cls._executor.next_row()
