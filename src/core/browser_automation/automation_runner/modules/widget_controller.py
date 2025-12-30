@@ -143,6 +143,43 @@ class WidgetController:
         except Exception:
             return False
     
+    def wait_for_ready(self, timeout_seconds: int = 5) -> bool:
+        """
+        Esperar a que la UI inyectada esté completamente lista.
+        
+        Verifica que:
+        1. El elemento host existe en el DOM
+        2. Las funciones de sincronización (__autoforms_syncState) están disponibles
+        
+        Args:
+            timeout_seconds: Tiempo máximo de espera
+            
+        Returns:
+            True si la UI está lista, False si timeout
+        """
+        import time
+        start = time.time()
+        
+        while time.time() - start < timeout_seconds:
+            try:
+                result = self.driver.execute_script('''
+                    const el = document.getElementById(arguments[0]);
+                    if (!el) return false;
+                    
+                    // Verificar que las funciones de sincronización existen
+                    return typeof window.__autoforms_syncState === 'function';
+                ''', self.ROOT_ID)
+                
+                if result:
+                    return True
+                    
+            except Exception:
+                pass
+            
+            time.sleep(0.2)
+        
+        return False
+    
     @property
     def is_clicks_disabled(self) -> bool:
         """Retorna si los clicks están actualmente deshabilitados."""

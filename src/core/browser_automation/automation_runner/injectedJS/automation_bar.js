@@ -25,6 +25,13 @@
         isRunning: false,
         isPaused: false,
 
+        // Selección de filas para procesar
+        selectedRows: [],  // Array de índices de filas seleccionadas
+
+        // Resultados de automatización por fila
+        // { 0: { submitSuccess: true, linkCaptured: true, url: '...', error: null }, ... }
+        rowResults: {},
+
         // Dropdown state
         dropdownOpen: null,  // 'config' | 'rows' | null
     };
@@ -545,12 +552,30 @@
                 }
                 
                 /* ═══════════════════════════════════════════════════════════
-                   ROWS LIST (grid de filas)
+                   ROWS LIST - Ahora es una MODAL centrada
                    ═══════════════════════════════════════════════════════════ */
                 
                 .rows-dropdown {
-                    min-width: 450px;
-                    max-width: 600px;
+                    /* Modal overlay completa */
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    background: rgba(0, 0, 0, 0.5) !important;
+                    backdrop-filter: blur(3px);
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 99999 !important;
+                    padding: 20px;
+                    box-sizing: border-box;
+                }
+                
+                .rows-dropdown.open {
+                    display: flex !important;
                 }
                 
                 .rows-grid {
@@ -652,6 +677,292 @@
                 
                 .row-item.current .view-btn svg {
                     color: white;
+                }
+                
+                /* ═══════════════════════════════════════════════════════════
+                   ROWS MODAL - Tabla compacta con estados
+                   ═══════════════════════════════════════════════════════════ */
+                
+                .rm-modal-container {
+                    display: flex;
+                    flex-direction: column;
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+                    width: 90%;
+                    max-width: 900px;
+                    height: 80%;
+                    max-height: 600px;
+                    overflow: hidden;
+                }
+                
+                .rm-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 12px 16px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    border-radius: 8px 8px 0 0;
+                }
+                
+                .rm-header-left {
+                    flex: 1;
+                }
+                
+                .rm-title {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: white;
+                }
+                
+                .rm-subtitle {
+                    display: flex;
+                    gap: 12px;
+                    margin-top: 4px;
+                    font-size: 11px;
+                    color: rgba(255,255,255,0.85);
+                }
+                
+                .rm-stat {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                }
+                
+                .rm-stat-completed { color: #86efac; }
+                .rm-stat-error { color: #fca5a5; }
+                .rm-stat-pending { color: #d1d5db; }
+                
+                .rm-close-btn {
+                    width: 28px;
+                    height: 28px;
+                    border: none;
+                    background: rgba(255,255,255,0.2);
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .rm-close-btn:hover {
+                    background: rgba(255,255,255,0.3);
+                }
+                
+                .rm-close-btn svg {
+                    width: 14px;
+                    height: 14px;
+                    color: white;
+                }
+                
+                .rm-toolbar {
+                    padding: 8px 12px;
+                    background: #f3f4f6;
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                .rm-select-all-label {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 12px;
+                    color: #374151;
+                    cursor: pointer;
+                }
+                
+                .rm-table-container {
+                    flex: 1;
+                    overflow-y: auto;
+                    overflow-x: auto;
+                }
+                
+                .rm-table-container::-webkit-scrollbar {
+                    width: 6px;
+                    height: 6px;
+                }
+                
+                .rm-table-container::-webkit-scrollbar-track {
+                    background: #f1f5f9;
+                }
+                
+                .rm-table-container::-webkit-scrollbar-thumb {
+                    background: #cbd5e1;
+                    border-radius: 3px;
+                }
+                
+                .rm-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 11px;
+                }
+                
+                .rm-th {
+                    padding: 6px 8px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #667eea;
+                    background: #e0e7ff;
+                    position: sticky;
+                    top: 0;
+                    z-index: 1;
+                    white-space: nowrap;
+                }
+                
+                .rm-th-check, .rm-th-action { width: 32px; text-align: center; }
+                .rm-th-num { width: 36px; text-align: center; }
+                .rm-th-status { width: 28px; text-align: center; }
+                .rm-th-link { width: 40px; text-align: center; }
+                
+                .rm-row {
+                    transition: background 0.1s ease;
+                }
+                
+                .rm-row:hover {
+                    filter: brightness(0.97);
+                }
+                
+                .rm-row-current {
+                    font-weight: 600;
+                }
+                
+                .rm-td {
+                    padding: 6px 8px;
+                    border-bottom: 1px solid #e5e7eb;
+                    vertical-align: middle;
+                }
+                
+                .rm-td-check, .rm-td-action { text-align: center; }
+                
+                .rm-td-num {
+                    text-align: center;
+                    font-weight: 600;
+                    color: #667eea;
+                    cursor: pointer;
+                }
+                
+                .rm-td-num:hover {
+                    text-decoration: underline;
+                }
+                
+                .rm-current {
+                    background: #667eea !important;
+                    color: white !important;
+                    border-radius: 4px;
+                }
+                
+                .rm-td-value {
+                    max-width: 120px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                
+                .rm-td-status {
+                    text-align: center;
+                }
+                
+                .rm-td-status svg {
+                    display: inline-block;
+                    vertical-align: middle;
+                }
+                
+                .rm-td-link {
+                    text-align: center;
+                }
+                
+                .rm-link {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 4px;
+                    border-radius: 4px;
+                    transition: background 0.15s ease;
+                }
+                
+                .rm-link:hover {
+                    background: rgba(59, 130, 246, 0.15);
+                }
+                
+                .rm-checkbox-label {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                }
+                
+                .rm-checkbox {
+                    width: 14px;
+                    height: 14px;
+                    accent-color: #667eea;
+                }
+                
+                .rm-view-btn {
+                    width: 24px;
+                    height: 24px;
+                    border: none;
+                    background: transparent;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .rm-view-btn:hover {
+                    background: rgba(102, 126, 234, 0.15);
+                }
+                
+                .rm-view-btn svg {
+                    width: 14px;
+                    height: 14px;
+                    color: #667eea;
+                }
+                
+                .rm-footer {
+                    display: flex;
+                    gap: 8px;
+                    padding: 10px 12px;
+                    background: #f9fafb;
+                    border-top: 1px solid #e5e7eb;
+                    border-radius: 0 0 8px 8px;
+                }
+                
+                .rm-btn {
+                    flex: 1;
+                    padding: 8px 12px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                
+                .rm-btn-export {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                }
+                
+                .rm-btn-export:hover {
+                    filter: brightness(1.05);
+                }
+                
+                .rm-btn-secondary {
+                    background: #e5e7eb;
+                    color: #374151;
+                }
+                
+                .rm-btn-secondary:hover {
+                    background: #d1d5db;
+                }
+                
+                .rm-btn-primary {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                }
+                
+                .rm-btn-primary:hover {
+                    filter: brightness(1.05);
                 }
                 
                 /* ═══════════════════════════════════════════════════════════
@@ -2016,75 +2327,191 @@
         function renderRowsList() {
             const rows = pkg.resolvedRows || [];
             const numCols = config.controlColumns.length;
+            const results = config.rowResults || {};
 
-            // Calcular grid-template-columns dinámicamente (agregamos columna para botón view)
-            const gridCols = `42px repeat(${numCols}, 1fr) 36px`;
+            // Inicializar selectedRows si está vacío (seleccionar todas por defecto)
+            if (config.selectedRows.length === 0) {
+                config.selectedRows = rows.map((_, i) => i);
+            }
 
+            // Calcular estadísticas
+            let completedCount = 0;
+            let errorCount = 0;
+            let pendingCount = 0;
+
+            rows.forEach((_, idx) => {
+                const result = results[idx];
+                if (result) {
+                    if (result.submitSuccess) completedCount++;
+                    else if (result.error) errorCount++;
+                    else pendingCount++;
+                } else {
+                    pendingCount++;
+                }
+            });
+
+            // Función para determinar estado y color de fila
+            function getRowState(idx) {
+                const result = results[idx];
+                if (!result) return { state: 'pending', color: '#f8fafc', border: '#e2e8f0' };
+                if (result.submitSuccess && result.linkCaptured) return { state: 'success', color: '#dcfce7', border: '#22c55e' };
+                if (result.submitSuccess && !result.linkCaptured) return { state: 'warning', color: '#fef3c7', border: '#f59e0b' };
+                if (result.error) return { state: 'error', color: '#fee2e2', border: '#ef4444' };
+                return { state: 'pending', color: '#f8fafc', border: '#e2e8f0' };
+            }
+
+            // Iconos de estado
+            const STATUS_ICONS = {
+                success: '<svg viewBox="0 0 20 20" fill="#22c55e" width="16" height="16"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>',
+                error: '<svg viewBox="0 0 20 20" fill="#ef4444" width="16" height="16"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>',
+                warning: '<svg viewBox="0 0 20 20" fill="#f59e0b" width="16" height="16"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/></svg>',
+                pending: '<svg viewBox="0 0 20 20" fill="#9ca3af" width="16" height="16"><circle cx="10" cy="10" r="6" stroke="#9ca3af" stroke-width="2" fill="none"/></svg>',
+                link: '<svg viewBox="0 0 20 20" fill="#3b82f6" width="14" height="14"><path fill-rule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"/></svg>'
+            };
+
+            // Generar HTML de filas
             let rowsHtml = rows.map((row, idx) => {
                 const values = getRowControlValues(row);
                 const isCurrent = idx === config.currentRowIndex;
+                const isSelected = config.selectedRows.includes(idx);
+                const { state, color, border } = getRowState(idx);
+                const result = results[idx];
 
-                let valuesHtml = values.map(v => `<span class="row-value">${escHtml(v)}</span>`).join('');
+                let valuesHtml = values.map(v => `<td class="rm-td rm-td-value">${escHtml(v)}</td>`).join('');
+
+                // Estado de submit
+                let submitIcon = STATUS_ICONS.pending;
+                if (result?.submitSuccess) submitIcon = STATUS_ICONS.success;
+                else if (result?.error) submitIcon = STATUS_ICONS.error;
+
+                // Estado de link
+                let linkIcon = STATUS_ICONS.pending;
+                let linkCell = '-';
+                if (result?.linkCaptured && result?.url) {
+                    linkIcon = STATUS_ICONS.success;
+                    linkCell = `<a href="${escHtml(result.url)}" target="_blank" class="rm-link" title="${escHtml(result.url)}">${STATUS_ICONS.link}</a>`;
+                } else if (result?.submitSuccess && !result?.linkCaptured) {
+                    linkIcon = STATUS_ICONS.warning;
+                }
 
                 return `
-                    <div class="row-item ${isCurrent ? 'current' : ''}" 
-                         data-index="${idx}"
-                         style="grid-template-columns: ${gridCols};">
-                        <span class="row-index">${idx + 1}</span>
+                    <tr class="rm-row rm-row-${state} ${isCurrent ? 'rm-row-current' : ''}" 
+                        data-index="${idx}"
+                        style="background: ${color}; border-left: 3px solid ${border};">
+                        <td class="rm-td rm-td-check">
+                            <label class="rm-checkbox-label">
+                                <input type="checkbox" class="rm-checkbox" data-row-idx="${idx}" ${isSelected ? 'checked' : ''}>
+                                <span class="rm-checkbox-custom"></span>
+                            </label>
+                        </td>
+                        <td class="rm-td rm-td-num ${isCurrent ? 'rm-current' : ''}">${idx + 1}</td>
                         ${valuesHtml}
-                        <button class="view-btn" data-view-index="${idx}" title="Ver formulario completo">${ICONS.eye}</button>
-                    </div>
+                        <td class="rm-td rm-td-status">${submitIcon}</td>
+                        <td class="rm-td rm-td-status">${linkIcon}</td>
+                        <td class="rm-td rm-td-link">${linkCell}</td>
+                        <td class="rm-td rm-td-action">
+                            <button class="rm-view-btn" data-view-idx="${idx}" title="Ver formulario">${ICONS.eye}</button>
+                        </td>
+                    </tr>
                 `;
             }).join('');
 
-            // Header con nombres de columnas (+ columna vacía para el botón)
+            // Header de columnas
             const headerCols = config.controlColumns.map(c => {
-                const shortText = c.text.length > 20 ? c.text.substring(0, 17) + '...' : c.text;
-                return `<span class="row-value" style="font-weight: 600; color: #667eea;">${escHtml(shortText)}</span>`;
+                const shortText = c.text.length > 15 ? c.text.substring(0, 12) + '...' : c.text;
+                return `<th class="rm-th">${escHtml(shortText)}</th>`;
             }).join('');
 
+            // Calcular cuántas están seleccionadas
+            const selectedCount = config.selectedRows.length;
+            const allSelected = selectedCount === rows.length;
+
+            // Construir contenido de la modal
             rowsDropdown.className = 'dropdown rows-dropdown open';
             rowsDropdown.innerHTML = `
-                <div class="dropdown-header">
-                    <div class="dropdown-title">Filas del paquete (${rows.length})</div>
-                    <div class="dropdown-subtitle">
-                        Haz clic en una fila para saltar a ella. Fila actual: <strong>${config.currentRowIndex + 1}</strong>
+                <div class="rm-modal-container">
+                    <div class="rm-header">
+                        <div class="rm-header-left">
+                            <div class="rm-title">📋 Filas del Paquete (${rows.length})</div>
+                            <div class="rm-subtitle">
+                                <span class="rm-stat rm-stat-current">Fila actual: <strong>${config.currentRowIndex + 1}</strong></span>
+                                <span class="rm-stat rm-stat-completed">✓ ${completedCount}</span>
+                                <span class="rm-stat rm-stat-error">✗ ${errorCount}</span>
+                                <span class="rm-stat rm-stat-pending">○ ${pendingCount}</span>
+                            </div>
+                        </div>
+                        <button class="rm-close-btn" id="rmCloseBtn">${ICONS.close}</button>
                     </div>
-                </div>
-                <div class="dropdown-content">
-                    <!-- Header -->
-                    <div class="row-item" style="grid-template-columns: ${gridCols}; background: #e0e7ff; cursor: default;">
-                        <span class="row-index" style="background: #5a67d8;">#</span>
-                        ${headerCols}
-                        <span></span>
+                    <div class="rm-toolbar">
+                        <label class="rm-select-all-label">
+                            <input type="checkbox" id="rmSelectAll" ${allSelected ? 'checked' : ''}>
+                            <span>Seleccionar todas (${selectedCount}/${rows.length})</span>
+                        </label>
                     </div>
-                    <div class="rows-grid">
-                        ${rowsHtml}
+                    <div class="rm-table-container">
+                        <table class="rm-table">
+                            <thead>
+                                <tr>
+                                    <th class="rm-th rm-th-check"></th>
+                                    <th class="rm-th rm-th-num">#</th>
+                                    ${headerCols}
+                                    <th class="rm-th rm-th-status" title="Estado de envío">📤</th>
+                                    <th class="rm-th rm-th-status" title="Link capturado">🔗</th>
+                                    <th class="rm-th rm-th-link">URL</th>
+                                    <th class="rm-th rm-th-action"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rowsHtml}
+                            </tbody>
+                        </table>
                     </div>
-                </div>
-                <div class="dropdown-footer">
-                    <button class="dropdown-btn dropdown-btn-export" id="btnExportExcel" style="
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                        color: white;
-                    ">
-                        📊 Exportar Excel
-                    </button>
-                    <button class="dropdown-btn dropdown-btn-secondary" id="btnReconfigure">
-                        ⚙️ Cambiar columnas
-                    </button>
-                    <button class="dropdown-btn dropdown-btn-primary" id="btnCloseRows">
-                        Cerrar
-                    </button>
+                    <div class="rm-footer">
+                        <button class="rm-btn rm-btn-export" id="rmExportExcel">📊 Exportar Excel</button>
+                        <button class="rm-btn rm-btn-secondary" id="rmReconfigure">⚙️ Cambiar columnas</button>
+                        <button class="rm-btn rm-btn-primary" id="rmCloseFooter">Cerrar</button>
+                    </div>
                 </div>
             `;
 
-            // Bind row click events (excluir clicks en el botón view)
-            rowsDropdown.querySelectorAll('.row-item[data-index]').forEach(item => {
-                item.addEventListener('click', (e) => {
-                    // Si el click fue en el botón view, no hacer nada aquí
-                    if (e.target.closest('.view-btn')) return;
+            // ═══════════════════════════════════════════════════════════════
+            // EVENT HANDLERS
+            // ═══════════════════════════════════════════════════════════════
 
-                    const idx = parseInt(item.dataset.index);
+            // Close buttons
+            rowsDropdown.querySelector('#rmCloseBtn').addEventListener('click', closeDropdown);
+            rowsDropdown.querySelector('#rmCloseFooter').addEventListener('click', closeDropdown);
+
+            // Select all checkbox
+            rowsDropdown.querySelector('#rmSelectAll').addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    config.selectedRows = rows.map((_, i) => i);
+                } else {
+                    config.selectedRows = [];
+                }
+                renderRowsList();
+            });
+
+            // Individual checkboxes
+            rowsDropdown.querySelectorAll('.rm-checkbox').forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    const idx = parseInt(e.target.dataset.rowIdx);
+                    if (e.target.checked) {
+                        if (!config.selectedRows.includes(idx)) {
+                            config.selectedRows.push(idx);
+                        }
+                    } else {
+                        config.selectedRows = config.selectedRows.filter(i => i !== idx);
+                    }
+                    renderRowsList();
+                });
+            });
+
+            // Row click (jump to row) - only on the row number cell
+            rowsDropdown.querySelectorAll('.rm-td-num').forEach(cell => {
+                cell.addEventListener('click', () => {
+                    const row = cell.closest('.rm-row');
+                    const idx = parseInt(row.dataset.index);
                     config.currentRowIndex = idx;
                     window.__autoforms_commands.push({
                         type: 'jump_to_row',
@@ -2092,49 +2519,45 @@
                         time: Date.now()
                     });
                     console.log('[AutoForms] Jump to row:', idx + 1);
-                    renderRowsList(); // Re-render to update current
+                    renderRowsList();
                 });
             });
 
-            // Bind view button events
-            rowsDropdown.querySelectorAll('.view-btn[data-view-index]').forEach(btn => {
+            // View buttons
+            rowsDropdown.querySelectorAll('.rm-view-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const idx = parseInt(btn.dataset.viewIndex);
+                    const idx = parseInt(btn.dataset.viewIdx);
                     showFormModal(idx);
                 });
             });
 
-            // Export Excel button
-            rowsDropdown.querySelector('#btnExportExcel').addEventListener('click', () => {
+            // Export Excel
+            rowsDropdown.querySelector('#rmExportExcel').addEventListener('click', () => {
                 window.__autoforms_commands.push({
                     type: 'excel_export_request',
                     controlColumns: config.controlColumns,
+                    selectedRows: config.selectedRows,
                     time: Date.now()
                 });
                 console.log('[AutoForms] Excel export requested');
 
-                // Show feedback
-                const btn = rowsDropdown.querySelector('#btnExportExcel');
+                const btn = rowsDropdown.querySelector('#rmExportExcel');
                 const originalText = btn.innerHTML;
                 btn.innerHTML = '⏳ Exportando...';
                 btn.disabled = true;
 
-                // Reset after 3 seconds (Python will handle the actual export)
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                 }, 3000);
             });
 
-            // Reconfigure button
-            rowsDropdown.querySelector('#btnReconfigure').addEventListener('click', () => {
+            // Reconfigure columns
+            rowsDropdown.querySelector('#rmReconfigure').addEventListener('click', () => {
                 config.controlColumns = [];
                 renderColumnSelector();
             });
-
-            // Close button
-            rowsDropdown.querySelector('#btnCloseRows').addEventListener('click', closeDropdown);
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -2241,6 +2664,12 @@
         // ═══════════════════════════════════════════════════════════════════
 
         function toggleRowsDropdown() {
+            // Bloquear apertura durante automatización en curso
+            if (config.isRunning && !config.isPaused) {
+                console.log('[AutoForms] Modal de filas bloqueada - automatización en curso');
+                return;
+            }
+
             const isOpen = rowsDropdown.classList.contains('open');
 
             if (isOpen) {
@@ -2468,26 +2897,23 @@
         }
 
         // Play/Pause toggle button
+        // IMPORTANTE: NO cambiamos estado localmente, esperamos confirmación de Python via syncState
         btnPlayPause.onclick = () => {
             if (isPlaying) {
-                // Está en play → pausar
+                // Está en play → pausar (enviar comando, Python confirmará)
                 window.__autoforms_commands.push({ type: 'pause', time: Date.now() });
-                isPlaying = false;
-                btnPlayPause.innerHTML = ICONS.play;
-                btnPlayPause.classList.remove('paused');
-                btnPlayPause.title = 'Reanudar';
+                console.log('[AutoForms] Pause command sent to Python (waiting for sync)');
+                // NO cambiar isPlaying aquí - Python confirmará via __autoforms_syncState
             } else {
-                // ═══ FASE 6: Validar columnas de control antes de iniciar ═══
+                // ═══ Validar columnas de control antes de iniciar ═══
                 if (!validateControlColumns()) {
                     return; // No iniciar si no hay columnas configuradas
                 }
 
-                // Está pausado → play
+                // Está pausado → play (enviar comando, Python confirmará)
                 window.__autoforms_commands.push({ type: 'start', time: Date.now() });
-                isPlaying = true;
-                btnPlayPause.innerHTML = ICONS.pause;
-                btnPlayPause.classList.add('paused');
-                btnPlayPause.title = 'Pausar';
+                console.log('[AutoForms] Start command sent to Python (waiting for sync)');
+                // NO cambiar isPlaying aquí - Python confirmará via __autoforms_syncState
             }
         };
 
@@ -3371,6 +3797,119 @@
                 indicatorA.style.cursor = 'grab';
                 indicatorB.style.cursor = 'grab';
             }
+        };
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SINCRONIZACIÓN COMPLETA DE ESTADO (llamado por Python)
+        // ═══════════════════════════════════════════════════════════════════
+
+        /**
+         * Sincroniza el estado completo de la UI con Python.
+         * Python es la fuente de verdad (source of truth).
+         * 
+         * @param {Object} state - Estado completo desde Python
+         * @param {boolean} state.isRunning - Si la automatización está corriendo
+         * @param {boolean} state.isPaused - Si está pausada
+         * @param {number} state.currentRow - Índice de fila actual (0-based)
+         * @param {number} state.totalRows - Total de filas
+         * @param {Object} state.rowResults - Resultados por fila {idx: {status, success, url}}
+         */
+        window.__autoforms_syncState = function (state) {
+            console.log('[AutoForms] 🔄 Syncing state from Python:', state);
+
+            // ═══ 1. Sincronizar estado play/pause ═══
+            if (typeof state.isPaused === 'boolean' && typeof state.isRunning === 'boolean') {
+                const shouldBePlaying = state.isRunning && !state.isPaused;
+
+                if (shouldBePlaying !== isPlaying) {
+                    isPlaying = shouldBePlaying;
+
+                    if (isPlaying) {
+                        btnPlayPause.innerHTML = ICONS.pause;
+                        btnPlayPause.classList.add('paused');
+                        btnPlayPause.title = 'Pausar';
+                    } else {
+                        btnPlayPause.innerHTML = ICONS.play;
+                        btnPlayPause.classList.remove('paused');
+                        btnPlayPause.title = state.isPaused ? 'Reanudar' : 'Iniciar';
+                    }
+                    console.log('[AutoForms] Play/Pause synced:', isPlaying ? 'PLAYING' : 'PAUSED');
+                }
+            }
+
+            // ═══ 2. Sincronizar fila actual ═══
+            if (typeof state.currentRow === 'number') {
+                config.currentRowIndex = state.currentRow;
+                console.log('[AutoForms] Current row synced:', state.currentRow + 1);
+            }
+
+            // ═══ 3. Sincronizar resultados de filas ═══
+            if (state.rowResults && typeof state.rowResults === 'object') {
+                config.rowResults = state.rowResults;
+                console.log('[AutoForms] Row results synced:', Object.keys(state.rowResults).length, 'rows');
+            }
+
+            // ═══ 4. Sincronizar estado running ═══
+            if (typeof state.isRunning === 'boolean') {
+                config.isRunning = state.isRunning;
+                isAutomationRunning = state.isRunning;
+            }
+
+            // ═══ 5. Sincronizar estado paused ═══
+            if (typeof state.isPaused === 'boolean') {
+                config.isPaused = state.isPaused;
+            }
+
+            // ═══ 6. Re-renderizar UI si es necesario ═══
+            if (config.dropdownOpen === 'rows' && config.controlColumns.length > 0) {
+                renderRowsList();
+            }
+
+            // Actualizar panel de preview
+            renderTestPanel();
+
+            console.log('[AutoForms] ✓ State sync complete');
+        };
+
+        /**
+         * Actualiza el resultado de una fila específica.
+         * @param {number} rowIndex - Índice de la fila
+         * @param {boolean} success - Si la fila se completó exitosamente
+         * @param {string|null} url - URL capturada (si PostSubmit está activo)
+         */
+        window.__autoforms_updateRowResult = function (rowIndex, success, url) {
+            config.rowResults[rowIndex] = {
+                status: success ? 'success' : 'error',
+                success: success,
+                url: url || null
+            };
+
+            console.log('[AutoForms] Row', rowIndex + 1, 'result:', success ? '✓' : '✗', url ? 'URL: ' + url.substring(0, 30) + '...' : '');
+
+            // Re-renderizar si el dropdown está abierto
+            if (config.dropdownOpen === 'rows' && config.controlColumns.length > 0) {
+                renderRowsList();
+            }
+        };
+
+        /**
+         * Fuerza el estado de play/pause desde Python.
+         * Usar cuando Python inicia/pausa la automatización.
+         */
+        window.__autoforms_setPlayPauseState = function (playing) {
+            isPlaying = playing;
+
+            if (isPlaying) {
+                btnPlayPause.innerHTML = ICONS.pause;
+                btnPlayPause.classList.add('paused');
+                btnPlayPause.title = 'Pausar';
+            } else {
+                btnPlayPause.innerHTML = ICONS.play;
+                btnPlayPause.classList.remove('paused');
+                btnPlayPause.title = 'Iniciar';
+            }
+
+            console.log('[AutoForms] Play/Pause set by Python:', playing ? 'PLAYING' : 'PAUSED');
         };
 
         // Show initial "Ready" state card

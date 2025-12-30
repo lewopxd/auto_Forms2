@@ -325,6 +325,73 @@ class FormExecutor:
             except Exception as e:
                 print(f"[FormExecutor] Action complete callback error: {e}")
     
+    # ═══════════════════════════════════════════════════════════════════════
+    # UI SYNCHRONIZATION (CRÍTICO para comunicación Py ↔ JS)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    def _sync_ui_state(self):
+        """
+        Sincronizar estado completo con UI inyectada.
+        
+        CRÍTICO: Esta función debe llamarse después de cualquier cambio de estado
+        que la UI necesite reflejar:
+        - Inicio/pausa/stop
+        - Cambio de fila
+        - Completar fila
+        - Después de reinyección de UI
+        """
+        try:
+            # Construir resultados de filas desde storage
+            row_results = {}
+            if self.result_storage:
+                for i, row in enumerate(self.result_storage.rows):
+                    url = None
+                    if row.post_submit.enabled:
+                        save_edit = row.post_submit.save_and_edit
+                        if save_edit.get('captured'):
+                            url = save_edit.get('url')
+                    
+                    row_results[i] = {
+                        'status': row.status,
+                        'success': row.status == 'success',
+                        'url': url
+                    }
+            
+            # Estado completo
+            state = {
+                'isRunning': self.is_running,
+                'isPaused': self.is_paused,
+                'currentRow': self.current_row_index,
+                'totalRows': len(self.resolved_rows),
+                'rowResults': row_results
+            }
+            
+            # Enviar a UI
+            self.driver.execute_script('''
+                if (window.__autoforms_syncState) {
+                    window.__autoforms_syncState(arguments[0]);
+                } else {
+                    console.warn('[AutoForms] __autoforms_syncState not available');
+                }
+            ''', state)
+            
+            print(f"[FormExecutor] ✓ UI synced: row {self.current_row_index + 1}, running={self.is_running}, paused={self.is_paused}")
+            
+        except Exception as e:
+            print(f"[FormExecutor] ⚠️ Error syncing UI: {e}")
+    
+    def _notify_ui_row_complete(self, row_index: int, success: bool, url: str = None):
+        """Notificar a la UI que una fila se completó."""
+        try:
+            self.driver.execute_script('''
+                if (window.__autoforms_updateRowResult) {
+                    window.__autoforms_updateRowResult(arguments[0], arguments[1], arguments[2]);
+                }
+            ''', row_index, success, url)
+            print(f"[FormExecutor] ✓ UI notified: row {row_index + 1} {'success' if success else 'error'}")
+        except Exception as e:
+            print(f"[FormExecutor] ⚠️ Error notifying row complete: {e}")
+    
     def _random_delay(self, min_ms: int, max_ms: int):
         """Esperar un tiempo aleatorio."""
         delay_ms = random.randint(min_ms, max_ms)
@@ -2041,7 +2108,14 @@ class FormExecutor:
                             print("[FormExecutor] Re-inyectando UI después del PostSubmit...")
                             try:
                                 self.on_ui_reinject()
-                                print("[FormExecutor] ✓ UI re-inyectada")
+                                
+                                # ═══ CRÍTICO: Esperar inicialización JS ═══
+                                time.sleep(0.8)
+                                
+                                # ═══ CRÍTICO: Sincronizar estado completo ═══
+                                self._sync_ui_state()
+                                
+                                print("[FormExecutor] ✓ UI re-inyectada y sincronizada")
                             except Exception as e:
                                 print(f"[FormExecutor] ⚠️ Error re-inyectando UI: {e}")
                             
@@ -2055,25 +2129,34 @@ class FormExecutor:
             self.result_storage.complete_row(row_index, success=True)
             
             # =================================================================
+            # OBTENER URL CAPTURADA (si existe) y NOTIFICAR UI
+            # =================================================================
+            captured_url = None
+            if row_index < len(self.result_storage.rows):
+                row_data = self.result_storage.rows[row_index]
+                if row_data.post_submit.enabled:
+                    save_edit = row_data.post_submit.save_and_edit
+                    if save_edit.get('captured'):
+                        captured_url = save_edit.get('url')
+            
+            # ═══ NOTIFICAR UI DE FILA COMPLETADA ═══
+            self._notify_ui_row_complete(row_index, True, captured_url)
+            
+            # =================================================================
             # LOG: Imprimir resumen del storage después de cada fila (CRÍTICO)
             # =================================================================
             summary = self.result_storage.get_summary()
             print(f"\n{'='*60}")
-            print(f"[FormExecutor] ═══ RESULT STORAGE SUMMARY ═══")
-            print(f"[FormExecutor] Session ID: {summary.get('sessionId', 'N/A')}")
-            print(f"[FormExecutor] Rows: {summary.get('successCount', 0)}/{summary.get('totalRows', 0)} completed")
-            print(f"[FormExecutor] URLs Captured: {summary.get('urlsCaptured', 0)}")
-            print(f"[FormExecutor] File Path: {summary.get('filePath', 'N/A')}")
-            
-            # Log the row-specific data
-            if row_index < len(self.result_storage.rows):
-                row_data = self.result_storage.rows[row_index]
-                ps_data = row_data.post_submit.to_dict()
-                print(f"[FormExecutor] Row {row_index + 1} PostSubmit: {ps_data}")
-            
+            print(f"[FormExecutor] ═══ FILA {row_index + 1} COMPLETADA ═══")
+            print(f"[FormExecutor] Progreso: {summary.get('successCount', 0)}/{summary.get('totalRows', 0)}")
+            if captured_url:
+                print(f"[FormExecutor] URL: {captured_url}")
             print(f"{'='*60}\n")
         
         self._emit_status("success", f"Fila {row_index + 1} completada")
+        
+        # ═══ SINCRONIZAR UI DESPUÉS DE COMPLETAR FILA ═══
+        self._sync_ui_state()
         
         if self.on_row_complete:
             self.on_row_complete(row_index)
@@ -2091,8 +2174,55 @@ class FormExecutor:
         self.should_stop = False
         self.current_row_index = start_row
         
+        # ═══════════════════════════════════════════════════════════════════
+        # VERIFICAR SESIÓN EXISTENTE (solo si start_row es 0)
+        # ═══════════════════════════════════════════════════════════════════
+        if start_row == 0 and self.result_storage:
+            package_path = self.package_data.get("packagePath", "")
+            
+            if package_path:
+                # Buscar sesión existente para este paquete
+                from .modules.automation_result_storage import AutomationResultStorage
+                previous_session = AutomationResultStorage.find_previous_session(package_path)
+                
+                if previous_session:
+                    # Mostrar diálogo preguntando al usuario
+                    resume_info = previous_session.get_resume_info()
+                    
+                    try:
+                        decision = self.driver.execute_script('''
+                            return confirm(
+                                '🔄 Sesión anterior detectada\\n\\n' +
+                                'Paquete: ' + arguments[0] + '\\n' +
+                                'Última fila procesada: ' + arguments[1] + '/' + arguments[2] + '\\n' +
+                                'Filas completadas: ' + arguments[3] + '\\n\\n' +
+                                '¿Desea CONTINUAR donde quedó?\\n\\n' +
+                                '[Aceptar] = Continuar desde fila ' + arguments[4] + '\\n' +
+                                '[Cancelar] = Reiniciar desde fila 1'
+                            );
+                        ''', 
+                        resume_info['packageName'],
+                        resume_info['lastRowProcessed'],
+                        resume_info['totalRows'],
+                        resume_info['successCount'],
+                        resume_info['nextRow']
+                        )
+                        
+                        if decision:
+                            # Continuar desde sesión anterior
+                            self.result_storage = previous_session
+                            self.current_row_index = resume_info['lastRowProcessed']  # Ya es 0-indexed internamente
+                            print(f"[FormExecutor] ✓ Continuando sesión anterior desde fila {self.current_row_index + 1}")
+                        else:
+                            # Reiniciar (se inicializará abajo)
+                            print("[FormExecutor] Reiniciando desde fila 1")
+                            
+                    except Exception as e:
+                        print(f"[FormExecutor] Error mostrando diálogo de sesión: {e}")
+        
         # Inicializar sesión en result_storage si PostSubmit está habilitado
-        if self.result_storage:
+        # (solo si no cargamos una sesión anterior)
+        if self.result_storage and not hasattr(self.result_storage, '_file_path') or self.result_storage._file_path is None:
             # Extraer info del navegador de los datos del paquete o usar defaults
             total_questions = len(self.questions_ordered) if hasattr(self, 'questions_ordered') else 0
             self.result_storage.initialize_session(
@@ -2105,6 +2235,9 @@ class FormExecutor:
             )
         
         self._emit_status("running", "Iniciando automatización...")
+        
+        # ═══ SYNC UI AL INICIAR ═══
+        self._sync_ui_state()
         
         while self.current_row_index < len(self.resolved_rows):
             if self.should_stop:
@@ -2147,6 +2280,22 @@ class FormExecutor:
                 self._emit_status("loading", "Recargando formulario...")
                 self.driver.get(self.form_url)
                 time.sleep(2.0)  # Esperar carga
+                
+                # Re-inyectar UI después de recargar el formulario
+                if self.on_ui_reinject:
+                    print("[FormExecutor] Re-inyectando UI después de recargar formulario...")
+                    try:
+                        self.on_ui_reinject()
+                        
+                        # ═══ CRÍTICO: Esperar inicialización JS ═══
+                        time.sleep(0.8)
+                        
+                        # ═══ CRÍTICO: Sincronizar estado completo ═══
+                        self._sync_ui_state()
+                        
+                        print("[FormExecutor] ✓ UI re-inyectada y sincronizada")
+                    except Exception as e:
+                        print(f"[FormExecutor] ⚠️ Error re-inyectando UI: {e}")
         
         self.is_running = False
         self._emit_status("completed", "Automatización completada")
@@ -2155,17 +2304,20 @@ class FormExecutor:
         """Pausar ejecución."""
         self.is_paused = True
         self._emit_status("paused", "Automatización pausada")
+        self._sync_ui_state()  # Sincronizar UI
     
     def resume(self):
         """Reanudar ejecución."""
         self.is_paused = False
         self._emit_status("running", "Automatización reanudada")
+        self._sync_ui_state()  # Sincronizar UI
     
     def stop(self):
         """Detener ejecución."""
         self.should_stop = True
         self.is_running = False
         self._emit_status("stopped", "Automatización detenida")
+        self._sync_ui_state()  # Sincronizar UI
     
     def next_row(self):
         """Avanzar a la siguiente fila (modo uno por uno)."""
