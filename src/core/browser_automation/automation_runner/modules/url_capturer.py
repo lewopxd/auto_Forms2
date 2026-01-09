@@ -45,6 +45,11 @@ class URLCaptureConfig:
     card_wait_timeout_ms: int = 60000
     new_tab_timeout_ms: int = 60000
     
+    # Robust URL capture retry settings
+    url_poll_max_attempts: int = 20       # Max attempts per cycle (20 × 500ms = 10s)
+    url_poll_interval_ms: int = 500       # Interval between checks
+    url_capture_max_cycles: int = 3       # Max retry cycles (close blank tab and retry)
+    
     # Selectors for response cards
     card_selectors: List[str] = field(default_factory=lambda: [
         "[data-automation-id='itemContainer']",        # Primary selector
@@ -251,177 +256,225 @@ class URLCapturer:
         """
         Click on a response card and capture the URL from the new tab.
         
+        Implements robust retry logic:
+        1. Poll for valid URL (not about:blank) with configurable attempts
+        2. If blank after all attempts, close tab safely and retry
+        3. After max cycles, return with user_intervention_needed flag
+        
         Args:
             card: WebElement of the card to click
             form_url: Original form URL for validation/redirection
         
         Returns:
-            CaptureResult with captured URL
+            CaptureResult with captured URL or error with intervention flag
         """
         self._log("Clicking on response card to open edit page...")
         
         start_time = time.time() * 1000
         
-        try:
-            # Store current handles BEFORE any action
-            original_handles = set(self.driver.window_handles)
-            current_handle = self.driver.current_window_handle
+        # Store current handles BEFORE any action
+        original_handles = set(self.driver.window_handles)
+        current_handle = self.driver.current_window_handle
+        
+        self._log(f"Current tabs: {len(original_handles)}, current handle: {current_handle[:20]}...")
+        
+        # === RETRY CYCLES ===
+        for cycle in range(self.config.url_capture_max_cycles):
+            self._log(f"=== URL Capture Cycle {cycle + 1}/{self.config.url_capture_max_cycles} ===")
             
-            self._log(f"Current tabs: {len(original_handles)}, current handle: {current_handle[:20]}...")
-            
-            # Apply visual feedback (optional)
             try:
-                self.driver.execute_script("""
-                    arguments[0].style.boxShadow = '0 0 20px 5px orange';
-                    arguments[0].style.transition = 'box-shadow 0.3s';
-                """, card)
-            except:
-                pass
-            
-            # Click on the card
-            try:
-                card.click()
-                self._log("✓ Clicked on card (native)")
-            except ElementClickInterceptedException:
-                self.driver.execute_script("arguments[0].click();", card)
-                self._log("✓ Clicked on card (JS)")
-            except Exception as e:
-                self.driver.execute_script("arguments[0].click();", card)
-                self._log(f"✓ Clicked on card (JS fallback after: {e})")
-            
-            # Wait for new tab
-            self._log(f"Waiting for new tab (timeout: {self.config.new_tab_timeout_ms}ms)...")
-            
-            new_tab = None
-            wait_start = time.time() * 1000
-            
-            while time.time() * 1000 - wait_start < self.config.new_tab_timeout_ms:
+                # Get handles before click
+                handles_before = set(self.driver.window_handles)
+                
+                # Apply visual feedback (highlight card)
                 try:
-                    current_handles = set(self.driver.window_handles)
-                    new_handles = current_handles - original_handles
+                    self.driver.execute_script("""
+                        arguments[0].style.boxShadow = '0 0 20px 5px orange';
+                        arguments[0].style.transition = 'box-shadow 0.3s';
+                    """, card)
+                except:
+                    pass
+                
+                # Click on the card
+                try:
+                    card.click()
+                    self._log("✓ Clicked on card (native)")
+                except ElementClickInterceptedException:
+                    self.driver.execute_script("arguments[0].click();", card)
+                    self._log("✓ Clicked on card (JS)")
+                except Exception as e:
+                    self.driver.execute_script("arguments[0].click();", card)
+                    self._log(f"✓ Clicked on card (JS fallback)")
+                
+                # Wait for new tab
+                self._log(f"Waiting for new tab...")
+                
+                new_tab = None
+                wait_start = time.time() * 1000
+                
+                while time.time() * 1000 - wait_start < self.config.new_tab_timeout_ms:
+                    try:
+                        current_handles = set(self.driver.window_handles)
+                        new_handles = current_handles - handles_before
+                        
+                        if new_handles:
+                            new_tab = list(new_handles)[0]
+                            self._log(f"✓ New tab detected!")
+                            break
+                    except Exception as e:
+                        self._log(f"Error checking handles: {e}", 'debug')
                     
-                    if new_handles:
-                        new_tab = list(new_handles)[0]
-                        self._log(f"✓ New tab detected!")
-                        break
-                except Exception as e:
-                    self._log(f"Error checking handles: {e}", 'debug')
+                    time.sleep(0.3)
                 
-                time.sleep(0.3)
-            
-            if not new_tab:
-                self._log("✗ No new tab opened after clicking card", 'error')
-                return CaptureResult(
-                    success=False,
-                    error='no_new_tab_after_card_click',
-                    capture_time_ms=time.time() * 1000 - start_time
-                )
-            
-            # Switch to new tab
-            self.driver.switch_to.window(new_tab)
-            
-            # Wait a moment for URL to stabilize
-            time.sleep(1.5)
-            
-            # Capture URL
-            edit_url = self.driver.current_url
-            self._log(f"✓ Captured URL: {edit_url[:80]}...")
-            
-            # Validate URL
-            confidence = 0.0
-            if edit_url and len(edit_url) > 20:
-                confidence = 0.95
+                if not new_tab:
+                    self._log(f"✗ No new tab opened on cycle {cycle + 1}", 'warning')
+                    continue  # Try next cycle
                 
-                # Additional validation
-                if 'id=' in edit_url or 'response' in edit_url.lower() or 'edit' in edit_url.lower():
-                    confidence = 1.0
-                elif 'forms' in edit_url.lower():
-                    confidence = 0.85
-            
-            # ═══════════════════════════════════════════════════════════════
-            # ROBUST TAB CLOSING - Never close last tab, validate destination
-            # ═══════════════════════════════════════════════════════════════
-            
-            # Get current handle count BEFORE closing
-            try:
-                handles_before_close = self.driver.window_handles
-                handle_count = len(handles_before_close)
-                self._log(f"Tabs before close: {handle_count}")
-            except Exception as e:
-                self._log(f"⚠️ Error getting handles: {e}", 'warning')
-                handle_count = 1  # Assume 1 to prevent close
-            
-            # Only close if we have more than 1 tab
-            if handle_count > 1:
-                self._log("Closing edit tab (safe - not last)...")
-                try:
-                    self.driver.close()
-                    self._log("✓ Edit tab closed")
-                except Exception as e:
-                    self._log(f"⚠️ Error closing tab: {e}", 'warning')
-            else:
-                self._log("⚠️ NOT closing tab - it's the only one!", 'warning')
-            
-            # ═══════════════════════════════════════════════════════════════
-            # SWITCH BACK - Validate destination handle exists
-            # ═══════════════════════════════════════════════════════════════
-            
-            try:
-                remaining_handles = self.driver.window_handles
-                self._log(f"Remaining tabs: {len(remaining_handles)}")
+                # Switch to new tab
+                self.driver.switch_to.window(new_tab)
                 
-                if not remaining_handles:
-                    self._log("✗ CRITICAL: No tabs remaining!", 'error')
+                # === ROBUST URL POLLING ===
+                edit_url = self._poll_for_valid_url(cycle + 1)
+                
+                if edit_url:
+                    # SUCCESS! We have a valid URL
+                    self._log(f"✓ URL CAPTURED: {edit_url[:80]}...")
+                    
+                    # Calculate confidence
+                    confidence = 0.95
+                    if 'id=' in edit_url or 'response' in edit_url.lower() or 'edit' in edit_url.lower():
+                        confidence = 1.0
+                    elif 'forms' in edit_url.lower():
+                        confidence = 0.85
+                    
+                    # Close the capture tab and return to list
+                    self._safe_close_tab_and_return(new_tab, current_handle)
+                    
                     return CaptureResult(
-                        success=True,  # URL was captured successfully
+                        success=True,
                         url=edit_url,
                         strategy_name='forms_card_click',
                         confidence=confidence,
                         capture_time_ms=time.time() * 1000 - start_time,
-                        error='no_tabs_remaining_after_close',
-                        metadata={'method': 'first_card_click', 'warning': 'browser_may_be_closed'}
+                        metadata={
+                            'method': 'first_card_click',
+                            'cycle': cycle + 1,
+                            'card_selector': self.config.card_selectors[0]
+                        }
                     )
-                
-                # Check if original handle still exists
-                if current_handle in remaining_handles:
-                    self._log(f"Switching to original handle...")
-                    self.driver.switch_to.window(current_handle)
                 else:
-                    # Original handle is gone, switch to first available
-                    self._log(f"⚠️ Original handle gone, switching to first available...")
-                    self.driver.switch_to.window(remaining_handles[0])
-                
-                self._log("✓ Switched back to list tab")
-                
+                    # URL still blank after polling - close tab and retry
+                    self._log(f"✗ URL still blank after polling on cycle {cycle + 1}", 'warning')
+                    self._safe_close_tab_and_return(new_tab, current_handle)
+                    
+                    if cycle < self.config.url_capture_max_cycles - 1:
+                        self._log(f"Retrying... waiting 2s before next cycle")
+                        time.sleep(2)
+                        
+                        # Re-find the card (may have gone stale)
+                        card = self._find_first_response_card()
+                        if not card:
+                            self._log("✗ Could not re-find card for retry", 'error')
+                            break
+                    
             except Exception as e:
-                self._log(f"⚠️ Error switching back: {e}", 'warning')
-                # Try to recover
+                self._log(f"✗ Error on cycle {cycle + 1}: {e}", 'error')
+                # Try to recover by switching back to list tab
                 try:
-                    remaining = self.driver.window_handles
-                    if remaining:
-                        self.driver.switch_to.window(remaining[0])
+                    if current_handle in self.driver.window_handles:
+                        self.driver.switch_to.window(current_handle)
                 except:
                     pass
-            
-            return CaptureResult(
-                success=True,
-                url=edit_url,
-                strategy_name='forms_card_click',
-                confidence=confidence,
-                capture_time_ms=time.time() * 1000 - start_time,
-                metadata={
-                    'method': 'first_card_click',
-                    'card_selector': self.config.card_selectors[0]
-                }
-            )
         
+        # === ALL CYCLES FAILED ===
+        self._log("✗ ALL RETRY CYCLES FAILED - User intervention needed", 'error')
+        
+        return CaptureResult(
+            success=False,
+            error='url_capture_failed_all_cycles',
+            capture_time_ms=time.time() * 1000 - start_time,
+            metadata={
+                'user_intervention_needed': True,
+                'cycles_attempted': self.config.url_capture_max_cycles,
+                'max_attempts_per_cycle': self.config.url_poll_max_attempts
+            }
+        )
+    
+    def _poll_for_valid_url(self, cycle_num: int) -> Optional[str]:
+        """
+        Poll the current tab until URL is valid (not about:blank).
+        
+        Args:
+            cycle_num: Current cycle number for logging
+            
+        Returns:
+            Valid URL string or None if still blank after all attempts
+        """
+        max_attempts = self.config.url_poll_max_attempts
+        interval_ms = self.config.url_poll_interval_ms
+        
+        for attempt in range(max_attempts):
+            try:
+                current_url = self.driver.current_url
+                
+                # Check if URL is valid
+                if current_url and current_url not in ('about:blank', '', 'about:blank#blocked'):
+                    if 'forms' in current_url.lower() or 'office' in current_url.lower() or len(current_url) > 30:
+                        self._log(f"✓ Valid URL on attempt {attempt + 1}: {current_url[:50]}...")
+                        return current_url
+                
+                # Still blank
+                if attempt % 5 == 0:  # Log every 5 attempts to avoid spam
+                    self._log(f"Polling URL... cycle {cycle_num}, attempt {attempt + 1}/{max_attempts}, current: {current_url[:30] if current_url else 'None'}")
+                
+            except Exception as e:
+                self._log(f"Error polling URL: {e}", 'debug')
+            
+            time.sleep(interval_ms / 1000)
+        
+        return None  # URL never became valid
+    
+    def _safe_close_tab_and_return(self, tab_to_close: str, return_to: str):
+        """
+        Safely close a tab and return to another.
+        Ensures we never close the last tab and validates handles.
+        
+        Args:
+            tab_to_close: Handle of tab to close
+            return_to: Handle to return to after closing
+        """
+        try:
+            handles = self.driver.window_handles
+            
+            # Safety check: never close last tab
+            if len(handles) < 2:
+                self._log("⚠️ Cannot close - only one tab remaining", 'warning')
+                return
+            
+            # Safety check: return_to must exist
+            if return_to not in handles:
+                self._log("⚠️ Return handle not found, switching to first available", 'warning')
+                self.driver.switch_to.window(handles[0])
+                return
+            
+            # Ensure we're on the tab to close
+            if self.driver.current_window_handle != tab_to_close:
+                self.driver.switch_to.window(tab_to_close)
+            
+            # Close and return
+            self.driver.close()
+            self.driver.switch_to.window(return_to)
+            self._log("✓ Tab closed, returned to list")
+            
         except Exception as e:
-            self._log(f"✗ Error during card click and capture: {e}", 'error')
-            return CaptureResult(
-                success=False,
-                error=str(e),
-                capture_time_ms=time.time() * 1000 - start_time
-            )
+            self._log(f"⚠️ Error in safe close: {e}", 'warning')
+            # Recovery: try to get to any valid tab
+            try:
+                remaining = self.driver.window_handles
+                if remaining:
+                    self.driver.switch_to.window(remaining[0])
+            except:
+                pass
     
     def capture(self) -> CaptureResult:
         """

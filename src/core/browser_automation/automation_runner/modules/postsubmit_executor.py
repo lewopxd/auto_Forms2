@@ -151,6 +151,108 @@ class PostSubmitExecutor:
         
         print(full_message)
     
+    def _handle_capture_failure_intervention(self) -> Dict[str, Any]:
+        """
+        Show native Python dialog when URL capture fails after all retries.
+        
+        Returns:
+            Dict with 'action' key:
+            - 'continue_without': User wants to skip this link
+            - 'manual_input': User provided URL manually (includes 'url' key)
+            - 'stop': User wants to stop the entire process
+        """
+        self._log("Opening user intervention dialog...")
+        
+        try:
+            import tkinter as tk
+            from tkinter import messagebox, simpledialog
+            
+            # Create hidden root window
+            root = tk.Tk()
+            root.withdraw()  # Hide main window
+            root.attributes('-topmost', True)  # Always on top
+            
+            # Custom dialog with 3 buttons
+            dialog = tk.Toplevel(root)
+            dialog.title("⚠️ URL Capture Failed")
+            dialog.geometry("450x200")
+            dialog.resizable(False, False)
+            dialog.attributes('-topmost', True)
+            dialog.grab_set()  # Modal
+            
+            # Center on screen
+            dialog.update_idletasks()
+            x = (dialog.winfo_screenwidth() - 450) // 2
+            y = (dialog.winfo_screenheight() - 200) // 2
+            dialog.geometry(f"+{x}+{y}")
+            
+            result = {'action': 'stop'}  # Default
+            
+            # Message
+            msg = tk.Label(
+                dialog, 
+                text="No se pudo capturar el link de edición después de\nmúltiples intentos.\n\n¿Qué desea hacer?",
+                font=("Segoe UI", 11),
+                justify=tk.CENTER
+            )
+            msg.pack(pady=20)
+            
+            # Frame for buttons
+            btn_frame = tk.Frame(dialog)
+            btn_frame.pack(pady=10)
+            
+            def on_continue():
+                result['action'] = 'continue_without'
+                dialog.destroy()
+            
+            def on_manual():
+                dialog.destroy()
+                url = simpledialog.askstring(
+                    "Ingresar URL manualmente",
+                    "Pegue la URL de edición del formulario:",
+                    parent=root
+                )
+                if url:
+                    result['action'] = 'manual_input'
+                    result['url'] = url
+                else:
+                    result['action'] = 'stop'
+            
+            def on_stop():
+                result['action'] = 'stop'
+                dialog.destroy()
+            
+            # Buttons
+            tk.Button(
+                btn_frame, text="Continuar sin link", 
+                command=on_continue, width=18, bg='#ffc107', fg='black'
+            ).pack(side=tk.LEFT, padx=5)
+            
+            tk.Button(
+                btn_frame, text="Ingresar manualmente", 
+                command=on_manual, width=18, bg='#17a2b8', fg='white'
+            ).pack(side=tk.LEFT, padx=5)
+            
+            tk.Button(
+                btn_frame, text="Detener proceso", 
+                command=on_stop, width=18, bg='#dc3545', fg='white'
+            ).pack(side=tk.LEFT, padx=5)
+            
+            # Handle window close button
+            dialog.protocol("WM_DELETE_WINDOW", on_stop)
+            
+            # Wait for dialog to close
+            dialog.wait_window()
+            root.destroy()
+            
+            self._log(f"User intervention result: {result.get('action')}")
+            return result
+            
+        except Exception as e:
+            self._log(f"Error showing intervention dialog: {e}", 'error')
+            # Fallback: just stop
+            return {'action': 'stop'}
+    
     def _find_save_button(self) -> Optional[Any]:
         """Find the save/submit response button."""
         for selector in self.config.save_button_selectors:
@@ -409,11 +511,46 @@ class PostSubmitExecutor:
                 self._log(f"  URL: {result.url}")
                 self._log(f"  Confidence: {result.confidence:.0%}")
             else:
-                result.success = False
-                result.state = 'failed'
-                result.error = capture_result.error or 'capture_failed'
+                # Check if user intervention is needed
+                if capture_result.metadata.get('user_intervention_needed'):
+                    self._log("⚠️ URL capture failed - requesting user intervention", 'warning')
+                    
+                    # Call intervention handler (will pause automation)
+                    intervention_result = self._handle_capture_failure_intervention()
+                    
+                    if intervention_result.get('action') == 'continue_without':
+                        result.success = True
+                        result.url = None
+                        result.state = 'success_no_link'
+                        result.error = 'user_skipped_link'
+                        self._log("User chose to continue without link")
+                        
+                    elif intervention_result.get('action') == 'manual_input':
+                        manual_url = intervention_result.get('url', '')
+                        if manual_url and len(manual_url) > 20:
+                            result.success = True
+                            result.url = manual_url
+                            result.state = 'success'
+                            result.strategy = 'manual_input'
+                            result.confidence = 0.9  # User-verified
+                            self._log(f"User provided manual URL: {manual_url[:50]}...")
+                        else:
+                            result.success = False
+                            result.state = 'failed'
+                            result.error = 'invalid_manual_url'
+                            
+                    elif intervention_result.get('action') == 'stop':
+                        result.success = False
+                        result.state = 'stopped'
+                        result.error = 'user_stopped_process'
+                        self._log("User stopped the process")
+                        
+                else:
+                    result.success = False
+                    result.state = 'failed'
+                    result.error = capture_result.error or 'capture_failed'
                 
-                self._log(f"✗ URL capture failed: {result.error}", 'error')
+                self._log(f"Capture result: {result.state}", 'warning' if not result.success else 'info')
             
             # Step 6: Close extra tabs and return to original
             self._log("Step 6: Cleaning up tabs (safely)...")
