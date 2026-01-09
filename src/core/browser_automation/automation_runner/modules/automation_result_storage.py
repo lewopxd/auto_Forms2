@@ -197,16 +197,22 @@ class AutomationResultStorage:
         self._results_dir = _get_results_dir()
         self._file_path: Optional[Path] = None
         self._log_file_path: Optional[Path] = None
+        self._debug_log_path: Optional[Path] = None  # NEW: .log file for ALL debug
         self._auto_save = True
     
     def _init_log_file(self):
-        """Initialize real-time log file with unique timestamp."""
+        """Initialize real-time log files with unique timestamp."""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_name = self.meta.package_name.replace('.afpkg', '').replace(' ', '_')
-        log_filename = f"{safe_name}_{timestamp}_{self.session_id[:8]}.txt"
-        self._log_file_path = self._results_dir / log_filename
+        base_name = f"{safe_name}_{timestamp}_{self.session_id[:8]}"
         
-        # Write header
+        # Create .txt for simple log
+        self._log_file_path = self._results_dir / f"{base_name}.txt"
+        
+        # Create .log for FULL debug output
+        self._debug_log_path = self._results_dir / f"{base_name}.log"
+        
+        # Write header to .txt
         header = [
             "="*60,
             "AutoForms Automation Session Log",
@@ -221,16 +227,29 @@ class AutomationResultStorage:
             with open(self._log_file_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(header))
             
-            # Print path to Python console
-            log_path_str = str(self._log_file_path)
+            # Write header to .log (debug file)
+            debug_header = [
+                "="*70,
+                "AutoForms FULL DEBUG LOG",
+                f"Package: {self.meta.package_name}",
+                f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')}",
+                f"Session: {self.session_id}",
+                "="*70,
+                ""
+            ]
+            with open(self._debug_log_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(debug_header))
+            
+            # Print paths to Python console
             print(f"\n{'='*60}")
-            print(f"[AutomationResultStorage] 📄 LOG FILE CREATED:")
-            print(f"[AutomationResultStorage] {log_path_str}")
+            print(f"[AutomationResultStorage] 📄 LOG FILES CREATED:")
+            print(f"[AutomationResultStorage]   TXT: {self._log_file_path}")
+            print(f"[AutomationResultStorage]   LOG: {self._debug_log_path}")
             print(f"{'='*60}\n")
             
-            return log_path_str
+            return str(self._log_file_path)
         except Exception as e:
-            print(f"[AutomationResultStorage] Error creating log file: {e}")
+            print(f"[AutomationResultStorage] Error creating log files: {e}")
             return None
     
     def _write_log(self, message: str, level: str = 'info'):
@@ -252,6 +271,30 @@ class AutomationResultStorage:
     def get_log_file_path(self) -> Optional[str]:
         """Get the path to the log file."""
         return str(self._log_file_path) if self._log_file_path else None
+    
+    def get_debug_log_path(self) -> Optional[str]:
+        """Get the path to the debug .log file."""
+        return str(self._debug_log_path) if self._debug_log_path else None
+    
+    def log_debug(self, message: str):
+        """
+        Write debug message to .log file.
+        
+        This captures ALL console output for debugging.
+        Use this instead of print() for important debug messages.
+        """
+        # Also print to console
+        print(message, flush=True)
+        
+        if not self._debug_log_path:
+            return
+        
+        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]  # With milliseconds
+        try:
+            with open(self._debug_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"[{timestamp}] {message}\n")
+        except Exception:
+            pass
     
     @property
     def session_id(self) -> str:

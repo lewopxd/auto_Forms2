@@ -533,23 +533,47 @@ class FormExecutor:
     # VALIDATION (con debug en navegador)
     # ═══════════════════════════════════════════════════════════════════════
     
-    def _validate_fill_value(self, element: WebElement, expected: str) -> bool:
-        """Validación INFALIBLE para FILL usando JS value property."""
-        try:
-            actual = self.driver.execute_script("""
-                let val = arguments[0].value;
-                console.log('[AutoForms DEBUG] FILL value:', val);
-                return val;
-            """, element)
-            is_valid = (actual or "").strip() == expected.strip()
-            if is_valid:
-                self._log(0, 0, f"Validación OK: '{actual[:30]}...' = esperado", "success")
-            else:
-                self._log(0, 0, f"Validación FALLÓ: obtuve '{actual}', esperaba '{expected}'", "error")
-            return is_valid
-        except Exception as e:
-            self._log(0, 0, f"Error en validación FILL: {e}", "error")
-            return False
+    def _validate_fill_value(self, element: WebElement, expected: str, 
+                              max_attempts: int = 20, interval_ms: int = 500) -> bool:
+        """
+        Validación ROBUSTA para FILL usando polling (evita hangs silenciosos).
+        
+        Args:
+            element: WebElement del input
+            expected: Valor esperado
+            max_attempts: Número máximo de intentos (default 20 = 10 segundos)
+            interval_ms: Intervalo entre intentos en ms (default 500)
+        
+        Returns:
+            True si validación exitosa, False si falló
+        """
+        for attempt in range(max_attempts):
+            try:
+                actual = self.driver.execute_script("""
+                    let val = arguments[0].value;
+                    console.log('[AutoForms DEBUG] FILL value check:', val ? val.substring(0,50) : 'empty');
+                    return val;
+                """, element)
+                
+                is_valid = (actual or "").strip() == expected.strip()
+                
+                if is_valid:
+                    self._log(0, 0, f"✓ Validación OK (attempt {attempt+1}): '{actual[:30] if actual else ''}...'", "success")
+                    return True
+                
+                # Log progress every 5 attempts
+                if attempt > 0 and attempt % 5 == 0:
+                    self._log(0, 0, f"Validando... intento {attempt}/{max_attempts}", "info")
+                    
+            except Exception as e:
+                if attempt % 5 == 0:
+                    self._log(0, 0, f"Error validando (attempt {attempt+1}): {e}", "warning")
+            
+            time.sleep(interval_ms / 1000)
+        
+        # Falló después de todos los intentos
+        self._log(0, 0, f"✗ Validación FALLÓ después de {max_attempts} intentos", "error")
+        return False
     
     def _validate_select_value(self, clicked_element: WebElement, expected_answer: str) -> bool:
         """Validación INFALIBLE para SELECT.
@@ -794,6 +818,81 @@ class FormExecutor:
             self._browser_log("RESUME detectado - continuando", "success")
         
         return True
+    
+    def _show_validation_failure_dialog(self, question_key: str, answer_preview: str) -> str:
+        """
+        Show native dialog when validation fails after all retries.
+        
+        Args:
+            question_key: Key of the question that failed
+            answer_preview: Preview of the answer (first 50 chars)
+            
+        Returns:
+            'retry': User wants to retry
+            'continue': User wants to continue without validation
+            'stop': User wants to stop the process
+        """
+        self._log(0, 0, "Mostrando diálogo de fallo de validación...", "info")
+        
+        try:
+            import tkinter as tk
+            
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes('-topmost', True)
+            
+            dialog = tk.Toplevel(root)
+            dialog.title("⚠️ Validación Falló")
+            dialog.geometry("400x180")
+            dialog.resizable(False, False)
+            dialog.attributes('-topmost', True)
+            dialog.grab_set()
+            
+            # Center
+            dialog.update_idletasks()
+            x = (dialog.winfo_screenwidth() - 400) // 2
+            y = (dialog.winfo_screenheight() - 180) // 2
+            dialog.geometry(f"+{x}+{y}")
+            
+            result = {'action': 'stop'}
+            
+            msg = tk.Label(
+                dialog,
+                text=f"Validación falló para: {question_key}\n\nRespuesta: {answer_preview}...\n\n¿Qué desea hacer?",
+                font=("Segoe UI", 10),
+                justify=tk.CENTER
+            )
+            msg.pack(pady=15)
+            
+            btn_frame = tk.Frame(dialog)
+            btn_frame.pack(pady=10)
+            
+            def on_retry():
+                result['action'] = 'retry'
+                dialog.destroy()
+            
+            def on_continue():
+                result['action'] = 'continue'
+                dialog.destroy()
+            
+            def on_stop():
+                result['action'] = 'stop'
+                dialog.destroy()
+            
+            tk.Button(btn_frame, text="🔄 Reintentar", command=on_retry, width=12, bg='#17a2b8', fg='white').pack(side=tk.LEFT, padx=5)
+            tk.Button(btn_frame, text="▶️ Continuar", command=on_continue, width=12, bg='#ffc107', fg='black').pack(side=tk.LEFT, padx=5)
+            tk.Button(btn_frame, text="⏹️ Detener", command=on_stop, width=12, bg='#dc3545', fg='white').pack(side=tk.LEFT, padx=5)
+            
+            dialog.protocol("WM_DELETE_WINDOW", on_stop)
+            dialog.wait_window()
+            root.destroy()
+            
+            self._log(0, 0, f"Usuario eligió: {result['action']}", "info")
+            return result['action']
+            
+        except Exception as e:
+            self._log(0, 0, f"Error mostrando diálogo: {e}", "error")
+            return 'stop'
     
     def _execute_write_method(self, element: WebElement, text: str, method: str):
         """Ejecutar escritura según el método especificado."""
@@ -1554,29 +1653,56 @@ class FormExecutor:
             
             time.sleep(0.2)
             
-            # Paso 8: Validación INFALIBLE
-            self._log(8, 9, "Validando respuesta (JS value)...", "info")
+            # Paso 8: Validación ROBUSTA (polling)
+            self._log(8, 9, "Validando respuesta (polling)...", "info")
             if self.config.validate_after_fill:
                 if not self._validate_fill_value(element, answer):
-                    # Reintento
-                    self._log(8, 9, "Reintentando escritura...", "warning")
+                    # Reintento completo
+                    self._log(8, 9, "Reintentando escritura completa...", "warning")
                     element.clear()
                     time.sleep(0.1)
                     element.send_keys(answer)
                     time.sleep(0.2)
                     
                     if not self._validate_fill_value(element, answer):
-                        self._log(8, 9, "VALIDACIÓN FALLÓ después de reintento", "error")
-                        if container:
-                            self._remove_highlight(container)
-                        else:
-                            self._remove_highlight(element)
-                        return ActionResult(
-                            success=False,
-                            question_key=key,
-                            action_type=ActionType.FILL,
-                            error_message="Validation failed: value not set correctly"
-                        )
+                        self._log(8, 9, "VALIDACIÓN FALLÓ - mostrando diálogo", "error")
+                        
+                        # ═══ SHOW USER INTERVENTION DIALOG ═══
+                        intervention = self._show_validation_failure_dialog(key, answer[:50])
+                        
+                        if intervention == 'retry':
+                            # Retry once more
+                            element.clear()
+                            time.sleep(0.1)
+                            self.driver.execute_script("arguments[0].value = arguments[1];", element, answer)
+                            if not self._validate_fill_value(element, answer, max_attempts=10):
+                                # Final failure
+                                if container:
+                                    self._remove_highlight(container)
+                                else:
+                                    self._remove_highlight(element)
+                                return ActionResult(
+                                    success=False,
+                                    question_key=key,
+                                    action_type=ActionType.FILL,
+                                    error_message="Validation failed after retry"
+                                )
+                        elif intervention == 'continue':
+                            # Continue without validation
+                            self._log(8, 9, "Usuario eligió continuar sin validar", "warning")
+                            pass  # Continue to success
+                        elif intervention == 'stop':
+                            if container:
+                                self._remove_highlight(container)
+                            else:
+                                self._remove_highlight(element)
+                            self.is_paused = True
+                            return ActionResult(
+                                success=False,
+                                question_key=key,
+                                action_type=ActionType.FILL,
+                                error_message="User stopped process"
+                            )
             
             # Paso 9: Éxito - cambiar glow a verde y quitar
             self._log(9, 9, "✅ PREGUNTA RESPONDIDA OK", "success")
@@ -2032,17 +2158,29 @@ class FormExecutor:
         ROW_TIMEOUT_WARNING_SECONDS = 90  # 90 segundos = warning
         ROW_TIMEOUT_CRITICAL_SECONDS = 180  # 3 minutos = posible freeze
         
-        print(f"\n{'#'*70}", flush=True)
-        print(f"# [EXECUTE_ROW] ▶▶▶ INICIANDO FILA {row_index + 1}", flush=True)
-        print(f"# [EXECUTE_ROW]   Timestamp: {row_start_time}", flush=True)
-        print(f"# [EXECUTE_ROW]   is_running={self.is_running}, is_paused={self.is_paused}", flush=True)
-        print(f"# [EXECUTE_ROW]   should_stop={self.should_stop}", flush=True)
-        print(f"{'#'*70}", flush=True)
+        # Helper para logging robusto (va a .log)
+        def _debug(msg):
+            if self.result_storage:
+                self.result_storage.log_debug(msg)
+            else:
+                print(msg, flush=True)
+        
+        _debug(f"\n{'#'*70}")
+        _debug(f"# [EXECUTE_ROW] ▶▶▶ INICIANDO FILA {row_index + 1}")
+        _debug(f"# [EXECUTE_ROW]   Timestamp: {row_start_time}")
+        _debug(f"# [EXECUTE_ROW]   is_running={self.is_running}, is_paused={self.is_paused}")
+        _debug(f"# [EXECUTE_ROW]   should_stop={self.should_stop}")
+        _debug(f"{'#'*70}")
         # ═══════════════════════════════════════════════════════════════
         
         if row_index >= len(self.resolved_rows):
             self._emit_status("error", f"Row index {row_index} out of range")
             return False
+        
+        # ═══ NEW: MARK ROW AS STARTED IN STORAGE ═══
+        if self.result_storage:
+            self.result_storage.start_row(row_index)
+            _debug(f"[EXECUTE_ROW] ✓ start_row({row_index}) called")
         
         row = self.resolved_rows[row_index]
         answers = row.get("answers", {})
