@@ -1108,6 +1108,18 @@ class SeleniumProcessBooster:
         def reinject_ui():
             if cls._driver:
                 cls._inject_automation_bar(cls._driver)
+                # === SYNC STATE TO NEWLY INJECTED UI ===
+                time.sleep(0.3)  # Wait for JS initialization
+                if cls._executor:
+                    cls._executor._sync_ui_state()
+                    # Print log path to browser console
+                    if cls._executor.result_storage:
+                        log_path = cls._executor.result_storage.get_log_file_path()
+                        if log_path:
+                            try:
+                                cls._driver.execute_script(f"console.log('[AutoForms] 📄 LOG FILE: {log_path}');")
+                            except Exception:
+                                pass
         
         cls._executor.on_ui_reinject = reinject_ui
         

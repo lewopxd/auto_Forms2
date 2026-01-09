@@ -2211,8 +2211,8 @@ class FormExecutor:
                 row_data = self.result_storage.rows[row_index]
                 if row_data.post_submit.enabled:
                     save_edit = row_data.post_submit.save_and_edit
-                    if save_edit.get('captured'):
-                        captured_url = save_edit.get('url')
+                    if save_edit.get('state') == 'success':
+                        captured_url = save_edit.get('capturedUrl')
             
             # ═══ NOTIFICAR UI DE FILA COMPLETADA ═══
             self._notify_ui_row_complete(row_index, True, captured_url)
