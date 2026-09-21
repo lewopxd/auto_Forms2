@@ -1,85 +1,60 @@
 # AutoForms 2.0
 
-> Desktop form-automation application combining a Python backend with an HTML/JavaScript interface.
+Desktop automation software that combines a Python application layer with an embedded HTML/CSS/JavaScript interface.
 
-AutoForms explores desktop workflow automation through a hybrid architecture: Python handles application logic and system integration while an embedded WebView provides the user interface.
+The project was developed to automate form-oriented workflows while keeping the user interface separate from the native application logic.
 
 ## Architecture
 
-```
-Python application
-      │
-      ├── configuration
-      ├── persistence
-      ├── logging
-      └── automation
-      │
-      ↕ bridge
-      │
-HTML / CSS / JavaScript
-      │
-      └── WebView UI
-```
+    Python application
+          │
+          │ Python ↔ JavaScript bridge
+          ▼
+    WebView interface
 
-The Python ↔ JavaScript bridge allows the interface to communicate with native application functionality.
+The bridge exposes native application functionality to the web-based interface, allowing the UI and Python layer to work as a single desktop application.
 
 ## Features
 
-- Native desktop window using **pywebview**.
+- Embedded WebView desktop interface.
 - Bidirectional Python ↔ JavaScript communication.
-- JSON-based configuration persistence.
+- JSON-based configuration and persistence.
 - Single-instance application control.
-- Custom logging system.
-- HTML5/CSS/JavaScript interface.
-- Automation-oriented application architecture.
+- Structured application logging.
+- Automation workflows and browser integration.
+- Spreadsheet processing through openpyxl.
 
 ## Technology
 
 - Python
 - JavaScript
-- HTML5
-- CSS3
+- HTML5 / CSS3
 - pywebview
 - Selenium
 - openpyxl
 - JSON
-- Windows desktop tooling
+- Windows desktop APIs and tooling
 
 ## Project structure
 
-```
-src/
-├── main.py
-├── core/
-│   ├── config.py
-│   ├── logger.py
-│   ├── storage.py
-│   └── single_instance.py
-├── bridge/
-│   └── bridge_api.py
-└── ui/
-    ├── index.html
-    ├── css/
-    └── js/
-```
+    src/
+    ├── main.py
+    ├── core/
+    ├── bridge/
+    └── ui/
+        ├── index.html
+        ├── css/
+        └── js/
 
 ## Setup
 
-```powershell
-python -m venv venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-python src/main.py
-```
+    python -m venv venv
+    .\venv\Scripts\activate
+    pip install -r requirements.txt
+    python src/main.py
 
 ## Status
 
-Experimental personal automation software.
+Experimental desktop automation project developed by Leonardo Merchán.
 
-Before making this repository public, review the repository history and configuration files for credentials, personal data, cookies, API keys or other private information.
-
-## Author
-
-**Leonardo Merchán — lewopxd**
-
-[GitHub profile](https://github.com/lewopxd) · [0zdev](https://github.com/0zdev)
+[GitHub](https://github.com/lewopxd) · [0zdev](https://github.com/0zdev)
